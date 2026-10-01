@@ -1,0 +1,6 @@
+# Settings for the generated bindings (scripts/gen-bindings.sh).
+[bindings.csharp]
+namespace = "Bookshelf.Ffi"
+cdylib_name = "bookshelf_ffi"
+# Public, so the WinUI app project can use the types from Bookshelf.Core.
+access_modifier = "public"

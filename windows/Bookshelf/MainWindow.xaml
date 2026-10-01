@@ -1,0 +1,53 @@
+<Window
+    x:Class="Bookshelf.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Phase 0 experiment: profiles through the shared Rust core, and a
+         test of RichEditBox for the writing page. Not the real app yet. -->
+    <Grid Padding="24" ColumnSpacing="24" RowSpacing="12">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Column="0" Spacing="12">
+            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Profiles" />
+            <ListView x:Name="ProfileList" MinHeight="120" SelectionMode="None" />
+            <TextBox x:Name="NewProfileName" PlaceholderText="New profile" KeyDown="OnNewProfileKeyDown" />
+            <Button Content="Add" Click="OnAddProfile" />
+            <TextBlock x:Name="ProfileError" Foreground="{ThemeResource SystemFillColorCriticalBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid Grid.Column="1" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Writing box test" />
+            <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="Please try: 1) type a few words, then press Ctrl+Z. Does it undo only your typing, or does the coloring flicker or get undone too? 2) Load the long sample and type: does it keep up? 3) Paste some text from another app." />
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
+                <Button Content="Load a 5,000-word sample" Click="OnLoadLongSample" />
+                <CheckBox x:Name="HighlightToggle" Content="Highlight Markdown" IsChecked="True" Click="OnHighlightToggled" />
+                <TextBlock x:Name="Timing" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <RichEditBox x:Name="Editor" Grid.Row="3"
+                FontFamily="Cascadia Mono, Consolas"
+                FontSize="15"
+                TextWrapping="Wrap"
+                IsSpellCheckEnabled="False"
+                TextChanged="OnEditorTextChanged" />
+        </Grid>
+
+        <TextBlock x:Name="Status" Grid.Row="1" Grid.ColumnSpan="2"
+            Style="{StaticResource CaptionTextBlockStyle}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+    </Grid>
+</Window>

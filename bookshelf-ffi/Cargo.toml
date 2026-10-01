@@ -1,0 +1,22 @@
+[package]
+name = "bookshelf-ffi"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "The Rust side of the macOS and Windows apps: bookshelf-core exposed through UniFFI."
+
+[lib]
+name = "bookshelf_ffi"
+# lib: Rust tests. staticlib: linked into the macOS app. cdylib: the Windows
+# app's DLL, and what the binding generators read.
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+bookshelf-core = { path = "../bookshelf-core" }
+# Pinned to the version uniffi-bindgen-cs (C#) supports; the Swift bindings
+# come from tools/uniffi-bindgen at the same version.
+uniffi = "=0.31.0"
+thiserror = "1"
+
+[dev-dependencies]
+tempfile = "3"

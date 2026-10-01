@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The WinUI 3 app: unpackaged and self-contained (no runtime to install). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <!-- Windows 10 version 1809 and later. -->
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Bookshelf</RootNamespace>
+    <AssemblyName>Bookshelf</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bookshelf.Core\Bookshelf.Core.csproj" />
+  </ItemGroup>
+  <!-- The Rust core, from `cargo build -release -p bookshelf-ffi`. -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\target\release\bookshelf_ffi.dll')">
+    <None Include="$(MSBuildThisFileDirectory)..\..\target\release\bookshelf_ffi.dll"
+          Link="bookshelf_ffi.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

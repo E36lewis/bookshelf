@@ -1,0 +1,79 @@
+# Builds and tests the macOS app, and keeps screenshots of it so the UI can
+# be reviewed without a Mac (download the "mac-screenshots" artifact).
+name: macOS app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mac:
+    name: Build, test, screenshot
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: 1.98.1
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Rust core → xcframework
+        run: apple/scripts/build-xcframework.sh
+
+      - name: BookshelfKit tests
+        run: swift test --package-path apple/BookshelfKit
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          cd apple && xcodegen generate
+
+      - name: UI tests (with screenshots)
+        run: |
+          xcodebuild test \
+            -project apple/Bookshelf.xcodeproj -scheme Bookshelf \
+            -destination 'platform=macOS' \
+            -resultBundlePath apple/build/UITests.xcresult
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          if [ -d apple/build/UITests.xcresult ]; then
+            xcrun xcresulttool export attachments \
+              --path apple/build/UITests.xcresult --output-path apple/build/screenshots
+          fi
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: mac-screenshots
+          path: apple/build/screenshots
+          if-no-files-found: ignore
+
+      - name: Build the app (preview, ad-hoc signed)
+        run: |
+          xcodebuild build \
+            -project apple/Bookshelf.xcodeproj -scheme Bookshelf -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath apple/build/dd
+          ditto -c -k --keepParent \
+            apple/build/dd/Build/Products/Release/Bookshelf.app apple/build/Bookshelf-mac-preview.zip
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Bookshelf-mac-preview
+          path: apple/build/Bookshelf-mac-preview.zip

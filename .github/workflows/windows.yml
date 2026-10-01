@@ -1,0 +1,54 @@
+# Builds the Windows app and uploads a test build (download the
+# "Bookshelf-windows-preview-x64" artifact, unzip, run Bookshelf.exe).
+name: Windows app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows:
+    name: Build (x64)
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Rust core → bookshelf_ffi.dll
+        # Static C runtime: nothing extra (like the VC++ redistributable) to install.
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release -p bookshelf-ffi
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish the app
+        run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -o windows/build/Bookshelf
+
+      - name: Check the Rust core is next to the app
+        shell: pwsh
+        run: if (-not (Test-Path windows/build/Bookshelf/bookshelf_ffi.dll)) { throw "bookshelf_ffi.dll missing from the build" }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Bookshelf-windows-preview-x64
+          path: windows/build/Bookshelf

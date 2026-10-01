@@ -1,0 +1,63 @@
+# XcodeGen spec: `xcodegen generate` (in apple/) makes Bookshelf.xcodeproj.
+# The .xcodeproj itself isn't committed.
+name: Bookshelf
+options:
+  bundleIdPrefix: io.github.e36lewis
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  BookshelfKit:
+    path: BookshelfKit
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Ad-hoc signing for development and CI; Developer ID comes in the release phase.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  Bookshelf:
+    type: application
+    platform: macOS
+    sources: [Bookshelf]
+    dependencies:
+      - package: BookshelfKit
+    info:
+      path: Bookshelf/Info.plist
+      properties:
+        CFBundleDisplayName: Bookshelf
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: "Copyright © 2026 e36lewis. Free software under the GPL 3.0 or later."
+    entitlements:
+      path: Bookshelf/Bookshelf.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.files.user-selected.read-write: true
+    settings:
+      base:
+        # Previews get their own ID, so they never touch a real journal.
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.e36lewis.Bookshelf.Preview
+        PRODUCT_NAME: Bookshelf
+  BookshelfUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources: [BookshelfUITests]
+    dependencies:
+      - target: Bookshelf
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.e36lewis.Bookshelf.UITests
+        TEST_TARGET_NAME: Bookshelf
+schemes:
+  Bookshelf:
+    build:
+      targets:
+        Bookshelf: all
+        BookshelfUITests: [test]
+    test:
+      targets: [BookshelfUITests]

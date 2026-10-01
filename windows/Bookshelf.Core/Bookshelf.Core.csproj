@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Windows app's non-UI layer: the generated bindings to the Rust
+       core (Generated/, from scripts/gen-bindings.sh) and the services and
+       models the UI uses. Plain .NET, so it can be tested on any OS. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Bookshelf.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

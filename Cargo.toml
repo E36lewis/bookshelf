@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["bookshelf-core", "bookshelf-cli", "bookshelf-app"]
+members = ["bookshelf-core", "bookshelf-cli", "bookshelf-app", "bookshelf-ffi", "tools/uniffi-bindgen"]
 
 [profile.release]
 lto = "thin"
