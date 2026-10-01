@@ -1,0 +1,126 @@
+/* Bookshelf: structure, type and shape. Colors come from palette-*.css. */
+
+/* ---------- typography ---------- */
+.journal-title, .page-title, .entry-title, .entry-excerpt, .entry-excerpt-empty,
+.book-title, .book-subtitle, .section-title, .preview-text,
+statuspage > scrolledwindow > viewport > box > label.title {
+  font-family: "Source Serif 4", "Noto Serif", "Charis SIL", Georgia, serif;
+}
+
+.journal-title { font-size: 2.3em; font-weight: 700; letter-spacing: -0.01em; }
+.journal-lede  { color: @journal_muted; font-size: 1.05em; }
+
+.page-title { font-size: 1.8em; font-weight: 700; }
+.page-count { color: @journal_muted; font-size: 0.95em; }
+
+/* ---------- entries (the home lists) ---------- */
+list.entries { background: none; }
+
+list.entries > row.entry {
+  background-color: @journal_card;
+  border-radius: 14px;
+  margin: 0 0 12px 0;
+  padding: 14px;
+  box-shadow: 0 1px 2px alpha(black, 0.07), 0 0 0 1px @journal_rule;
+  transition: box-shadow 160ms ease;
+}
+list.entries > row.entry:hover {
+  background-color: @journal_card;
+  box-shadow: 0 6px 18px alpha(black, 0.12), 0 0 0 1px @journal_rule;
+}
+
+.entry-title   { font-size: 1.2em; font-weight: 700; line-height: 1.2; }
+.entry-byline  { color: @journal_muted; }
+.entry-meta    { color: @accent_color; font-size: 0.78em; font-weight: 700;
+                 letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+.entry-excerpt { color: alpha(@journal_ink, 0.82); line-height: 1.4; margin-top: 8px; }
+.entry-excerpt-empty { color: @journal_muted; font-style: italic; margin-top: 8px; }
+
+/* ---------- covers ---------- */
+.cover {
+  border-radius: 3px 7px 7px 3px;             /* a hint of spine */
+  background-color: alpha(@journal_muted, 0.18);
+  box-shadow: 0 2px 8px alpha(black, 0.28), inset 2px 0 0 alpha(white, 0.25);
+}
+
+/* ---------- book page ---------- */
+.book-title    { font-size: 1.95em; font-weight: 700; line-height: 1.12; }
+.book-subtitle { font-size: 1.1em; font-style: italic; color: @journal_muted; }
+.book-author   { color: @accent_color; font-weight: 700; font-size: 1.05em; }
+.book-meta     { color: @journal_muted; font-size: 0.9em; }
+.section-title { font-size: 1.4em; font-weight: 700; }
+
+.journal-page {
+  background-color: @journal_card;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px alpha(black, 0.07), 0 0 0 1px @journal_rule;
+}
+.journal-page textview { font-size: 1.12em; background: transparent; }
+.journal-page textview text { background: transparent; }
+.preview-text { font-size: 1.12em; line-height: 1.5; }
+
+/* ---------- controls ---------- */
+button.suggested-action {
+  border-radius: 999px;
+  padding: 4px 18px;
+  font-weight: 700;
+}
+
+viewswitcher button.toggle:checked {
+  background-color: alpha(@accent_color, 0.16);
+  color: @accent_color;
+}
+
+list.boxed-list { border-radius: 14px; }
+
+/* ---------- writing page (iA Writer-style) ---------- */
+.writer-page,
+.writer-surface,
+.writer-page headerbar { background-color: @journal_card; }
+
+textview.writer,
+textview.writer text {
+  font-family: "iA Writer Duo S", "iA Writer Mono S", "iA Writer Mono",
+               "JetBrains Mono", "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+  font-size: 1.2em;
+  background: transparent;
+  caret-color: @accent_color;
+}
+textview.writer text selection { background-color: alpha(@accent_color, 0.28); }
+
+.writer-status {
+  color: @journal_muted;
+  font-size: 0.85em;
+  padding: 8px 0 14px 0;
+  background-color: @journal_card;
+}
+
+.format-bar button { min-width: 32px; min-height: 30px; }
+.format-bar button.text-button { font-weight: 700; }
+
+/* ---------- settings ---------- */
+button.swatch {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  color: white;
+  box-shadow: inset 0 0 0 1px alpha(black, 0.2);
+}
+.writer-preview { font-size: 1.2em; line-height: 1.5; }
+
+/* ---------- calendar popover ---------- */
+.calendar-nav button { min-width: 28px; padding: 0 6px; }
+.calendar-weekday { color: @journal_muted; font-size: 0.8em; font-weight: 700; padding: 4px 0; }
+button.calendar-day {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 999px;
+}
+button.calendar-day.calendar-today { box-shadow: inset 0 0 0 1.5px @accent_color; }
+
+/* ---------- reading view ---------- */
+.reader-page,
+.reader-surface,
+.reader-page headerbar { background-color: @journal_card; }
+.reader-text { line-height: 1.7; }

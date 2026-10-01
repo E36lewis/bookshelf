@@ -1,0 +1,12 @@
+[package]
+name = "bookshelf-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bookshelf"
+path = "src/main.rs"
+
+[dependencies]
+bookshelf-core = { path = "../bookshelf-core" }
+chrono = "0.4"

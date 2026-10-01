@@ -1,0 +1,33 @@
+/* Light palette, converted from the shared web stylesheet (oklch -> sRGB).
+   Edit these few colors to re-tint the whole app. */
+@define-color journal_paper  #f1f2f3;   /* ink-lightest: the desk */
+@define-color journal_card   #ffffff;   /* canvas: the page */
+@define-color journal_ink    #17233c;   /* ink-darkest */
+@define-color journal_muted  #70757d;   /* ink-dark */
+@define-color journal_rule   #e3e5e6;   /* ink-lighter */
+
+@define-color window_bg_color @journal_paper;
+@define-color window_fg_color @journal_ink;
+@define-color view_bg_color @journal_card;
+@define-color view_fg_color @journal_ink;
+@define-color headerbar_bg_color @journal_paper;
+@define-color headerbar_fg_color @journal_ink;
+@define-color headerbar_border_color @journal_paper;
+@define-color headerbar_backdrop_color @journal_paper;
+@define-color card_bg_color @journal_card;
+@define-color card_fg_color @journal_ink;
+@define-color popover_bg_color @journal_card;
+@define-color popover_fg_color @journal_ink;
+@define-color dialog_bg_color @journal_card;
+@define-color dialog_fg_color @journal_ink;
+
+@define-color accent_bg_color #2d71e5;  /* blue-dark (the shared "link" color) */
+@define-color accent_fg_color #ffffff;
+@define-color accent_color #2d71e5;
+
+@define-color success_color #058931;    /* green-dark */
+@define-color warning_color #ba5e00;    /* yellow-dark */
+@define-color error_color #d54507;      /* red-dark */
+@define-color destructive_color #d54507;
+@define-color destructive_bg_color #d54507;
+@define-color destructive_fg_color #ffffff;

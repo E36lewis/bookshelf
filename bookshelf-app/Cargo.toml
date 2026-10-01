@@ -1,0 +1,15 @@
+[package]
+name = "bookshelf-app"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bookshelf-gtk"
+path = "src/main.rs"
+
+[dependencies]
+bookshelf-core = { path = "../bookshelf-core" }
+chrono = "0.4"
+pulldown-cmark = "0.12"
+gtk = { package = "gtk4", version = "0.9", features = ["v4_12"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }

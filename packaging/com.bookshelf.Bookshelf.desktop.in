@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Bookshelf
+Comment=A reading journal
+Exec=@EXEC@
+Icon=com.bookshelf.Bookshelf
+Terminal=false
+Categories=Office;
+Keywords=books;reading;journal;
+StartupWMClass=com.bookshelf.Bookshelf

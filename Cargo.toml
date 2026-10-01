@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["bookshelf-core", "bookshelf-cli", "bookshelf-app"]
+
+[profile.release]
+lto = "thin"
+strip = true
