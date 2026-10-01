@@ -147,7 +147,8 @@ mod tests {
         let path = dir.path().join("j.sqlite3");
         drop(open(&path).unwrap());
         let raw = Connection::open(&path).unwrap();
-        raw.pragma_update(None, "user_version", (MIGRATIONS.len() + 1) as i64).unwrap();
+        raw.pragma_update(None, "user_version", (MIGRATIONS.len() + 1) as i64)
+            .unwrap();
         drop(raw);
         let err = open(&path).unwrap_err().to_string();
         assert!(err.contains("newer version"), "{err}");

@@ -52,7 +52,9 @@ fn attach_cover_if_missing(
     if book.cover_path.is_some() {
         return Ok(());
     }
-    let Some(url) = &book.cover_url else { return Ok(()) };
+    let Some(url) = &book.cover_url else {
+        return Ok(());
+    };
     match covers::download(ol, paths, &book.id, url) {
         Ok(Some(file)) => models::set_cover_path(conn, &book.id, &file)?,
         Ok(None) => {}

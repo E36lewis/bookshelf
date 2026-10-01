@@ -43,12 +43,18 @@ impl Table {
             .enumerate()
             .map(|(i, h)| (h.to_string(), i))
             .collect();
-        let rows = rdr.records().collect::<std::result::Result<Vec<_>, _>>().map_err(csv_err)?;
+        let rows = rdr
+            .records()
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(csv_err)?;
         Ok(Self { headers, rows })
     }
 
     fn empty() -> Self {
-        Self { headers: HashMap::new(), rows: vec![] }
+        Self {
+            headers: HashMap::new(),
+            rows: vec![],
+        }
     }
 
     /// Blank cells (Postgres NULLs) come back as None.
@@ -94,7 +100,11 @@ pub fn import_rails_export(conn: &Connection, dir: &Path) -> Result<ImportReport
     let books = Table::read(&dir.join("books.csv"))?;
     let summaries = Table::read(&dir.join("summaries.csv"))?;
     let rich_path = dir.join("action_text_rich_texts.csv");
-    let rich = if rich_path.exists() { Table::read(&rich_path)? } else { Table::empty() };
+    let rich = if rich_path.exists() {
+        Table::read(&rich_path)?
+    } else {
+        Table::empty()
+    };
 
     // summary id -> markdown body
     let mut bodies: HashMap<String, String> = HashMap::new();
@@ -165,9 +175,14 @@ pub fn import_rails_export(conn: &Connection, dir: &Path) -> Result<ImportReport
                 books.get(r, "publisher"),
                 books.get(r, "description"),
                 books.get(r, "published_date"),
-                books.get(r, "page_count").and_then(|s| s.parse::<i64>().ok()),
+                books
+                    .get(r, "page_count")
+                    .and_then(|s| s.parse::<i64>().ok()),
                 books.get(r, "cover_url"),
-                books.get(r, "provider").and_then(|s| s.parse::<i64>().ok()).unwrap_or(0),
+                books
+                    .get(r, "provider")
+                    .and_then(|s| s.parse::<i64>().ok())
+                    .unwrap_or(0),
                 books.req(r, "external_id")?,
                 ts(books.req(r, "created_at")?)?,
                 ts(books.req(r, "updated_at")?)?,

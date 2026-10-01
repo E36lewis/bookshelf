@@ -29,7 +29,8 @@ pub fn inline_decision(before: &str, selected: &str, after: &str, marker: &str) 
         return InlineEdit::UnwrapOutside;
     }
 
-    let part_of_bold_inside = star && sel.len() >= 2 && (sel[1] == '*' || sel[sel.len() - 2] == '*');
+    let part_of_bold_inside =
+        star && sel.len() >= 2 && (sel[1] == '*' || sel[sel.len() - 2] == '*');
     if sel.len() >= 2 * m
         && selected.starts_with(marker)
         && selected.ends_with(marker)
@@ -76,7 +77,12 @@ fn number_body(rest: &str) -> Option<&str> {
 /// (indent, content) with any bullet or number marker removed.
 fn strip_list(line: &str) -> (&str, &str) {
     let (indent, rest) = split_indent(line);
-    (indent, bullet_body(rest).or_else(|| number_body(rest)).unwrap_or(rest))
+    (
+        indent,
+        bullet_body(rest)
+            .or_else(|| number_body(rest))
+            .unwrap_or(rest),
+    )
 }
 
 fn heading_level(l: &str) -> Option<usize> {
@@ -128,7 +134,10 @@ pub fn toggle_quote(lines: &[String]) -> Vec<String> {
     if all_blank(lines) {
         return lines.iter().map(|_| "> ".to_string()).collect();
     }
-    let all = lines.iter().filter(|l| !is_blank(l)).all(|l| quote_body(l).is_some());
+    let all = lines
+        .iter()
+        .filter(|l| !is_blank(l))
+        .all(|l| quote_body(l).is_some());
     lines
         .iter()
         .map(|l| {
@@ -160,7 +169,11 @@ pub fn toggle_bullets(lines: &[String]) -> Vec<String> {
                 return l.clone();
             }
             let (indent, body) = strip_list(l);
-            if all { format!("{indent}{body}") } else { format!("{indent}- {body}") }
+            if all {
+                format!("{indent}{body}")
+            } else {
+                format!("{indent}- {body}")
+            }
         })
         .collect()
 }
@@ -202,16 +215,28 @@ mod tests {
     #[test]
     fn inline_bold() {
         assert_eq!(inline_decision("", "word", "", "**"), InlineEdit::Wrap);
-        assert_eq!(inline_decision("**", "word", "**", "**"), InlineEdit::UnwrapOutside);
-        assert_eq!(inline_decision("", "**word**", "", "**"), InlineEdit::UnwrapInside);
+        assert_eq!(
+            inline_decision("**", "word", "**", "**"),
+            InlineEdit::UnwrapOutside
+        );
+        assert_eq!(
+            inline_decision("", "**word**", "", "**"),
+            InlineEdit::UnwrapInside
+        );
     }
 
     #[test]
     fn italic_is_not_confused_with_bold() {
-        assert_eq!(inline_decision(" *", "word", "* ", "*"), InlineEdit::UnwrapOutside);
+        assert_eq!(
+            inline_decision(" *", "word", "* ", "*"),
+            InlineEdit::UnwrapOutside
+        );
         assert_eq!(inline_decision("**", "word", "**", "*"), InlineEdit::Wrap);
         assert_eq!(inline_decision("", "**word**", "", "*"), InlineEdit::Wrap);
-        assert_eq!(inline_decision("", "*word*", "", "*"), InlineEdit::UnwrapInside);
+        assert_eq!(
+            inline_decision("", "*word*", "", "*"),
+            InlineEdit::UnwrapInside
+        );
     }
 
     #[test]
@@ -228,7 +253,10 @@ mod tests {
         assert_eq!(toggle_bullets(&v(&["- a", "- b"])), v(&["a", "b"]));
         assert_eq!(toggle_bullets(&v(&["- a", "b"])), v(&["- a", "- b"]));
         assert_eq!(toggle_bullets(&v(&["1. a"])), v(&["- a"]));
-        assert_eq!(toggle_numbered(&v(&["a", "", "b"])), v(&["1. a", "", "2. b"]));
+        assert_eq!(
+            toggle_numbered(&v(&["a", "", "b"])),
+            v(&["1. a", "", "2. b"])
+        );
         assert_eq!(toggle_numbered(&v(&["1. a", "2. b"])), v(&["a", "b"]));
         assert_eq!(toggle_bullets(&v(&[""])), v(&["- "]));
     }

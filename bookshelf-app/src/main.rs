@@ -108,19 +108,31 @@ fn build_ui(app: &adw::Application) {
             help_keys.set_scope(gtk::ShortcutScope::Global);
             {
                 let ctx = Rc::downgrade(&ctx);
-                writer::add_shortcut(&help_keys, gdk::Key::F1, gdk::ModifierType::empty(), move || {
-                    if let Some(ctx) = ctx.upgrade() {
-                        help::open_manual(&ctx);
-                    }
-                    true
-                });
+                writer::add_shortcut(
+                    &help_keys,
+                    gdk::Key::F1,
+                    gdk::ModifierType::empty(),
+                    move || {
+                        if let Some(ctx) = ctx.upgrade() {
+                            help::open_manual(&ctx);
+                        }
+                        true
+                    },
+                );
             }
             {
                 let window = window.downgrade();
-                writer::add_shortcut(&help_keys, gdk::Key::question, gdk::ModifierType::CONTROL_MASK, move || {
-                    help::show_shortcuts(window.upgrade().map(|w| w.upcast::<gtk::Window>()).as_ref());
-                    true
-                });
+                writer::add_shortcut(
+                    &help_keys,
+                    gdk::Key::question,
+                    gdk::ModifierType::CONTROL_MASK,
+                    move || {
+                        help::show_shortcuts(
+                            window.upgrade().map(|w| w.upcast::<gtk::Window>()).as_ref(),
+                        );
+                        true
+                    },
+                );
             }
             window.add_controller(help_keys);
 
@@ -156,7 +168,11 @@ fn open_journal() -> Result<(AppPaths, Connection, OpenLibrary), String> {
     let paths = AppPaths::from_env()
         .map_err(|e| format!("Couldn't create the data folder: {}", friendly(&e)))?;
     let conn = db::open(&paths.db_path).map_err(|e| {
-        format!("Couldn't open your journal ({}): {}", paths.db_path.display(), friendly(&e))
+        format!(
+            "Couldn't open your journal ({}): {}",
+            paths.db_path.display(),
+            friendly(&e)
+        )
     })?;
     let ol = OpenLibrary::new()
         .map_err(|e| format!("Couldn't set up the network connection: {}", friendly(&e)))?;
@@ -186,7 +202,8 @@ fn startup_error(message: &str) -> adw::ToolbarView {
 fn back_up_in_background(paths: &AppPaths) {
     let paths = paths.clone();
     std::thread::spawn(move || {
-        let made = db::open(&paths.db_path).and_then(|conn| backup::daily(&conn, &paths, backup::KEEP));
+        let made =
+            db::open(&paths.db_path).and_then(|conn| backup::daily(&conn, &paths, backup::KEEP));
         if let Err(e) = made {
             eprintln!("[bookshelf] daily backup failed: {e}");
         }
@@ -196,7 +213,10 @@ fn back_up_in_background(paths: &AppPaths) {
 /// A toast showing `message` as plain text. Toasts parse Pango markup by
 /// default, and an error message with a stray `&` or `<` would vanish.
 pub(crate) fn plain_toast(message: &str) -> adw::Toast {
-    adw::Toast::builder().title(message).use_markup(false).build()
+    adw::Toast::builder()
+        .title(message)
+        .use_markup(false)
+        .build()
 }
 
 /// An error as a sentence for people: "That name is already taken."
@@ -206,7 +226,10 @@ pub(crate) fn friendly(e: &bookshelf_core::Error) -> String {
         other => other.to_string(),
     };
     let mut chars = text.chars();
-    let mut out: String = chars.next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
+    let mut out: String = chars
+        .next()
+        .map(|c| c.to_uppercase().collect())
+        .unwrap_or_default();
     out.push_str(chars.as_str());
     if !out.ends_with(['.', '!', '?']) {
         out.push('.');
@@ -238,7 +261,11 @@ impl PageKeys {
         let controller = gtk::ShortcutController::new();
         controller.set_scope(gtk::ShortcutScope::Global);
         controller.set_propagation_phase(gtk::PropagationPhase::Capture);
-        Self { controller, nav: ctx.nav.clone(), page: page.downgrade() }
+        Self {
+            controller,
+            nav: ctx.nav.clone(),
+            page: page.downgrade(),
+        }
     }
 
     /// `action` returns false to let the key through to the page.
@@ -251,7 +278,9 @@ impl PageKeys {
         let nav = self.nav.clone();
         let page = self.page.clone();
         writer::add_shortcut(&self.controller, key, modifiers, move || {
-            let showing = page.upgrade().is_some_and(|p| nav.visible_page().as_ref() == Some(&p));
+            let showing = page
+                .upgrade()
+                .is_some_and(|p| nav.visible_page().as_ref() == Some(&p));
             showing && action()
         });
     }
@@ -268,7 +297,11 @@ fn flat_toolbar() -> adw::ToolbarView {
 }
 
 fn books(n: usize) -> String {
-    if n == 1 { "1 book".to_string() } else { format!("{n} books") }
+    if n == 1 {
+        "1 book".to_string()
+    } else {
+        format!("{n} books")
+    }
 }
 
 // ------------------------------------------------------------ profiles
@@ -282,7 +315,9 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     // ---- new profile: name, optional email, a clear button --------------
     let name_row = adw::EntryRow::builder().title("Name").build();
     let email_entry = email_row();
-    let new_group = adw::PreferencesGroup::builder().title("New profile").build();
+    let new_group = adw::PreferencesGroup::builder()
+        .title("New profile")
+        .build();
     new_group.add(&name_row);
     new_group.add(&email_entry);
 
@@ -388,7 +423,10 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     column.append(&error);
     column.append(&create_btn);
 
-    let clamp = adw::Clamp::builder().maximum_size(480).child(&column).build();
+    let clamp = adw::Clamp::builder()
+        .maximum_size(480)
+        .child(&column)
+        .build();
     let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
 
     let toolbar = flat_toolbar();
@@ -404,7 +442,7 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let ctx_show = ctx.clone();
     page.connect_showing(move |_| {
         theme::apply(&UserSettings::defaults()); // neutral look until someone is chosen
-        // If the journal can't be read, say so: "Welcome" here would suggest it's empty.
+                                                 // If the journal can't be read, say so: "Welcome" here would suggest it's empty.
         let any = match populate_profiles(&ctx_show, &existing) {
             Ok(any) => any,
             Err(e) => {
@@ -478,12 +516,30 @@ fn populate_profiles(ctx: &Rc<Ctx>, list: &gtk::ListBox) -> bookshelf_core::Resu
 
 /// (stack name, tab title, icon, milestone, page heading, empty-state text)
 const TABS: [(&str, &str, &str, Milestone, &str, &str); 3] = [
-    ("reading", "Reading", "document-open-symbolic", Milestone::Reading,
-     "Reading now", "Books you've started will live here."),
-    ("finished", "Finished", "emblem-ok-symbolic", Milestone::Finished,
-     "Finished", "Every book you finish gets its own page here."),
-    ("eventually", "Eventually", "bookmark-new-symbolic", Milestone::Eventually,
-     "Someday", "Books you want to read someday wait here."),
+    (
+        "reading",
+        "Reading",
+        "document-open-symbolic",
+        Milestone::Reading,
+        "Reading now",
+        "Books you've started will live here.",
+    ),
+    (
+        "finished",
+        "Finished",
+        "emblem-ok-symbolic",
+        Milestone::Finished,
+        "Finished",
+        "Every book you finish gets its own page here.",
+    ),
+    (
+        "eventually",
+        "Eventually",
+        "bookmark-new-symbolic",
+        Milestone::Eventually,
+        "Someday",
+        "Books you want to read someday wait here.",
+    ),
 ];
 
 /// One tab of the home page.
@@ -508,7 +564,8 @@ impl Tab {
             self.empty.set_icon_name(Some("system-search-symbolic"));
             self.empty.set_title("No matches");
             let text = format!("Nothing on this shelf matches “{query}”.");
-            self.empty.set_description(Some(&glib::markup_escape_text(&text)));
+            self.empty
+                .set_description(Some(&glib::markup_escape_text(&text)));
             self.add_btn.set_visible(false);
         }
     }
@@ -597,11 +654,21 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         column.append(&head);
         column.append(&list);
 
-        let clamp = adw::Clamp::builder().maximum_size(720).child(&column).build();
+        let clamp = adw::Clamp::builder()
+            .maximum_size(720)
+            .child(&column)
+            .build();
         let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
         stack.add_titled_with_icon(&scroll, Some(name), title, icon);
 
-        let tab = Tab { milestone, list, count, empty, empty_text, add_btn };
+        let tab = Tab {
+            milestone,
+            list,
+            count,
+            empty,
+            empty_text,
+            add_btn,
+        };
         tab.show_empty_state("");
         tabs.push(tab);
     }
@@ -651,7 +718,12 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         .hexpand(true)
         .build();
     let search_bar = gtk::SearchBar::builder()
-        .child(&adw::Clamp::builder().maximum_size(720).child(&search_entry).build())
+        .child(
+            &adw::Clamp::builder()
+                .maximum_size(720)
+                .child(&search_entry)
+                .build(),
+        )
         .build();
     search_bar.connect_entry(&search_entry);
     search_btn
@@ -755,7 +827,11 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
                 .conn
                 .query_row("PRAGMA data_version", [], |r| r.get::<_, i64>(0))
                 .unwrap_or(-1);
-            let now = (ctx.conn.total_changes(), others, chrono::Local::now().date_naive());
+            let now = (
+                ctx.conn.total_changes(),
+                others,
+                chrono::Local::now().date_naive(),
+            );
             if others >= 0 && built_from.get() == Some(now) {
                 return;
             }
@@ -792,7 +868,10 @@ fn populate_list(
         Ok(rows) => rows,
         Err(e) => {
             // Keep what's showing; an empty shelf would look like lost books.
-            ctx.toasts.add_toast(plain_toast(&format!("Couldn't read your shelf: {}", friendly(&e))));
+            ctx.toasts.add_toast(plain_toast(&format!(
+                "Couldn't read your shelf: {}",
+                friendly(&e)
+            )));
             return (tab.list.observe_children().n_items() as usize, 0);
         }
     };
@@ -821,8 +900,11 @@ fn populate_list(
             item.book.author.as_deref().unwrap_or(""),
             item.summary.body
         );
-        haystacks.borrow_mut().insert(item.summary.id.clone(), text.to_lowercase());
-        tab.list.append(&summary_row(ctx, item, tab.milestone, date_format));
+        haystacks
+            .borrow_mut()
+            .insert(item.summary.id.clone(), text.to_lowercase());
+        tab.list
+            .append(&summary_row(ctx, item, tab.milestone, date_format));
     }
     let this_year = chrono::Local::now().year();
     (rows.len(), per_year.get(&this_year).copied().unwrap_or(0))
@@ -899,7 +981,11 @@ fn summary_row(
     if !taste.is_empty() {
         text.append(&wrapped_label(&taste, "entry-excerpt", 3));
     } else if milestone != Milestone::Eventually {
-        text.append(&wrapped_label("Nothing written yet.", "entry-excerpt-empty", 1));
+        text.append(&wrapped_label(
+            "Nothing written yet.",
+            "entry-excerpt-empty",
+            1,
+        ));
     }
 
     let card = gtk::Box::builder()
@@ -933,7 +1019,9 @@ pub(crate) fn cover_picture(ctx: &Rc<Ctx>, book: &Book, width: i32, height: i32)
     picture.set_halign(gtk::Align::Start);
     picture.add_css_class("cover");
 
-    let Some(file) = book.cover_path.clone() else { return picture };
+    let Some(file) = book.cover_path.clone() else {
+        return picture;
+    };
     let cache = (width, height) == LIST_COVER;
     if cache {
         if let Some(texture) = ctx.covers.borrow().get(&file) {
@@ -967,7 +1055,10 @@ fn load_cover(path: &Path, width: i32, height: i32) -> Option<gdk::Texture> {
     const MAX_PIXELS: i64 = 40_000_000;
     let (_, w, h) = gtk::gdk_pixbuf::Pixbuf::file_info(path)?;
     if i64::from(w) * i64::from(h) > MAX_PIXELS {
-        eprintln!("[bookshelf] skipping oversized cover {} ({w}×{h})", path.display());
+        eprintln!(
+            "[bookshelf] skipping oversized cover {} ({w}×{h})",
+            path.display()
+        );
         return None;
     }
     let pixbuf = gtk::gdk_pixbuf::Pixbuf::from_file_at_scale(path, width, height, true).ok()?;
@@ -983,7 +1074,11 @@ fn meta_line(item: &SummaryWithBook, milestone: Milestone, date_format: &str) ->
                 parts.push(format!("Finished {}", format_date(date_format, d)));
             }
             if let Some(n) = s.days_to_complete {
-                parts.push(if n == 1 { "1 day".into() } else { format!("{n} days") });
+                parts.push(if n == 1 {
+                    "1 day".into()
+                } else {
+                    format!("{n} days")
+                });
             }
         }
         Milestone::Reading => {

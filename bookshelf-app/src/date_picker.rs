@@ -6,9 +6,9 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use adw::prelude::*;
-use gtk::glib;
 use bookshelf_core::models::format_date;
 use chrono::{Datelike, Local, NaiveDate};
+use gtk::glib;
 
 pub struct DatePicker {
     row: adw::ActionRow,
@@ -51,7 +51,10 @@ impl DatePicker {
             .spacing(2)
             .css_classes(["calendar-nav"])
             .build();
-        let grid = gtk::Grid::builder().row_spacing(2).column_spacing(2).build();
+        let grid = gtk::Grid::builder()
+            .row_spacing(2)
+            .column_spacing(2)
+            .build();
         let clear = gtk::Button::builder()
             .label("Clear date")
             .css_classes(["flat"])
@@ -132,7 +135,10 @@ impl DatePicker {
         {
             let this = inner.clone();
             popover.connect_show(move |_| {
-                let base = this.selected.get().unwrap_or_else(|| Local::now().date_naive());
+                let base = this
+                    .selected
+                    .get()
+                    .unwrap_or_else(|| Local::now().date_naive());
                 this.view.set(first_of_month(base));
                 this.render();
             });
@@ -147,7 +153,10 @@ impl DatePicker {
 }
 
 fn nav_button(inner: &Rc<Inner>, label: &str, months: i32) -> gtk::Button {
-    let btn = gtk::Button::builder().label(label).css_classes(["flat"]).build();
+    let btn = gtk::Button::builder()
+        .label(label)
+        .css_classes(["flat"])
+        .build();
     let this = inner.clone();
     btn.connect_clicked(move |_| {
         this.shift_month(months);
@@ -187,7 +196,9 @@ impl Inner {
     }
 
     fn render(self: &Rc<Self>) {
-        let (Some(grid), Some(title)) = (self.grid.upgrade(), self.title.upgrade()) else { return };
+        let (Some(grid), Some(title)) = (self.grid.upgrade(), self.title.upgrade()) else {
+            return;
+        };
         while let Some(child) = grid.first_child() {
             grid.remove(&child);
         }

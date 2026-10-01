@@ -121,7 +121,11 @@ impl Theme {
         } else {
             mix(base, (0, 0, 0), 0.15)
         };
-        let fg = if luminance(base) > 0.6 { "#1e1a16" } else { "#ffffff" };
+        let fg = if luminance(base) > 0.6 {
+            "#1e1a16"
+        } else {
+            "#ffffff"
+        };
         self.accent.load_from_string(&format!(
             "@define-color accent_bg_color {};\n\
              @define-color accent_fg_color {fg};\n\
@@ -132,7 +136,11 @@ impl Theme {
     }
 
     fn render_fonts(&self, s: &UserSettings) {
-        let heading = if s.heading_font == "sans" { "inherit" } else { SERIF };
+        let heading = if s.heading_font == "sans" {
+            "inherit"
+        } else {
+            SERIF
+        };
         let writing = match s.writing_font.as_str() {
             "serif" => SERIF,
             "sans" => "inherit",
@@ -154,7 +162,9 @@ fn swatch_css() -> String {
     ACCENTS
         .iter()
         .enumerate()
-        .map(|(i, (_, hex))| format!(".swatch-{i} {{ background-image: none; background-color: {hex}; }}\n"))
+        .map(|(i, (_, hex))| {
+            format!(".swatch-{i} {{ background-image: none; background-color: {hex}; }}\n")
+        })
         .collect()
 }
 

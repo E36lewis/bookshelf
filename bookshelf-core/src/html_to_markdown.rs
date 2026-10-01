@@ -17,7 +17,10 @@ pub fn html_to_markdown(html: &str) -> String {
         }
         // A run of text up to the next '<' (always take at least one char).
         let first = rest.chars().next().map(char::len_utf8).unwrap_or(1);
-        let stop = rest[first..].find('<').map(|p| p + first).unwrap_or(rest.len());
+        let stop = rest[first..]
+            .find('<')
+            .map(|p| p + first)
+            .unwrap_or(rest.len());
         c.text(&rest[..stop]);
         i += stop;
     }
@@ -217,7 +220,9 @@ fn decode(s: &str) -> String {
 
 /// Keep literal asterisks, backticks and backslashes literal in markdown.
 fn escape(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('*', "\\*").replace('`', "\\`")
+    s.replace('\\', "\\\\")
+        .replace('*', "\\*")
+        .replace('`', "\\`")
 }
 
 #[cfg(test)]

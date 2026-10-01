@@ -22,20 +22,55 @@ pub fn bar(tv: &gtk::TextView) -> gtk::Box {
     };
 
     let text = group();
-    text.append(&icon_btn(tv, "format-text-bold-symbolic", "Bold (Ctrl+B)", |b| toggle_inline(b, "**")));
-    text.append(&icon_btn(tv, "format-text-italic-symbolic", "Italic (Ctrl+I)", |b| toggle_inline(b, "*")));
-    text.append(&icon_btn(tv, "format-text-strikethrough-symbolic", "Strikethrough", |b| toggle_inline(b, "~~")));
-    text.append(&icon_btn(tv, "utilities-terminal-symbolic", "Code", |b| toggle_inline(b, "`")));
+    text.append(&icon_btn(
+        tv,
+        "format-text-bold-symbolic",
+        "Bold (Ctrl+B)",
+        |b| toggle_inline(b, "**"),
+    ));
+    text.append(&icon_btn(
+        tv,
+        "format-text-italic-symbolic",
+        "Italic (Ctrl+I)",
+        |b| toggle_inline(b, "*"),
+    ));
+    text.append(&icon_btn(
+        tv,
+        "format-text-strikethrough-symbolic",
+        "Strikethrough",
+        |b| toggle_inline(b, "~~"),
+    ));
+    text.append(&icon_btn(tv, "utilities-terminal-symbolic", "Code", |b| {
+        toggle_inline(b, "`")
+    }));
 
     let headings = group();
-    headings.append(&text_btn(tv, "H1", "Heading 1", |b| lines(b, |l| mdedit::set_heading(l, 1))));
-    headings.append(&text_btn(tv, "H2", "Heading 2", |b| lines(b, |l| mdedit::set_heading(l, 2))));
-    headings.append(&text_btn(tv, "H3", "Heading 3", |b| lines(b, |l| mdedit::set_heading(l, 3))));
+    headings.append(&text_btn(tv, "H1", "Heading 1", |b| {
+        lines(b, |l| mdedit::set_heading(l, 1))
+    }));
+    headings.append(&text_btn(tv, "H2", "Heading 2", |b| {
+        lines(b, |l| mdedit::set_heading(l, 2))
+    }));
+    headings.append(&text_btn(tv, "H3", "Heading 3", |b| {
+        lines(b, |l| mdedit::set_heading(l, 3))
+    }));
 
     let blocks = group();
-    blocks.append(&icon_btn(tv, "format-indent-more-symbolic", "Quote", |b| lines(b, mdedit::toggle_quote)));
-    blocks.append(&icon_btn(tv, "view-list-bullet-symbolic", "Bulleted list", |b| lines(b, mdedit::toggle_bullets)));
-    blocks.append(&icon_btn(tv, "view-list-ordered-symbolic", "Numbered list", |b| lines(b, mdedit::toggle_numbered)));
+    blocks.append(&icon_btn(tv, "format-indent-more-symbolic", "Quote", |b| {
+        lines(b, mdedit::toggle_quote)
+    }));
+    blocks.append(&icon_btn(
+        tv,
+        "view-list-bullet-symbolic",
+        "Bulleted list",
+        |b| lines(b, mdedit::toggle_bullets),
+    ));
+    blocks.append(&icon_btn(
+        tv,
+        "view-list-ordered-symbolic",
+        "Numbered list",
+        |b| lines(b, mdedit::toggle_numbered),
+    ));
     blocks.append(&icon_btn(tv, "insert-link-symbolic", "Link", insert_link));
 
     root.append(&text);
@@ -63,18 +98,29 @@ fn finish(
     btn
 }
 
-fn icon_btn(tv: &gtk::TextView, icon: &str, tip: &str, f: impl Fn(&gtk::TextBuffer) + 'static) -> gtk::Button {
+fn icon_btn(
+    tv: &gtk::TextView,
+    icon: &str,
+    tip: &str,
+    f: impl Fn(&gtk::TextBuffer) + 'static,
+) -> gtk::Button {
     finish(gtk::Button::from_icon_name(icon), tv, tip, f)
 }
 
-fn text_btn(tv: &gtk::TextView, label: &str, tip: &str, f: impl Fn(&gtk::TextBuffer) + 'static) -> gtk::Button {
+fn text_btn(
+    tv: &gtk::TextView,
+    label: &str,
+    tip: &str,
+    f: impl Fn(&gtk::TextBuffer) + 'static,
+) -> gtk::Button {
     finish(gtk::Button::with_label(label), tv, tip, f)
 }
 
 // ---------------------------------------------------- buffer helpers
 
 fn slice(buf: &gtk::TextBuffer, a: i32, b: i32) -> String {
-    buf.text(&buf.iter_at_offset(a), &buf.iter_at_offset(b), false).to_string()
+    buf.text(&buf.iter_at_offset(a), &buf.iter_at_offset(b), false)
+        .to_string()
 }
 
 fn delete(buf: &gtk::TextBuffer, a: i32, b: i32) {

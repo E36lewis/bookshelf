@@ -9,9 +9,9 @@ use bookshelf_core::db;
 use bookshelf_core::models::*;
 use bookshelf_core::openlibrary::OpenLibrary;
 use bookshelf_core::paths::AppPaths;
+use bookshelf_core::rusqlite::Connection;
 use bookshelf_core::service;
 use chrono::NaiveDate;
-use bookshelf_core::rusqlite::Connection;
 
 type Res<T> = Result<T, Box<dyn Error>>;
 
@@ -84,7 +84,14 @@ fn run() -> Res<()> {
             println!("saved \"{}\"", book.title);
             println!("  book id:    {}", book.id);
             println!("  summary id: {}", s.id);
-            println!("  description: {}", if book.description.is_some() { "yes" } else { "no" });
+            println!(
+                "  description: {}",
+                if book.description.is_some() {
+                    "yes"
+                } else {
+                    "no"
+                }
+            );
             match &book.cover_path {
                 Some(p) => println!("  cover:      {}", paths.cover_file(p).display()),
                 None => println!("  cover:      none"),
@@ -122,7 +129,11 @@ fn run() -> Res<()> {
                 }
             }
             let s = update_summary(&conn, id, &input)?;
-            println!("updated: {:?}, days_to_complete {:?}", s.milestone(), s.days_to_complete);
+            println!(
+                "updated: {:?}, days_to_complete {:?}",
+                s.milestone(),
+                s.days_to_complete
+            );
         }
         ["delete", id] => {
             delete_summary(&conn, id)?;
@@ -144,9 +155,15 @@ fn run() -> Res<()> {
         #[cfg(feature = "rails-import")]
         ["import", dir] => {
             let r = bookshelf_core::import::import_rails_export(&conn, std::path::Path::new(dir))?;
-            println!("imported {} users, {} books, {} summaries", r.users, r.books, r.summaries);
+            println!(
+                "imported {} users, {} books, {} summaries",
+                r.users, r.books, r.summaries
+            );
             println!("summaries with no text: {}", r.summaries_without_text);
-            println!("rich text names found on summaries: {:?}", r.rich_text_names);
+            println!(
+                "rich text names found on summaries: {:?}",
+                r.rich_text_names
+            );
             println!("next: bookshelf fetch-covers");
         }
         ["fetch-covers"] => {
@@ -180,7 +197,11 @@ fn print_list(conn: &Connection, user_id: &str, label: &str, m: Milestone) -> Re
             row.book.title,
             row.book.author.as_deref().unwrap_or("?"),
             days,
-            if row.book.cover_path.is_some() { " [cover]" } else { "" }
+            if row.book.cover_path.is_some() {
+                " [cover]"
+            } else {
+                ""
+            }
         );
     }
     Ok(())

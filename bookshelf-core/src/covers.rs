@@ -12,7 +12,11 @@ pub fn download(
     cover_url: &str,
 ) -> Result<Option<String>> {
     // The id becomes a filename, so it must not be able to name a path.
-    if book_id.is_empty() || !book_id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-') {
+    if book_id.is_empty()
+        || !book_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    {
         return Err(Error::Invalid(format!("unexpected book id {book_id:?}")));
     }
     let Some((bytes, content_type)) = ol.fetch_image(cover_url)? else {

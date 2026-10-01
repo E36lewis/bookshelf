@@ -62,8 +62,14 @@ mod tests {
     fn covers_stay_in_the_covers_folder() {
         let dir = tempfile::tempdir().unwrap();
         let paths = AppPaths::in_dir(dir.path()).unwrap();
-        assert_eq!(paths.cover_file("abc.jpg"), paths.covers_dir.join("abc.jpg"));
-        assert_eq!(paths.cover_file("../../etc/passwd"), paths.covers_dir.join("passwd"));
+        assert_eq!(
+            paths.cover_file("abc.jpg"),
+            paths.covers_dir.join("abc.jpg")
+        );
+        assert_eq!(
+            paths.cover_file("../../etc/passwd"),
+            paths.covers_dir.join("passwd")
+        );
     }
 
     #[cfg(unix)]
@@ -72,7 +78,10 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         let dir = tempfile::tempdir().unwrap();
         let paths = AppPaths::in_dir(dir.path()).unwrap();
-        let mode = std::fs::metadata(&paths.data_dir).unwrap().permissions().mode();
+        let mode = std::fs::metadata(&paths.data_dir)
+            .unwrap()
+            .permissions()
+            .mode();
         assert_eq!(mode & 0o777, 0o700);
     }
 }

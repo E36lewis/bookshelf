@@ -14,7 +14,11 @@ use crate::Result;
 pub fn export_markdown(conn: &Connection, user_id: &str, dir: &Path) -> Result<usize> {
     std::fs::create_dir_all(dir)?;
     let mut count = 0;
-    for milestone in [Milestone::Finished, Milestone::Reading, Milestone::Eventually] {
+    for milestone in [
+        Milestone::Finished,
+        Milestone::Reading,
+        Milestone::Eventually,
+    ] {
         for item in models::list_summaries(conn, user_id, milestone)? {
             write_new(dir, &slug(&item.book.title), &render(&item))?;
             count += 1;
@@ -71,7 +75,11 @@ pub fn slug(title: &str) -> String {
         }
     }
     let trimmed: String = out.trim_matches('-').chars().take(80).collect();
-    if trimmed.is_empty() { "untitled".to_string() } else { trimmed }
+    if trimmed.is_empty() {
+        "untitled".to_string()
+    } else {
+        trimmed
+    }
 }
 
 /// Writes `<stem>.md`, or `<stem>-2.md`, ... if taken. `create_new` makes
@@ -79,9 +87,17 @@ pub fn slug(title: &str) -> String {
 /// symlink that sits where the file would go.
 fn write_new(dir: &Path, stem: &str, contents: &str) -> Result<PathBuf> {
     for n in 1.. {
-        let name = if n == 1 { format!("{stem}.md") } else { format!("{stem}-{n}.md") };
+        let name = if n == 1 {
+            format!("{stem}.md")
+        } else {
+            format!("{stem}-{n}.md")
+        };
         let path = dir.join(name);
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
             Ok(mut file) => {
                 file.write_all(contents.as_bytes())?;
                 file.sync_all()?;
@@ -100,7 +116,10 @@ mod tests {
 
     #[test]
     fn slugs() {
-        assert_eq!(slug("The Hobbit: Or, There & Back!"), "the-hobbit-or-there-back");
+        assert_eq!(
+            slug("The Hobbit: Or, There & Back!"),
+            "the-hobbit-or-there-back"
+        );
         assert_eq!(slug("???"), "untitled");
     }
 

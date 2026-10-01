@@ -104,8 +104,8 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         glib::spawn_future_local(async move {
             // Network work happens on a worker thread, never the UI thread.
             let ol = ui.ol.clone();
-            let result = gio::spawn_blocking(move || ol.search(&query).map_err(|e| e.to_string()))
-                .await;
+            let result =
+                gio::spawn_blocking(move || ol.search(&query).map_err(|e| e.to_string())).await;
 
             if generation.get() != gen {
                 return; // a newer search superseded this one
@@ -118,7 +118,9 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
                         ui.list.append(&result_row(&ui, book));
                     }
                 }
-                Ok(Err(msg)) => ui.overlay.add_toast(plain_toast(&format!("Search failed: {msg}"))),
+                Ok(Err(msg)) => ui
+                    .overlay
+                    .add_toast(plain_toast(&format!("Search failed: {msg}"))),
                 Err(_) => {}
             }
         });
@@ -158,8 +160,7 @@ fn pick(ui: &Ui, picked: NewBook) {
     glib::spawn_future_local(async move {
         let saved = gio::spawn_blocking(move || -> Result<Book, String> {
             let conn = db::open(&paths.db_path).map_err(|e| e.to_string())?;
-            service::save_book_from_search(&conn, &ol, &paths, picked)
-                .map_err(|e| e.to_string())
+            service::save_book_from_search(&conn, &ol, &paths, picked).map_err(|e| e.to_string())
         })
         .await;
 
@@ -169,7 +170,8 @@ fn pick(ui: &Ui, picked: NewBook) {
         let book = match saved {
             Ok(Ok(book)) => book,
             Ok(Err(msg)) => {
-                ui.overlay.add_toast(plain_toast(&format!("Could not save: {msg}")));
+                ui.overlay
+                    .add_toast(plain_toast(&format!("Could not save: {msg}")));
                 return;
             }
             Err(_) => return,
@@ -178,7 +180,9 @@ fn pick(ui: &Ui, picked: NewBook) {
         match find_user_summary_for_book(&ui.ctx.conn, &ui.user.id, &book.id) {
             Ok(Some(existing)) => ask_open_or_reread(&ui, &book, existing.id),
             Ok(None) => ask_shelf(&ui, &book),
-            Err(e) => ui.overlay.add_toast(plain_toast(&format!("Could not save: {}", friendly(&e)))),
+            Err(e) => ui
+                .overlay
+                .add_toast(plain_toast(&format!("Could not save: {}", friendly(&e)))),
         }
     });
 }
@@ -234,8 +238,14 @@ fn ask_shelf(ui: &Ui, book: &Book) {
         let today = chrono::Local::now().date_naive();
         let input = match response {
             "eventually" => SummaryInput::default(),
-            "reading" => SummaryInput { started_on: Some(today), ..Default::default() },
-            "finished" => SummaryInput { finished_on: Some(today), ..Default::default() },
+            "reading" => SummaryInput {
+                started_on: Some(today),
+                ..Default::default()
+            },
+            "finished" => SummaryInput {
+                finished_on: Some(today),
+                ..Default::default()
+            },
             _ => return,
         };
         match create_summary(&this.ctx.conn, &this.user.id, &book_id, &input) {

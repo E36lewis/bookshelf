@@ -32,7 +32,9 @@ fn manual_page() -> adw::NavigationPage {
         .margin_end(24)
         .build();
     column.append(&text_label(&manual.intro));
-    let contents = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+    let contents = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
     contents.append(&text_label("## Contents"));
     column.append(&contents);
     let mut targets: HashMap<String, gtk::Label> = HashMap::new();
@@ -42,7 +44,10 @@ fn manual_page() -> adw::NavigationPage {
         targets.insert(section.anchor.clone(), label);
     }
 
-    let clamp = adw::Clamp::builder().maximum_size(720).child(&column).build();
+    let clamp = adw::Clamp::builder()
+        .maximum_size(720)
+        .child(&column)
+        .build();
     let scroll = gtk::ScrolledWindow::builder()
         .child(&clamp)
         .vexpand(true)
@@ -55,8 +60,12 @@ fn manual_page() -> adw::NavigationPage {
         let scroll = scroll.downgrade();
         let clamp = clamp.downgrade();
         Rc::new(move |anchor: &str| {
-            let (Some(scroll), Some(clamp)) = (scroll.upgrade(), clamp.upgrade()) else { return };
-            let Some(target) = targets.get(anchor) else { return };
+            let (Some(scroll), Some(clamp)) = (scroll.upgrade(), clamp.upgrade()) else {
+                return;
+            };
+            let Some(target) = targets.get(anchor) else {
+                return;
+            };
             if let Some(at) = target.compute_point(&clamp, &gtk::graphene::Point::new(0.0, 0.0)) {
                 scroll.vadjustment().set_value(f64::from(at.y()) - 12.0);
                 scroll.grab_focus();
@@ -171,14 +180,19 @@ fn parse_manual(md: &str) -> Manual {
     let mut in_contents = false;
 
     for line in md.lines() {
-        let heading = line.strip_prefix("## ").or_else(|| line.strip_prefix("### "));
+        let heading = line
+            .strip_prefix("## ")
+            .or_else(|| line.strip_prefix("### "));
         if let Some(title) = heading {
             let anchor = github_anchor(title, &mut seen);
             in_contents = line.starts_with("## ") && title.trim() == "Contents";
             if in_contents {
                 continue;
             }
-            sections.push(Section { anchor, markdown: String::new() });
+            sections.push(Section {
+                anchor,
+                markdown: String::new(),
+            });
         }
         let target = if in_contents {
             &mut contents_md
@@ -204,7 +218,11 @@ fn parse_manual(md: &str) -> Manual {
             })
         })
         .collect();
-    Manual { intro, contents, sections }
+    Manual {
+        intro,
+        contents,
+        sections,
+    }
 }
 
 /// The anchor GitHub gives a heading: lowercase, spaces to dashes,
@@ -231,7 +249,9 @@ fn github_anchor(title: &str, seen: &mut HashMap<String, usize>) -> String {
 /// handlers in main.rs (home, help), editor.rs, writer.rs and reader.rs.
 pub fn show_shortcuts(parent: Option<&gtk::Window>) {
     let builder = gtk::Builder::from_string(SHORTCUTS_UI);
-    let Some(window) = builder.object::<gtk::ShortcutsWindow>("shortcuts") else { return };
+    let Some(window) = builder.object::<gtk::ShortcutsWindow>("shortcuts") else {
+        return;
+    };
     window.set_transient_for(parent);
     window.present();
 }
@@ -390,14 +410,34 @@ mod tests {
         assert!(manual.intro.starts_with("# Bookshelf"));
         let anchors: Vec<&str> = manual.sections.iter().map(|s| s.anchor.as_str()).collect();
         for entry in &manual.contents {
-            assert!(anchors.contains(&entry.anchor.as_str()), "no section for {:?}", entry.anchor);
+            assert!(
+                anchors.contains(&entry.anchor.as_str()),
+                "no section for {:?}",
+                entry.anchor
+            );
             // and it's the heading the entry names, not a same-named one elsewhere
-            let section = manual.sections.iter().find(|s| s.anchor == entry.anchor).unwrap();
-            assert!(section.markdown.lines().next().unwrap().ends_with(&entry.title), "{}", entry.title);
+            let section = manual
+                .sections
+                .iter()
+                .find(|s| s.anchor == entry.anchor)
+                .unwrap();
+            assert!(
+                section
+                    .markdown
+                    .lines()
+                    .next()
+                    .unwrap()
+                    .ends_with(&entry.title),
+                "{}",
+                entry.title
+            );
         }
         // Contents itself isn't repeated in the sections, and nothing is lost.
         assert!(!anchors.contains(&"contents"));
-        let headings = MANUAL.lines().filter(|l| l.starts_with("## ") || l.starts_with("### ")).count();
+        let headings = MANUAL
+            .lines()
+            .filter(|l| l.starts_with("## ") || l.starts_with("### "))
+            .count();
         assert_eq!(manual.sections.len(), headings - 1);
         for section in &manual.sections {
             let markup = markdown::to_pango(&section.markdown);
@@ -409,7 +449,10 @@ mod tests {
     fn anchors_match_github() {
         let mut seen = HashMap::new();
         assert_eq!(github_anchor("A book's page", &mut seen), "a-books-page");
-        assert_eq!(github_anchor("Your data, backups and privacy", &mut seen), "your-data-backups-and-privacy");
+        assert_eq!(
+            github_anchor("Your data, backups and privacy", &mut seen),
+            "your-data-backups-and-privacy"
+        );
         assert_eq!(github_anchor("Writing", &mut seen), "writing");
         assert_eq!(github_anchor("Writing", &mut seen), "writing-1");
     }
@@ -424,7 +467,10 @@ mod tests {
             let accel = rest.trim_end_matches("</property>");
             let name = accel.strip_prefix("&lt;Control&gt;").unwrap_or(accel);
             assert!(!name.contains("&lt;"), "only Ctrl is used: {accel}");
-            assert!(gtk::gdk::Key::from_name(name).is_some(), "unknown key {name:?}");
+            assert!(
+                gtk::gdk::Key::from_name(name).is_some(),
+                "unknown key {name:?}"
+            );
         }
     }
 }

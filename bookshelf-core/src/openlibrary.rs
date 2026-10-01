@@ -44,7 +44,10 @@ impl OpenLibrary {
             .timeout(Duration::from_secs(10))
             .connect_timeout(Duration::from_secs(10))
             .build()?;
-        Ok(Self { client, user_agent: HeaderValue::from_static(APP_AGENT) })
+        Ok(Self {
+            client,
+            user_agent: HeaderValue::from_static(APP_AGENT),
+        })
     }
 
     /// Same client, but requests carry the profile's contact email in the
@@ -54,11 +57,16 @@ impl OpenLibrary {
         let user_agent = contact
             .and_then(|c| HeaderValue::from_str(&format!("{APP_AGENT} (contact: {c})")).ok())
             .unwrap_or_else(|| HeaderValue::from_static(APP_AGENT));
-        Self { client: self.client.clone(), user_agent }
+        Self {
+            client: self.client.clone(),
+            user_agent,
+        }
     }
 
     fn get(&self, url: &str) -> RequestBuilder {
-        self.client.get(url).header(USER_AGENT, self.user_agent.clone())
+        self.client
+            .get(url)
+            .header(USER_AGENT, self.user_agent.clone())
     }
 
     /// Lightweight list search: no descriptions, no cover downloads.
@@ -94,14 +102,17 @@ impl OpenLibrary {
     /// Refetch details for a saved book. Only fields Open Library actually
     /// returned are `Some`, so nothing gets blanked out.
     pub fn refresh_work(&self, work_key: &str) -> Result<Option<BookUpdate>> {
-        let Some(j) = self.work_json(work_key)? else { return Ok(None) };
+        let Some(j) = self.work_json(work_key)? else {
+            return Ok(None);
+        };
         Ok(Some(BookUpdate {
             title: str_field(&j, "title"),
             subtitle: str_field(&j, "subtitle"),
             description: description_of(&j),
             published_date: str_field(&j, "first_publish_date"),
             page_count: j["number_of_pages_median"].as_i64(),
-            publisher: j["publisher"].as_array()
+            publisher: j["publisher"]
+                .as_array()
                 .and_then(|a| a.first())
                 .and_then(|v| v.as_str())
                 .map(str::to_owned),
@@ -127,8 +138,13 @@ impl OpenLibrary {
             .to_owned();
         // Only plain raster formats: no SVG (an XML document) or anything exotic.
         let mime = content_type.split(';').next().unwrap_or("").trim();
-        if !matches!(mime, "image/jpeg" | "image/png" | "image/gif" | "image/webp") {
-            return Err(Error::Invalid(format!("not an image ({content_type:?}): {url}")));
+        if !matches!(
+            mime,
+            "image/jpeg" | "image/png" | "image/gif" | "image/webp"
+        ) {
+            return Err(Error::Invalid(format!(
+                "not an image ({content_type:?}): {url}"
+            )));
         }
         Ok(Some((read_capped(resp)?, content_type)))
     }
@@ -149,7 +165,9 @@ impl OpenLibrary {
 /// Anything else is refused, so a key can never point the request at
 /// another path or host (`@evil.example/...`).
 fn is_work_key(key: &str) -> bool {
-    let id = key.strip_prefix("/works/").or_else(|| key.strip_prefix("/books/"));
+    let id = key
+        .strip_prefix("/works/")
+        .or_else(|| key.strip_prefix("/books/"));
     id.is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_alphanumeric()))
 }
 
@@ -172,7 +190,10 @@ fn read_json(resp: Response) -> Result<Value> {
 }
 
 fn str_field(j: &Value, key: &str) -> Option<String> {
-    j[key].as_str().filter(|s| !s.is_empty()).map(|s| clip(s, MAX_FIELD_CHARS))
+    j[key]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(|s| clip(s, MAX_FIELD_CHARS))
 }
 
 /// Titles and such: anything longer is surely junk.
@@ -209,9 +230,8 @@ fn parse_doc(doc: &Value) -> NewBook {
             .collect();
         (!parts.is_empty()).then(|| parts.join(", "))
     };
-    let first_str = |key: &str| -> Option<String> {
-        doc[key].as_array()?.first()?.as_str().map(str::to_owned)
-    };
+    let first_str =
+        |key: &str| -> Option<String> { doc[key].as_array()?.first()?.as_str().map(str::to_owned) };
 
     NewBook {
         external_id: doc["key"].as_str().unwrap_or_default().to_owned(),
@@ -257,7 +277,10 @@ mod tests {
         let ol = OpenLibrary::new().unwrap();
         assert_eq!(ol.user_agent, APP_AGENT);
         let with = ol.with_contact(Some("me@example.com"));
-        assert_eq!(with.user_agent, format!("{APP_AGENT} (contact: me@example.com)").as_str());
+        assert_eq!(
+            with.user_agent,
+            format!("{APP_AGENT} (contact: me@example.com)").as_str()
+        );
         // a header-breaking value is dropped, not sent
         assert_eq!(ol.with_contact(Some("a@b.c\r\nX: y")).user_agent, APP_AGENT);
     }

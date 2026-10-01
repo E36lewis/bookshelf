@@ -61,7 +61,10 @@ pub fn set_folder(conn: &Connection, chosen: Option<&Path>) -> Result<()> {
             if !dir.is_absolute() || !dir.is_dir() {
                 return Err(Error::Invalid(format!("{} isn't a folder", dir.display())));
             }
-            Some(dir.to_str().ok_or_else(|| Error::Invalid("that folder's name can't be used".into()))?)
+            Some(
+                dir.to_str()
+                    .ok_or_else(|| Error::Invalid("that folder's name can't be used".into()))?,
+            )
         }
         None => None,
     };
@@ -86,7 +89,10 @@ fn daily_in(
     // A chosen folder that's gone (drive unplugged) is never re-created:
     // that would quietly put the backups somewhere nobody looks.
     if !dir.is_dir() {
-        return Err(Error::Invalid(format!("the backup folder {} isn't available", dir.display())));
+        return Err(Error::Invalid(format!(
+            "the backup folder {} isn't available",
+            dir.display()
+        )));
     }
     let target = dir.join(format!("bookshelf-{id}-{day}.sqlite3"));
     if target.exists() {
@@ -129,7 +135,10 @@ fn list(dir: &Path, id: &str) -> Result<Vec<PathBuf>> {
 /// The day a backup of journal `id` was made, from its name.
 fn date_of(path: &Path, id: &str) -> Option<NaiveDate> {
     let name = path.file_name()?.to_str()?;
-    let day = name.strip_prefix("bookshelf-")?.strip_prefix(id)?.strip_prefix('-')?;
+    let day = name
+        .strip_prefix("bookshelf-")?
+        .strip_prefix(id)?
+        .strip_prefix('-')?;
     let day = day.strip_suffix(".sqlite3")?;
     // Exactly YYYY-MM-DD (chrono alone would also take 2026-1-5).
     if day.len() != 10 {
@@ -157,8 +166,13 @@ mod tests {
 
         let id = journal_id(&conn).unwrap();
         assert_eq!(id, journal_id(&conn).unwrap(), "made once, then kept");
-        let first = daily_in(&conn, backups, &id, 2, day(1)).unwrap().expect("made a copy");
-        assert!(daily_in(&conn, backups, &id, 2, day(1)).unwrap().is_none(), "once per day");
+        let first = daily_in(&conn, backups, &id, 2, day(1))
+            .unwrap()
+            .expect("made a copy");
+        assert!(
+            daily_in(&conn, backups, &id, 2, day(1)).unwrap().is_none(),
+            "once per day"
+        );
 
         // The copy is a working database with the data in it.
         let copy = db::open(&first).unwrap();
@@ -167,7 +181,11 @@ mod tests {
 
         // Never touched: unrelated files, and another computer's backups.
         std::fs::write(backups.join("notes.txt"), "mine").unwrap();
-        std::fs::write(backups.join("bookshelf-0000beef-2026-09-01.sqlite3"), "theirs").unwrap();
+        std::fs::write(
+            backups.join("bookshelf-0000beef-2026-09-01.sqlite3"),
+            "theirs",
+        )
+        .unwrap();
         daily_in(&conn, backups, &id, 2, day(2)).unwrap();
         daily_in(&conn, backups, &id, 2, day(3)).unwrap();
         let names: Vec<String> = list(backups, &id)
@@ -177,10 +195,15 @@ mod tests {
             .collect();
         assert_eq!(
             names,
-            [format!("bookshelf-{id}-2026-10-03.sqlite3"), format!("bookshelf-{id}-2026-10-02.sqlite3")]
+            [
+                format!("bookshelf-{id}-2026-10-03.sqlite3"),
+                format!("bookshelf-{id}-2026-10-02.sqlite3")
+            ]
         );
         assert!(backups.join("notes.txt").exists());
-        assert!(backups.join("bookshelf-0000beef-2026-09-01.sqlite3").exists());
+        assert!(backups
+            .join("bookshelf-0000beef-2026-09-01.sqlite3")
+            .exists());
         assert_eq!(latest(&conn, &paths).unwrap(), Some(day(3)));
     }
 
@@ -191,15 +214,29 @@ mod tests {
         let paths = AppPaths::in_dir(data.path()).unwrap();
         let conn = db::open(&paths.db_path).unwrap();
 
-        assert_eq!(folder(&conn, &paths).unwrap(), (paths.backups_dir.clone(), false));
+        assert_eq!(
+            folder(&conn, &paths).unwrap(),
+            (paths.backups_dir.clone(), false)
+        );
         assert!(set_folder(&conn, Some(Path::new("relative/dir"))).is_err());
         set_folder(&conn, Some(elsewhere.path())).unwrap();
-        assert_eq!(folder(&conn, &paths).unwrap(), (elsewhere.path().to_path_buf(), true));
+        assert_eq!(
+            folder(&conn, &paths).unwrap(),
+            (elsewhere.path().to_path_buf(), true)
+        );
 
         // Another journal's copy from today doesn't count as ours.
         let today = Local::now().date_naive();
-        std::fs::write(elsewhere.path().join(format!("bookshelf-0000beef-{today}.sqlite3")), "x").unwrap();
-        let made = daily(&conn, &paths, KEEP).unwrap().expect("our own copy is still made");
+        std::fs::write(
+            elsewhere
+                .path()
+                .join(format!("bookshelf-0000beef-{today}.sqlite3")),
+            "x",
+        )
+        .unwrap();
+        let made = daily(&conn, &paths, KEEP)
+            .unwrap()
+            .expect("our own copy is still made");
         assert_eq!(made.parent().unwrap(), elsewhere.path());
         #[cfg(unix)]
         {

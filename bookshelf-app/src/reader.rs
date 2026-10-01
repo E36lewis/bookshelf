@@ -123,8 +123,12 @@ pub fn reader_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let button = full_btn.downgrade();
         let overlay = overlay.downgrade();
         Rc::new(move || {
-            let Some(toolbar) = toolbar.upgrade() else { return };
-            let Some(window) = toolbar.root().and_downcast::<gtk::Window>() else { return };
+            let Some(toolbar) = toolbar.upgrade() else {
+                return;
+            };
+            let Some(window) = toolbar.root().and_downcast::<gtk::Window>() else {
+                return;
+            };
             let entering = !window.is_fullscreen();
             if entering {
                 window.fullscreen();
@@ -162,7 +166,9 @@ pub fn reader_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
             if sync.borrow().is_some() {
                 return;
             }
-            let Some(window) = p.root().and_downcast::<gtk::Window>() else { return };
+            let Some(window) = p.root().and_downcast::<gtk::Window>() else {
+                return;
+            };
             let toolbar = toolbar.clone();
             let id = window.connect_fullscreened_notify(move |w| {
                 if let Some(toolbar) = toolbar.upgrade() {

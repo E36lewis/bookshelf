@@ -141,7 +141,9 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let status = status.clone();
         let words = words.clone();
         Rc::new(move || {
-            let Some(buffer) = buffer.upgrade() else { return Ok(()) };
+            let Some(buffer) = buffer.upgrade() else {
+                return Ok(());
+            };
             if !dirty.get() {
                 return Ok(());
             }
@@ -331,8 +333,12 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let toolbar = toolbar.downgrade();
         let button = full_btn.downgrade();
         Rc::new(move || {
-            let Some(toolbar) = toolbar.upgrade() else { return };
-            let Some(window) = toolbar.root().and_downcast::<gtk::Window>() else { return };
+            let Some(toolbar) = toolbar.upgrade() else {
+                return;
+            };
+            let Some(window) = toolbar.root().and_downcast::<gtk::Window>() else {
+                return;
+            };
             let entering = !window.is_fullscreen();
             if entering {
                 window.fullscreen();
@@ -428,7 +434,9 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
             if close_guard.borrow().is_some() {
                 return;
             }
-            let Some(window) = p.root().and_downcast::<gtk::Window>() else { return };
+            let Some(window) = p.root().and_downcast::<gtk::Window>() else {
+                return;
+            };
             let ctx = ctx.clone();
             let title = title.clone();
             let buffer = buffer.clone();
@@ -438,7 +446,9 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
                 if force_close.get() {
                     return glib::Propagation::Proceed;
                 }
-                let Err(problem) = save_now() else { return glib::Propagation::Proceed };
+                let Err(problem) = save_now() else {
+                    return glib::Propagation::Proceed;
+                };
                 let body = buffer.upgrade().map(|b| full_text(&b)).unwrap_or_default();
                 let rescued = rescue(&ctx, &title, &body, w);
                 let dialog = adw::AlertDialog::builder()
@@ -539,14 +549,20 @@ fn full_text(buffer: &gtk::TextBuffer) -> String {
 /// Questions to get you started, depending on where the book is on your shelf.
 fn prompts_for(milestone: Milestone) -> &'static str {
     match milestone {
-        Milestone::Eventually => "Why do you want to read this one?\n\
-                                  Who recommended it, and what did they say?",
-        Milestone::Reading => "Where are you in the story?\n\
+        Milestone::Eventually => {
+            "Why do you want to read this one?\n\
+                                  Who recommended it, and what did they say?"
+        }
+        Milestone::Reading => {
+            "Where are you in the story?\n\
                                What has surprised you so far?\n\
-                               A line worth remembering…",
-        Milestone::Finished => "What stayed with you after the last page?\n\
+                               A line worth remembering…"
+        }
+        Milestone::Finished => {
+            "What stayed with you after the last page?\n\
                                 A line worth remembering…\n\
-                                Who would you give this book to?",
+                                Who would you give this book to?"
+        }
     }
 }
 
@@ -667,7 +683,10 @@ fn style_line(buf: &gtk::TextBuffer, t: &Tags, line: &[char], off: usize) {
         mark(buf, &t.syntax, off, indent, indent + 1);
         from = indent + 2;
     } else {
-        let digits = line[indent..].iter().take_while(|c| c.is_ascii_digit()).count();
+        let digits = line[indent..]
+            .iter()
+            .take_while(|c| c.is_ascii_digit())
+            .count();
         if digits > 0
             && line.get(indent + digits) == Some(&'.')
             && line.get(indent + digits + 1) == Some(&' ')
@@ -701,8 +720,8 @@ fn style_inline(buf: &gtk::TextBuffer, t: &Tags, line: &[char], off: usize, from
             }
             '~' => {
                 if line.get(i + 1) == Some(&'~') {
-                    let close = (i + 2..n)
-                        .find(|&j| line[j] == '~' && line.get(j + 1) == Some(&'~'));
+                    let close =
+                        (i + 2..n).find(|&j| line[j] == '~' && line.get(j + 1) == Some(&'~'));
                     match close {
                         Some(j) if j > i + 2 => {
                             mark(buf, &t.strike, off, i + 2, j);
@@ -741,7 +760,8 @@ fn style_inline(buf: &gtk::TextBuffer, t: &Tags, line: &[char], off: usize, from
                                 && line[j - 1] != '\\'
                                 && !line[j - 1].is_whitespace()
                                 && line.get(j + 1) != Some(&c)
-                                && (c == '*' || !line.get(j + 1).is_some_and(|x| x.is_alphanumeric()))
+                                && (c == '*'
+                                    || !line.get(j + 1).is_some_and(|x| x.is_alphanumeric()))
                         })
                     } else {
                         None

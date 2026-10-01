@@ -87,7 +87,9 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
 
     // ---- dates: calendar pickers, saved the moment you pick --------------
     let overlay = adw::ToastOverlay::new();
-    let dates = adw::PreferencesGroup::builder().title("Reading dates").build();
+    let dates = adw::PreferencesGroup::builder()
+        .title("Reading dates")
+        .build();
     dates.set_description(days_text(summary.days_to_complete).as_deref());
 
     let started = Rc::new(Cell::new(summary.started_on));
@@ -226,7 +228,10 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     column.append(&summary_head);
     column.append(&card);
 
-    let clamp = adw::Clamp::builder().maximum_size(720).child(&column).build();
+    let clamp = adw::Clamp::builder()
+        .maximum_size(720)
+        .child(&column)
+        .build();
     let scroll = gtk::ScrolledWindow::builder()
         .child(&clamp)
         .focusable(true) // takes the focus when the page opens (see `shown`)
@@ -242,7 +247,9 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .label("Remove from my shelf")
         .css_classes(["flat"])
         .build();
-    let menu_items = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+    let menu_items = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
     menu_items.append(&again_btn);
     menu_items.append(&remove_btn);
     let popover = gtk::Popover::builder().child(&menu_items).build();
@@ -291,20 +298,28 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let keys = PageKeys::new(ctx, &page);
     {
         let open = open_writer.clone();
-        keys.add(gtk::gdk::Key::e, gtk::gdk::ModifierType::empty(), move || {
-            open();
-            true
-        });
+        keys.add(
+            gtk::gdk::Key::e,
+            gtk::gdk::ModifierType::empty(),
+            move || {
+                open();
+                true
+            },
+        );
     }
     {
         let read_btn = read_btn.clone();
-        keys.add(gtk::gdk::Key::r, gtk::gdk::ModifierType::empty(), move || {
-            if !read_btn.is_visible() {
-                return false;
-            }
-            read_btn.emit_clicked();
-            true
-        });
+        keys.add(
+            gtk::gdk::Key::r,
+            gtk::gdk::ModifierType::empty(),
+            move || {
+                if !read_btn.is_visible() {
+                    return false;
+                }
+                read_btn.emit_clicked();
+                true
+            },
+        );
     }
     keys.attach(&toolbar);
 
@@ -345,7 +360,8 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
                 Ok(new) => {
                     ctx.nav.pop();
                     ctx.nav.push(&summary_page(&ctx, &new.id));
-                    ctx.toasts.add_toast(plain_toast("New reading started today"));
+                    ctx.toasts
+                        .add_toast(plain_toast("New reading started today"));
                 }
                 Err(e) => toast(&overlay, &friendly(&e)),
             }
@@ -415,7 +431,9 @@ fn refresh_preview(
     write_btn: &gtk::Button,
     read_btn: &gtk::Button,
 ) {
-    let body = get_summary(&ctx.conn, id).map(|s| s.body).unwrap_or_default();
+    let body = get_summary(&ctx.conn, id)
+        .map(|s| s.body)
+        .unwrap_or_default();
     if body.trim().is_empty() {
         preview.set_markup(
             "<span alpha=\"55%\"><i>Nothing written yet. Tap Write to begin.</i></span>",

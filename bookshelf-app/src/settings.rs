@@ -14,7 +14,11 @@ use crate::{display_path, email_row, friendly, plain_toast, theme, Ctx};
 type State = Rc<RefCell<UserSettings>>;
 type Options = &'static [(&'static str, &'static str)];
 
-const THEMES: Options = &[("system", "Match system"), ("light", "Light"), ("dark", "Dark")];
+const THEMES: Options = &[
+    ("system", "Match system"),
+    ("light", "Light"),
+    ("dark", "Dark"),
+];
 const HEADING_FONTS: Options = &[("serif", "Serif"), ("sans", "Sans-serif")];
 const WRITING_FONTS: Options = &[
     ("ia_duo", "iA Writer Duo (monospace)"),
@@ -22,7 +26,11 @@ const WRITING_FONTS: Options = &[
     ("sans", "System sans-serif"),
     ("mono", "System monospace"),
 ];
-const SPACING: Options = &[("tight", "Tight"), ("normal", "Comfortable"), ("airy", "Airy")];
+const SPACING: Options = &[
+    ("tight", "Tight"),
+    ("normal", "Comfortable"),
+    ("airy", "Airy"),
+];
 const WIDTHS: Options = &[("narrow", "Narrow"), ("medium", "Medium"), ("wide", "Wide")];
 const DATE_FORMATS: Options = &[
     ("long", "Sep 20, 2026"),
@@ -31,14 +39,21 @@ const DATE_FORMATS: Options = &[
     ("yyyy_mm_dd", "2026-09-20"),
 ];
 const WEEK_START: Options = &[("sunday", "Sunday"), ("monday", "Monday")];
-const START_TABS: Options = &[("reading", "Reading"), ("finished", "Finished"), ("eventually", "Eventually")];
+const START_TABS: Options = &[
+    ("reading", "Reading"),
+    ("finished", "Finished"),
+    ("eventually", "Eventually"),
+];
 
 /// Mutate, save, and apply in one go.
 fn change(ctx: &Ctx, state: &State, f: impl FnOnce(&mut UserSettings)) {
     f(&mut state.borrow_mut());
     let s = state.borrow().clone();
     if let Err(e) = update_settings(&ctx.conn, &s) {
-        ctx.toasts.add_toast(plain_toast(&format!("Couldn't save that setting: {}", friendly(&e))));
+        ctx.toasts.add_toast(plain_toast(&format!(
+            "Couldn't save that setting: {}",
+            friendly(&e)
+        )));
     }
     theme::apply(&s);
 }
@@ -106,7 +121,11 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let overlay = overlay.downgrade();
         email.connect_apply(move |row| {
             let result = set_user_email(&ctx.conn, &id, row.text().as_str());
-            let done = if row.text().trim().is_empty() { "Email removed" } else { "Email saved" };
+            let done = if row.text().trim().is_empty() {
+                "Email removed"
+            } else {
+                "Email saved"
+            };
             report(&overlay, row, result, done);
         });
     }
@@ -115,7 +134,14 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
 
     // ---- appearance ---------------------------------------------------------
     let look = adw::PreferencesGroup::builder().title("Appearance").build();
-    look.add(&choice(ctx, &state, "Theme", THEMES, &initial.theme, |s, v| s.theme = v.to_string()));
+    look.add(&choice(
+        ctx,
+        &state,
+        "Theme",
+        THEMES,
+        &initial.theme,
+        |s, v| s.theme = v.to_string(),
+    ));
     look.add(&accent_row(ctx, &state, &initial.accent));
     look.add(&choice(
         ctx,
@@ -152,12 +178,22 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     }
     writing.add(&size_row);
 
-    writing.add(&choice(ctx, &state, "Line spacing", SPACING, &initial.line_spacing, |s, v| {
-        s.line_spacing = v.to_string()
-    }));
-    writing.add(&choice(ctx, &state, "Page width", WIDTHS, &initial.page_width, |s, v| {
-        s.page_width = v.to_string()
-    }));
+    writing.add(&choice(
+        ctx,
+        &state,
+        "Line spacing",
+        SPACING,
+        &initial.line_spacing,
+        |s, v| s.line_spacing = v.to_string(),
+    ));
+    writing.add(&choice(
+        ctx,
+        &state,
+        "Page width",
+        WIDTHS,
+        &initial.page_width,
+        |s, v| s.page_width = v.to_string(),
+    ));
 
     let focus_row = adw::SwitchRow::builder()
         .title("Start in focus mode")
@@ -193,16 +229,33 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     page.add(&preview_group);
 
     // ---- reading log --------------------------------------------------------
-    let log = adw::PreferencesGroup::builder().title("Reading log").build();
-    log.add(&choice(ctx, &state, "Date format", DATE_FORMATS, &initial.date_format, |s, v| {
-        s.date_format = v.to_string()
-    }));
-    log.add(&choice(ctx, &state, "Week starts on", WEEK_START, &initial.week_start, |s, v| {
-        s.week_start = v.to_string()
-    }));
-    log.add(&choice(ctx, &state, "Open to", START_TABS, &initial.start_tab, |s, v| {
-        s.start_tab = v.to_string()
-    }));
+    let log = adw::PreferencesGroup::builder()
+        .title("Reading log")
+        .build();
+    log.add(&choice(
+        ctx,
+        &state,
+        "Date format",
+        DATE_FORMATS,
+        &initial.date_format,
+        |s, v| s.date_format = v.to_string(),
+    ));
+    log.add(&choice(
+        ctx,
+        &state,
+        "Week starts on",
+        WEEK_START,
+        &initial.week_start,
+        |s, v| s.week_start = v.to_string(),
+    ));
+    log.add(&choice(
+        ctx,
+        &state,
+        "Open to",
+        START_TABS,
+        &initial.start_tab,
+        |s, v| s.start_tab = v.to_string(),
+    ));
     page.add(&log);
 
     // ---- your data ------------------------------------------------------------
@@ -359,7 +412,11 @@ fn export_to_folder(
         let target = path.join("Bookshelf summaries");
         let toast = match export::export_markdown(&ctx.conn, &user_id, &target) {
             Ok(n) => {
-                let what = if n == 1 { "1 summary".to_string() } else { format!("{n} summaries") };
+                let what = if n == 1 {
+                    "1 summary".to_string()
+                } else {
+                    format!("{n} summaries")
+                };
                 let toast = adw::Toast::builder()
                     .title(format!("Exported {what} to {}", display_path(&target)))
                     .use_markup(false)
@@ -407,17 +464,19 @@ fn confirm_delete_by_name(ctx: &Rc<Ctx>, id: &str, name: &str, near: &adw::Navig
     let ctx = ctx.clone();
     let id = id.to_string();
     let name = name.to_string();
-    dialog.connect_response(Some("delete"), move |_, _| match delete_user(&ctx.conn, &id) {
-        Ok(()) => {
-            ctx.nav.pop_to_tag("profiles");
-            ctx.toasts.add_toast(plain_toast(&format!("Deleted {name}")));
+    dialog.connect_response(Some("delete"), move |_, _| {
+        match delete_user(&ctx.conn, &id) {
+            Ok(()) => {
+                ctx.nav.pop_to_tag("profiles");
+                ctx.toasts
+                    .add_toast(plain_toast(&format!("Deleted {name}")));
+            }
+            Err(e) => ctx.toasts.add_toast(plain_toast(&friendly(&e))),
         }
-        Err(e) => ctx.toasts.add_toast(plain_toast(&friendly(&e))),
     });
     dialog.present(Some(near));
     entry.grab_focus();
 }
-
 
 /// Opens a folder in the file manager.
 fn open_folder(dir: &Path) {
@@ -458,8 +517,10 @@ fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) ->
         .build();
     let change_btn = gtk::Button::builder()
         .label("Change…")
-        .tooltip_text("Keep backups somewhere else, like a USB drive or a synced folder, \
-                       so they survive if this computer's disk fails")
+        .tooltip_text(
+            "Keep backups somewhere else, like a USB drive or a synced folder, \
+                       so they survive if this computer's disk fails",
+        )
         .valign(gtk::Align::Center)
         .build();
     row.add_suffix(&reset_btn);
@@ -472,8 +533,12 @@ fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) ->
         let reset_btn = reset_btn.downgrade();
         let date_format = date_format.to_string();
         Rc::new(move || {
-            let (Some(row), Some(reset_btn)) = (row.upgrade(), reset_btn.upgrade()) else { return };
-            let Ok((dir, chosen)) = backup::folder(&ctx.conn, &ctx.paths) else { return };
+            let (Some(row), Some(reset_btn)) = (row.upgrade(), reset_btn.upgrade()) else {
+                return;
+            };
+            let Ok((dir, chosen)) = backup::folder(&ctx.conn, &ctx.paths) else {
+                return;
+            };
             reset_btn.set_visible(chosen);
             let place = display_path(&dir);
             let subtitle = if !dir.is_dir() {
@@ -525,7 +590,9 @@ fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) ->
             let overlay = overlay.clone();
             let refresh = refresh.clone();
             dialog.select_folder(window.as_ref(), gio::Cancellable::NONE, move |chosen| {
-                let Some(dir) = chosen.ok().and_then(|f| f.path()) else { return };
+                let Some(dir) = chosen.ok().and_then(|f| f.path()) else {
+                    return;
+                };
                 match backup::set_folder(&ctx.conn, Some(&dir)) {
                     Ok(()) => back_up_now(
                         &ctx,

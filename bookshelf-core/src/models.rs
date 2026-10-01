@@ -96,7 +96,9 @@ pub fn rename_user(conn: &Connection, id: &str, name: &str) -> Result<()> {
 /// Profile names are unique; say so in words instead of a SQLite error.
 fn name_taken(e: rusqlite::Error) -> Error {
     match e {
-        rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::ConstraintViolation => {
+        rusqlite::Error::SqliteFailure(f, _)
+            if f.code == rusqlite::ErrorCode::ConstraintViolation =>
+        {
             Error::Invalid("that name is already taken".into())
         }
         e => e.into(),
@@ -119,8 +121,14 @@ pub fn validate_email(email: &str) -> Result<Option<String>> {
         && !domain.starts_with('.')
         && !domain.ends_with('.')
         && local.bytes().all(allowed)
-        && domain.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
-    if ok { Ok(Some(email.to_string())) } else { Err(invalid()) }
+        && domain
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
+    if ok {
+        Ok(Some(email.to_string()))
+    } else {
+        Err(invalid())
+    }
 }
 
 pub fn set_user_email(conn: &Connection, id: &str, email: &str) -> Result<()> {
@@ -145,7 +153,11 @@ pub fn delete_user(conn: &Connection, id: &str) -> Result<()> {
 /// A setting for the whole app (shared by every profile).
 pub fn app_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     Ok(conn
-        .query_row("SELECT value FROM app_settings WHERE key = ?1", [key], |r| r.get(0))
+        .query_row(
+            "SELECT value FROM app_settings WHERE key = ?1",
+            [key],
+            |r| r.get(0),
+        )
         .optional()?)
 }
 
@@ -260,9 +272,21 @@ pub fn update_settings(conn: &Connection, s: &UserSettings) -> Result<()> {
             page_width = ?13, focus_default = ?14, start_tab = ?15
          WHERE user_id = ?1",
         params![
-            s.user_id, s.date_format, s.language, s.time_format, s.timezone_name,
-            s.week_start, s.theme, s.accent, s.heading_font, s.writing_font,
-            s.writing_size, s.line_spacing, s.page_width, s.focus_default, s.start_tab
+            s.user_id,
+            s.date_format,
+            s.language,
+            s.time_format,
+            s.timezone_name,
+            s.week_start,
+            s.theme,
+            s.accent,
+            s.heading_font,
+            s.writing_font,
+            s.writing_size,
+            s.line_spacing,
+            s.page_width,
+            s.focus_default,
+            s.start_tab
         ],
     )?;
     Ok(())
@@ -353,9 +377,19 @@ pub fn find_or_create_book(conn: &Connection, nb: &NewBook) -> Result<Book> {
                             created_at, updated_at)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?13)",
         params![
-            id, nb.title, nb.subtitle, nb.author, nb.isbn, nb.publisher, nb.description,
-            nb.published_date, nb.page_count, nb.cover_url, PROVIDER_OPEN_LIBRARY,
-            nb.external_id, now
+            id,
+            nb.title,
+            nb.subtitle,
+            nb.author,
+            nb.isbn,
+            nb.publisher,
+            nb.description,
+            nb.published_date,
+            nb.page_count,
+            nb.cover_url,
+            PROVIDER_OPEN_LIBRARY,
+            nb.external_id,
+            now
         ],
     )?;
     get_book(conn, &id)
@@ -384,8 +418,16 @@ pub fn update_book_details(conn: &Connection, id: &str, u: &BookUpdate) -> Resul
             publisher = COALESCE(?7, publisher),
             updated_at = ?8
          WHERE id = ?1",
-        params![id, u.title, u.subtitle, u.description, u.published_date,
-                u.page_count, u.publisher, Utc::now()],
+        params![
+            id,
+            u.title,
+            u.subtitle,
+            u.description,
+            u.published_date,
+            u.page_count,
+            u.publisher,
+            Utc::now()
+        ],
     )?;
     Ok(())
 }
@@ -411,7 +453,10 @@ impl Milestone {
     fn filter_and_order(self) -> (&'static str, &'static str) {
         match self {
             // created_at breaks ties, so same-day entries keep their order.
-            Milestone::Finished => ("finished_on IS NOT NULL", "finished_on DESC, created_at DESC"),
+            Milestone::Finished => (
+                "finished_on IS NOT NULL",
+                "finished_on DESC, created_at DESC",
+            ),
             Milestone::Reading => (
                 "started_on IS NOT NULL AND finished_on IS NULL",
                 "started_on DESC, created_at DESC",
@@ -470,9 +515,9 @@ pub struct SummaryInput {
 
 fn days_between(input: &SummaryInput) -> Result<Option<i64>> {
     match (input.started_on, input.finished_on) {
-        (Some(s), Some(f)) if f < s => {
-            Err(Error::Invalid("finished date is before started date".into()))
-        }
+        (Some(s), Some(f)) if f < s => Err(Error::Invalid(
+            "finished date is before started date".into(),
+        )),
         (Some(s), Some(f)) => Ok(Some((f - s).num_days())),
         _ => Ok(None),
     }
@@ -491,8 +536,16 @@ pub fn create_summary(
         "INSERT INTO summaries (id, user_id, book_id, body, started_on, finished_on,
                                 days_to_complete, created_at, updated_at)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)",
-        params![id, user_id, book_id, input.body, input.started_on,
-                input.finished_on, days, now],
+        params![
+            id,
+            user_id,
+            book_id,
+            input.body,
+            input.started_on,
+            input.finished_on,
+            days,
+            now
+        ],
     )?;
     get_summary(conn, &id)
 }
@@ -503,7 +556,14 @@ pub fn update_summary(conn: &Connection, id: &str, input: &SummaryInput) -> Resu
         "UPDATE summaries SET body = ?2, started_on = ?3, finished_on = ?4,
                 days_to_complete = ?5, updated_at = ?6
          WHERE id = ?1",
-        params![id, input.body, input.started_on, input.finished_on, days, Utc::now()],
+        params![
+            id,
+            input.body,
+            input.started_on,
+            input.finished_on,
+            days,
+            Utc::now()
+        ],
     )?;
     if changed == 0 {
         return Err(Error::NotFound);
@@ -523,16 +583,29 @@ pub fn restore_summary(conn: &Connection, s: &Summary) -> Result<()> {
         "INSERT INTO summaries (id, user_id, book_id, body, started_on, finished_on,
                                 days_to_complete, created_at, updated_at)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-        params![s.id, s.user_id, s.book_id, s.body, s.started_on, s.finished_on,
-                s.days_to_complete, s.created_at, s.updated_at],
+        params![
+            s.id,
+            s.user_id,
+            s.book_id,
+            s.body,
+            s.started_on,
+            s.finished_on,
+            s.days_to_complete,
+            s.created_at,
+            s.updated_at
+        ],
     )?;
     Ok(())
 }
 
 pub fn get_summary(conn: &Connection, id: &str) -> Result<Summary> {
-    conn.query_row("SELECT * FROM summaries WHERE id = ?1", [id], Summary::from_row)
-        .optional()?
-        .ok_or(Error::NotFound)
+    conn.query_row(
+        "SELECT * FROM summaries WHERE id = ?1",
+        [id],
+        Summary::from_row,
+    )
+    .optional()?
+    .ok_or(Error::NotFound)
 }
 
 #[derive(Debug, Clone)]
@@ -548,9 +621,7 @@ pub fn list_summaries(
     milestone: Milestone,
 ) -> Result<Vec<SummaryWithBook>> {
     let (filter, order) = milestone.filter_and_order();
-    let sql = format!(
-        "SELECT * FROM summaries WHERE user_id = ?1 AND {filter} ORDER BY {order}"
-    );
+    let sql = format!("SELECT * FROM summaries WHERE user_id = ?1 AND {filter} ORDER BY {order}");
     let mut stmt = conn.prepare(&sql)?;
     let summaries: Vec<Summary> = stmt
         .query_map([user_id], Summary::from_row)?
@@ -569,7 +640,10 @@ pub fn list_summaries(
     summaries
         .into_iter()
         .map(|summary| {
-            let book = books.get(&summary.book_id).cloned().ok_or(Error::NotFound)?;
+            let book = books
+                .get(&summary.book_id)
+                .cloned()
+                .ok_or(Error::NotFound)?;
             Ok(SummaryWithBook { summary, book })
         })
         .collect()
@@ -634,21 +708,47 @@ mod tests {
         let s = create_summary(&conn, &user.id, &b.id, &SummaryInput::default()).unwrap();
         assert_eq!(s.milestone(), Milestone::Eventually);
 
-        let s = update_summary(&conn, &s.id, &SummaryInput {
-            body: "Sand.".into(), started_on: Some(d(9, 1)), finished_on: None,
-        }).unwrap();
+        let s = update_summary(
+            &conn,
+            &s.id,
+            &SummaryInput {
+                body: "Sand.".into(),
+                started_on: Some(d(9, 1)),
+                finished_on: None,
+            },
+        )
+        .unwrap();
         assert_eq!(s.milestone(), Milestone::Reading);
-        assert_eq!(list_summaries(&conn, &user.id, Milestone::Reading).unwrap().len(), 1);
+        assert_eq!(
+            list_summaries(&conn, &user.id, Milestone::Reading)
+                .unwrap()
+                .len(),
+            1
+        );
 
-        let s = update_summary(&conn, &s.id, &SummaryInput {
-            body: "Sand.".into(), started_on: Some(d(9, 1)), finished_on: Some(d(9, 11)),
-        }).unwrap();
+        let s = update_summary(
+            &conn,
+            &s.id,
+            &SummaryInput {
+                body: "Sand.".into(),
+                started_on: Some(d(9, 1)),
+                finished_on: Some(d(9, 11)),
+            },
+        )
+        .unwrap();
         assert_eq!(s.milestone(), Milestone::Finished);
         assert_eq!(s.days_to_complete, Some(10));
 
-        assert!(update_summary(&conn, &s.id, &SummaryInput {
-            body: String::new(), started_on: Some(d(9, 11)), finished_on: Some(d(9, 1)),
-        }).is_err());
+        assert!(update_summary(
+            &conn,
+            &s.id,
+            &SummaryInput {
+                body: String::new(),
+                started_on: Some(d(9, 11)),
+                finished_on: Some(d(9, 1)),
+            }
+        )
+        .is_err());
     }
 
     #[test]
@@ -725,11 +825,26 @@ mod tests {
     #[test]
     fn emails_are_validated() {
         assert_eq!(validate_email("  ").unwrap(), None);
-        assert_eq!(validate_email(" me@example.com ").unwrap().as_deref(), Some("me@example.com"));
-        assert_eq!(validate_email("o'neil+books@mail.example.co").unwrap().as_deref(),
-                   Some("o'neil+books@mail.example.co"));
-        for bad in ["me", "@example.com", "me@example", "me@.com", "a b@example.com",
-                    "me@example.com\r\nX: y", "(me)@example.com", "me@exa mple.com"] {
+        assert_eq!(
+            validate_email(" me@example.com ").unwrap().as_deref(),
+            Some("me@example.com")
+        );
+        assert_eq!(
+            validate_email("o'neil+books@mail.example.co")
+                .unwrap()
+                .as_deref(),
+            Some("o'neil+books@mail.example.co")
+        );
+        for bad in [
+            "me",
+            "@example.com",
+            "me@example",
+            "me@.com",
+            "a b@example.com",
+            "me@example.com\r\nX: y",
+            "(me)@example.com",
+            "me@exa mple.com",
+        ] {
             assert!(validate_email(bad).is_err(), "{bad:?} should be rejected");
         }
 
@@ -737,7 +852,10 @@ mod tests {
         let user = create_user(&conn, "Avery", None).unwrap();
         assert_eq!(user.email, None);
         set_user_email(&conn, &user.id, "me@example.com").unwrap();
-        assert_eq!(get_user(&conn, &user.id).unwrap().email.as_deref(), Some("me@example.com"));
+        assert_eq!(
+            get_user(&conn, &user.id).unwrap().email.as_deref(),
+            Some("me@example.com")
+        );
         assert!(set_user_email(&conn, &user.id, "nope").is_err());
         set_user_email(&conn, &user.id, "").unwrap();
         assert_eq!(get_user(&conn, &user.id).unwrap().email, None);
@@ -748,9 +866,16 @@ mod tests {
         let conn = db::open_in_memory().unwrap();
         let user = create_user(&conn, "Avery", None).unwrap();
         let b = find_or_create_book(&conn, &book("/works/OL1W")).unwrap();
-        let s = create_summary(&conn, &user.id, &b.id, &SummaryInput {
-            body: "Sand.".into(), ..Default::default()
-        }).unwrap();
+        let s = create_summary(
+            &conn,
+            &user.id,
+            &b.id,
+            &SummaryInput {
+                body: "Sand.".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         delete_summary(&conn, &s.id).unwrap();
         assert!(get_summary(&conn, &s.id).is_err());
         restore_summary(&conn, &s).unwrap();
