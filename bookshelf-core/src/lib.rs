@@ -15,6 +15,7 @@ pub mod models;
 pub mod openlibrary;
 pub mod paths;
 pub mod service;
+pub mod text;
 
 // The one-off import from the old Rails app. Only built with
 // `--features rails-import`, so it never ships in the app.

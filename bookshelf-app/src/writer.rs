@@ -10,6 +10,7 @@ use std::time::Duration;
 use adw::prelude::*;
 use bookshelf_core::export;
 use bookshelf_core::models::*;
+use bookshelf_core::text::highlight::{self, StyleKind};
 use gtk::glib;
 
 use crate::{display_path, editor, format, friendly, Ctx};
@@ -633,151 +634,18 @@ fn highlight(buf: &gtk::TextBuffer, t: &Tags) {
 
 /// `chars` is whole lines of the buffer, starting at offset `base`.
 fn style_lines(buf: &gtk::TextBuffer, t: &Tags, chars: &[char], base: usize) {
-    let mut line_start = 0;
-    while line_start <= chars.len() {
-        let mut line_end = line_start;
-        while line_end < chars.len() && chars[line_end] != '\n' {
-            line_end += 1;
-        }
-        style_line(buf, t, &chars[line_start..line_end], base + line_start);
-        line_start = line_end + 1;
-    }
-}
-
-fn mark(buf: &gtk::TextBuffer, tag: &gtk::TextTag, off: usize, a: usize, b: usize) {
-    if a >= b {
-        return;
-    }
-    let s = buf.iter_at_offset((off + a) as i32);
-    let e = buf.iter_at_offset((off + b) as i32);
-    buf.apply_tag(tag, &s, &e);
-}
-
-fn style_line(buf: &gtk::TextBuffer, t: &Tags, line: &[char], off: usize) {
-    if line.is_empty() {
-        return;
-    }
-
-    // "# Heading"
-    let hashes = line.iter().take_while(|c| **c == '#').count();
-    if (1..=6).contains(&hashes) && line.get(hashes) == Some(&' ') {
-        mark(buf, &t.heading, off, 0, line.len());
-        mark(buf, &t.syntax, off, 0, hashes + 1);
-        style_inline(buf, t, line, off, hashes + 1);
-        return;
-    }
-
-    // "> quote"
-    if line[0] == '>' {
-        let from = if line.get(1) == Some(&' ') { 2 } else { 1 };
-        mark(buf, &t.quote, off, 0, line.len());
-        mark(buf, &t.syntax, off, 0, from);
-        style_inline(buf, t, line, off, from);
-        return;
-    }
-
-    // "- item", "* item", "+ item", "12. item"
-    let indent = line.iter().take_while(|c| **c == ' ').count();
-    let mut from = 0;
-    if matches!(line.get(indent), Some('-' | '*' | '+')) && line.get(indent + 1) == Some(&' ') {
-        mark(buf, &t.syntax, off, indent, indent + 1);
-        from = indent + 2;
-    } else {
-        let digits = line[indent..]
-            .iter()
-            .take_while(|c| c.is_ascii_digit())
-            .count();
-        if digits > 0
-            && line.get(indent + digits) == Some(&'.')
-            && line.get(indent + digits + 1) == Some(&' ')
-        {
-            mark(buf, &t.syntax, off, indent, indent + digits + 1);
-            from = indent + digits + 2;
-        }
-    }
-    style_inline(buf, t, line, off, from);
-}
-
-fn style_inline(buf: &gtk::TextBuffer, t: &Tags, line: &[char], off: usize, from: usize) {
-    let n = line.len();
-    let mut i = from;
-    while i < n {
-        let c = line[i];
-        match c {
-            '\\' => {
-                mark(buf, &t.syntax, off, i, i + 1);
-                i += 2;
-            }
-            '`' => {
-                if let Some(j) = (i + 1..n).find(|&j| line[j] == '`') {
-                    mark(buf, &t.code, off, i, j + 1);
-                    mark(buf, &t.syntax, off, i, i + 1);
-                    mark(buf, &t.syntax, off, j, j + 1);
-                    i = j + 1;
-                } else {
-                    i += 1;
-                }
-            }
-            '~' => {
-                if line.get(i + 1) == Some(&'~') {
-                    let close =
-                        (i + 2..n).find(|&j| line[j] == '~' && line.get(j + 1) == Some(&'~'));
-                    match close {
-                        Some(j) if j > i + 2 => {
-                            mark(buf, &t.strike, off, i + 2, j);
-                            mark(buf, &t.syntax, off, i, i + 2);
-                            mark(buf, &t.syntax, off, j, j + 2);
-                            i = j + 2;
-                        }
-                        _ => i += 2,
-                    }
-                } else {
-                    i += 1;
-                }
-            }
-            '*' | '_' => {
-                if line.get(i + 1) == Some(&c) {
-                    // **bold** or __bold__
-                    let close = (i + 2..n).find(|&j| {
-                        line[j] == c && line.get(j + 1) == Some(&c) && line[j - 1] != '\\'
-                    });
-                    match close {
-                        Some(j) if j > i + 2 => {
-                            mark(buf, &t.bold, off, i + 2, j);
-                            mark(buf, &t.syntax, off, i, i + 2);
-                            mark(buf, &t.syntax, off, j, j + 2);
-                            i = j + 2;
-                        }
-                        _ => i += 2,
-                    }
-                } else {
-                    // *italic* or _italic_ (underscores only at word edges)
-                    let opens = line.get(i + 1).is_some_and(|x| !x.is_whitespace())
-                        && (c == '*' || i == 0 || !line[i - 1].is_alphanumeric());
-                    let close = if opens {
-                        (i + 2..n).find(|&j| {
-                            line[j] == c
-                                && line[j - 1] != '\\'
-                                && !line[j - 1].is_whitespace()
-                                && line.get(j + 1) != Some(&c)
-                                && (c == '*'
-                                    || !line.get(j + 1).is_some_and(|x| x.is_alphanumeric()))
-                        })
-                    } else {
-                        None
-                    };
-                    match close {
-                        Some(j) => {
-                            mark(buf, &t.italic, off, i + 1, j);
-                            mark(buf, &t.syntax, off, i, i + 1);
-                            mark(buf, &t.syntax, off, j, j + 1);
-                            i = j + 1;
-                        }
-                        None => i += 1,
-                    }
-                }
-            }
-            _ => i += 1,
-        }
+    for span in highlight::spans_of_chars(chars) {
+        let tag = match span.kind {
+            StyleKind::Heading => &t.heading,
+            StyleKind::Bold => &t.bold,
+            StyleKind::Italic => &t.italic,
+            StyleKind::Quote => &t.quote,
+            StyleKind::Code => &t.code,
+            StyleKind::Strike => &t.strike,
+            StyleKind::Syntax => &t.syntax,
+        };
+        let s = buf.iter_at_offset((base + span.start) as i32);
+        let e = buf.iter_at_offset((base + span.end) as i32);
+        buf.apply_tag(tag, &s, &e);
     }
 }
