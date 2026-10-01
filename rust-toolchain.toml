@@ -1,0 +1,4 @@
+# The same Rust everywhere: this machine, CI and release builds.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]

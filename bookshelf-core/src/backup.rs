@@ -163,6 +163,7 @@ mod tests {
         // The copy is a working database with the data in it.
         let copy = db::open(&first).unwrap();
         assert_eq!(models::list_users(&copy).unwrap().len(), 1);
+        drop(copy); // Windows can't delete a file that's still open
 
         // Never touched: unrelated files, and another computer's backups.
         std::fs::write(backups.join("notes.txt"), "mine").unwrap();
