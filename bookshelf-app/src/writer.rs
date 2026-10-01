@@ -8,16 +8,17 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use adw::prelude::*;
+use bookshelf_core::export;
 use bookshelf_core::models::*;
 use gtk::glib;
 
-use crate::{editor, format, Ctx};
+use crate::{display_path, editor, format, friendly, Ctx};
 
 const AUTOSAVE_MS: u64 = 700;
 
-// Hotkeys (Ctrl+key). Swap the letters here if you want them the other way round.
+// Hotkeys: Ctrl+F focus mode, Ctrl+S save now, F11 full screen.
 const KEY_FOCUS: gtk::gdk::Key = gtk::gdk::Key::f;
-pub(crate) const KEY_FULLSCREEN: gtk::gdk::Key = gtk::gdk::Key::s; // F11 also works
+const KEY_SAVE: gtk::gdk::Key = gtk::gdk::Key::s;
 
 struct Tags {
     heading: gtk::TextTag,
@@ -131,16 +132,18 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let touched: Rc<Cell<Option<(i32, i32)>>> = Rc::default();
 
     // ---- saving ---------------------------------------------------------
-    let save_now: Rc<dyn Fn()> = {
+    // Ok when everything is in the database (or nothing needed saving).
+    let save_now: Rc<dyn Fn() -> Result<(), String>> = {
         let ctx = ctx.clone();
         let id = summary.id.clone();
-        let buffer = buffer.clone();
+        let buffer = buffer.downgrade(); // the buffer owns handlers holding this
         let dirty = dirty.clone();
         let status = status.clone();
         let words = words.clone();
         Rc::new(move || {
+            let Some(buffer) = buffer.upgrade() else { return Ok(()) };
             if !dirty.get() {
-                return;
+                return Ok(());
             }
             let body = full_text(&buffer);
             match update_summary_body(&ctx.conn, &id, &body) {
@@ -148,8 +151,15 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
                     dirty.set(false);
                     words.set(word_count(&body));
                     set_status(&status, words.get(), true);
+                    status.remove_css_class("error");
+                    Ok(())
                 }
-                Err(e) => status.set_label(&format!("Could not save: {e}")),
+                Err(e) => {
+                    let message = friendly(&e);
+                    status.set_label(&format!("Not saved: {message}"));
+                    status.add_css_class("error");
+                    Err(message)
+                }
             }
         })
     };
@@ -198,23 +208,33 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
             let save_now = save_now.clone();
             let id = glib::timeout_add_local_once(Duration::from_millis(AUTOSAVE_MS), move || {
                 slot.borrow_mut().take(); // it has fired; nothing left to cancel
-                save_now();
+                let _ = save_now(); // a failure shows in the status line; leaving rescues the text
             });
             *pending_save.borrow_mut() = Some(id);
         });
+    }
+
+    {
+        // Pasting text copied from this page brings its old highlighting
+        // along, applied after our per-line restyle; redo it once the paste lands.
+        let tags = tags.clone();
+        let focus = focus.clone();
+        buffer.connect_paste_done(move |b, _| restyle(b, &tags, focus.get()));
     }
 
     // ---- focus mode -----------------------------------------------------
     {
         let tags = tags.clone();
         let focus = focus.clone();
-        let text_view = text_view.clone();
+        let text_view = text_view.downgrade(); // the view owns the buffer: no cycle
         buffer.connect_cursor_position_notify(move |b| {
             // Turning focus off clears the dimming (see the button), so
             // there's nothing to do here unless it's on.
             if focus.get() {
                 apply_focus(b, &tags, true);
-                center_cursor(&text_view);
+                if let Some(tv) = text_view.upgrade() {
+                    center_cursor(&tv);
+                }
             }
         });
     }
@@ -251,8 +271,8 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
             restyle(&buffer, &tags, focus.get());
         });
     }
-    {
-        // Weak ref: once this page is gone the handler quietly does nothing.
+    let dark_handler = Cell::new(Some({
+        // Weak ref, and disconnected when the page goes (see `hidden`).
         let weak = text_view.downgrade();
         let tags = tags.clone();
         let focus = focus.clone();
@@ -267,14 +287,14 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
                     restyle(&tv.buffer(), &tags, focus.get());
                 }
             });
-        });
-    }
+        })
+    }));
 
     // ---- layout ---------------------------------------------------------
     let title = adw::WindowTitle::new(&book.title, "Writing");
     let full_btn = gtk::Button::builder()
         .icon_name("view-fullscreen-symbolic")
-        .tooltip_text("Full screen (Ctrl+S or F11)")
+        .tooltip_text("Full screen (F11)")
         .build();
     let header = adw::HeaderBar::new();
     header.set_title_widget(Some(&title));
@@ -347,10 +367,11 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
             true
         }
     });
-    add_shortcut(&shortcuts, KEY_FULLSCREEN, ctrl, {
-        let toggle = toggle_fullscreen.clone();
+    add_shortcut(&shortcuts, KEY_SAVE, ctrl, {
+        // Autosave already runs; this is for the reflex. Failures show in the status line.
+        let save_now = save_now.clone();
         move || {
-            toggle();
+            let _ = save_now();
             true
         }
     });
@@ -392,9 +413,13 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     });
     toolbar.add_controller(shortcuts);
 
-    // Closing the window while writing still saves the last few words.
+    // Closing the window while writing still saves the last few words. If
+    // that fails, the window stays open and says where the text was rescued to.
     let close_guard: Rc<RefCell<Option<(gtk::Window, glib::SignalHandlerId)>>> = Rc::default();
     {
+        let ctx = ctx.clone();
+        let title = book.title.clone();
+        let buffer = buffer.downgrade();
         let text_view = text_view.clone();
         let close_guard = close_guard.clone();
         let save_now = save_now.clone();
@@ -404,10 +429,36 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
                 return;
             }
             let Some(window) = p.root().and_downcast::<gtk::Window>() else { return };
+            let ctx = ctx.clone();
+            let title = title.clone();
+            let buffer = buffer.clone();
             let save_now = save_now.clone();
-            let id = window.connect_close_request(move |_| {
-                save_now();
-                glib::Propagation::Proceed
+            let force_close = Rc::new(Cell::new(false));
+            let id = window.connect_close_request(move |w| {
+                if force_close.get() {
+                    return glib::Propagation::Proceed;
+                }
+                let Err(problem) = save_now() else { return glib::Propagation::Proceed };
+                let body = buffer.upgrade().map(|b| full_text(&b)).unwrap_or_default();
+                let rescued = rescue(&ctx, &title, &body, w);
+                let dialog = adw::AlertDialog::builder()
+                    .heading("Your writing couldn't be saved")
+                    .body(format!("{problem}\n\n{rescued}"))
+                    .build();
+                dialog.add_responses(&[("keep", "Keep Open"), ("close", "Close Anyway")]);
+                dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
+                dialog.set_default_response(Some("keep"));
+                dialog.set_close_response("keep");
+                let force_close = force_close.clone();
+                let window = w.downgrade();
+                dialog.connect_response(Some("close"), move |_, _| {
+                    force_close.set(true);
+                    if let Some(w) = window.upgrade() {
+                        w.close();
+                    }
+                });
+                dialog.present(Some(w));
+                glib::Propagation::Stop
             });
             *close_guard.borrow_mut() = Some((window, id));
         });
@@ -416,11 +467,27 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         if let Some((window, id)) = close_guard.borrow_mut().take() {
             window.disconnect(id);
         }
+        if let Some(id) = dark_handler.take() {
+            adw::StyleManager::default().disconnect(id);
+        }
     });
     {
+        let ctx = ctx.clone();
+        let title = book.title.clone();
+        let buffer = buffer.downgrade();
         let save_now = save_now.clone();
         page.connect_hiding(move |p| {
-            save_now();
+            if let Err(problem) = save_now() {
+                // Already leaving, so keep the text somewhere and say where.
+                let body = buffer.upgrade().map(|b| full_text(&b)).unwrap_or_default();
+                let rescued = rescue(&ctx, &title, &body, p);
+                let toast = adw::Toast::builder()
+                    .title(format!("“{title}” couldn't be saved: {problem} {rescued}"))
+                    .use_markup(false)
+                    .timeout(0) // stays until dismissed
+                    .build();
+                ctx.toasts.add_toast(toast);
+            }
             // Leaving the writer also leaves full screen.
             if let Some(window) = p.root().and_downcast::<gtk::Window>() {
                 window.unfullscreen();
@@ -428,6 +495,22 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         });
     }
     page
+}
+
+/// When the database won't take the text, keep it anyway: a recovery file
+/// if possible, otherwise the clipboard. Returns a sentence saying where.
+fn rescue(ctx: &Ctx, title: &str, body: &str, near: &impl IsA<gtk::Widget>) -> String {
+    match export::save_recovery_copy(&ctx.paths, title, body) {
+        Ok(path) => format!("A copy of your text is in {}.", display_path(&path)),
+        Err(e) => {
+            near.clipboard().set_text(body);
+            format!(
+                "A recovery copy couldn't be written either ({}), so your text was copied \
+                 to the clipboard. Paste it somewhere safe before closing Bookshelf.",
+                friendly(&e)
+            )
+        }
+    }
 }
 
 pub(crate) fn add_shortcut(

@@ -298,10 +298,12 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let ctx = ctx.clone();
         let user_id = summary.user_id.clone();
         let book_id = book.id.clone();
-        let popover = popover.clone();
+        let popover = popover.downgrade(); // these buttons live inside it
         let overlay = overlay.downgrade();
         again_btn.connect_clicked(move |_| {
-            popover.popdown();
+            if let Some(p) = popover.upgrade() {
+                p.popdown();
+            }
             let input = SummaryInput {
                 started_on: Some(chrono::Local::now().date_naive()),
                 ..Default::default()
@@ -322,10 +324,12 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let ctx = ctx.clone();
         let id = summary.id.clone();
         let title = book.title.clone();
-        let popover = popover.clone();
+        let popover = popover.downgrade(); // these buttons live inside it
         let overlay = overlay.downgrade();
         remove_btn.connect_clicked(move |_| {
-            popover.popdown();
+            if let Some(p) = popover.upgrade() {
+                p.popdown();
+            }
             // Keep the whole entry so Undo can put it back exactly as it was.
             let removed = get_summary(&ctx.conn, &id).and_then(|s| {
                 delete_summary(&ctx.conn, &id)?;

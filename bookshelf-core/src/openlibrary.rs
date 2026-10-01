@@ -79,7 +79,11 @@ impl OpenLibrary {
         }
         let json = read_json(resp)?;
         let docs = json["docs"].as_array().cloned().unwrap_or_default();
-        Ok(docs.iter().map(parse_doc).collect())
+        Ok(docs
+            .iter()
+            .filter(|d| d["key"].as_str().is_some_and(is_work_key)) // unusable without one
+            .map(parse_doc)
+            .collect())
     }
 
     /// Long description for one work. Call once, when a result is picked.
@@ -121,7 +125,9 @@ impl OpenLibrary {
             .and_then(|v| v.to_str().ok())
             .unwrap_or("")
             .to_owned();
-        if !content_type.starts_with("image/") {
+        // Only plain raster formats: no SVG (an XML document) or anything exotic.
+        let mime = content_type.split(';').next().unwrap_or("").trim();
+        if !matches!(mime, "image/jpeg" | "image/png" | "image/gif" | "image/webp") {
             return Err(Error::Invalid(format!("not an image ({content_type:?}): {url}")));
         }
         Ok(Some((read_capped(resp)?, content_type)))
@@ -166,14 +172,29 @@ fn read_json(resp: Response) -> Result<Value> {
 }
 
 fn str_field(j: &Value, key: &str) -> Option<String> {
-    j[key].as_str().filter(|s| !s.is_empty()).map(str::to_owned)
+    j[key].as_str().filter(|s| !s.is_empty()).map(|s| clip(s, MAX_FIELD_CHARS))
+}
+
+/// Titles and such: anything longer is surely junk.
+const MAX_FIELD_CHARS: usize = 500;
+/// Book descriptions: generous, but a multi-megabyte one would bog down the page.
+const MAX_DESCRIPTION_CHARS: usize = 20_000;
+
+fn clip(s: &str, max: usize) -> String {
+    match s.char_indices().nth(max) {
+        Some((cut, _)) => format!("{}…", &s[..cut]),
+        None => s.to_owned(),
+    }
 }
 
 /// `description` is either a plain string or `{ "type": ..., "value": ... }`.
 fn description_of(j: &Value) -> Option<String> {
     match &j["description"] {
-        Value::String(s) => Some(s.clone()),
-        Value::Object(o) => o.get("value").and_then(|v| v.as_str()).map(str::to_owned),
+        Value::String(s) => Some(clip(s, MAX_DESCRIPTION_CHARS)),
+        Value::Object(o) => o
+            .get("value")
+            .and_then(|v| v.as_str())
+            .map(|s| clip(s, MAX_DESCRIPTION_CHARS)),
         _ => None,
     }
     .filter(|s| !s.trim().is_empty())
@@ -194,7 +215,7 @@ fn parse_doc(doc: &Value) -> NewBook {
 
     NewBook {
         external_id: doc["key"].as_str().unwrap_or_default().to_owned(),
-        title: doc["title"].as_str().unwrap_or("Untitled").to_owned(),
+        title: clip(doc["title"].as_str().unwrap_or("Untitled"), MAX_FIELD_CHARS),
         subtitle: str_field(doc, "subtitle"),
         author: join_strs("author_name"),
         isbn: first_str("isbn"),
@@ -223,6 +244,12 @@ mod tests {
         assert!(!is_work_key("/works/OL1W/../../x"));
         assert!(!is_work_key("/works/OL1W?x=1"));
         assert!(!is_work_key("/authors/OL1A"));
+    }
+
+    #[test]
+    fn long_text_is_clipped_on_a_character_boundary() {
+        assert_eq!(clip("Dune", 10), "Dune");
+        assert_eq!(clip("Éowyn's tale", 5), "Éowyn…");
     }
 
     #[test]

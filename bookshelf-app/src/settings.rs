@@ -9,7 +9,7 @@ use bookshelf_core::models::*;
 use bookshelf_core::{backup, db, export};
 use gtk::{gio, glib};
 
-use crate::{email_row, friendly, plain_toast, theme, Ctx};
+use crate::{display_path, email_row, friendly, plain_toast, theme, Ctx};
 
 type State = Rc<RefCell<UserSettings>>;
 type Options = &'static [(&'static str, &'static str)];
@@ -38,7 +38,7 @@ fn change(ctx: &Ctx, state: &State, f: impl FnOnce(&mut UserSettings)) {
     f(&mut state.borrow_mut());
     let s = state.borrow().clone();
     if let Err(e) = update_settings(&ctx.conn, &s) {
-        eprintln!("could not save settings: {e}");
+        ctx.toasts.add_toast(plain_toast(&format!("Couldn't save that setting: {}", friendly(&e))));
     }
     theme::apply(&s);
 }
@@ -387,15 +387,6 @@ fn confirm_delete_by_name(ctx: &Rc<Ctx>, id: &str, name: &str, near: &adw::Navig
     entry.grab_focus();
 }
 
-/// A path for people: the home folder shown as `~`.
-fn display_path(path: &Path) -> String {
-    let home = glib::home_dir();
-    match path.strip_prefix(&home) {
-        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => path.display().to_string(),
-    }
-}
 
 /// Opens a folder in the file manager.
 fn open_folder(dir: &Path) {
@@ -425,7 +416,12 @@ fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) ->
         .build();
     let open_btn = gtk::Button::builder()
         .icon_name("folder-open-symbolic")
-        .tooltip_text("Open the backup folder")
+        .tooltip_text(format!(
+            "Open the backup folder.\n\nTo restore a backup: quit Bookshelf, delete \
+             bookshelf.sqlite3-wal and bookshelf.sqlite3-shm from {} if they're there, \
+             then copy the backup over bookshelf.sqlite3 in that same folder.",
+            display_path(&ctx.paths.data_dir)
+        ))
         .valign(gtk::Align::Center)
         .css_classes(["flat"])
         .build();
@@ -456,9 +452,7 @@ fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) ->
                      another folder."
                 )
             } else {
-                let latest = backup::list(&dir)
-                    .ok()
-                    .and_then(|found| found.first().and_then(|p| backup::date_of(p)));
+                let latest = backup::latest(&ctx.conn, &ctx.paths).ok().flatten();
                 let when = match latest {
                     Some(d) => format!("Latest: {}", format_date(&date_format, d)),
                     None => "The first one is made the next time Bookshelf starts.".to_string(),
@@ -603,11 +597,13 @@ fn accent_row(ctx: &Rc<Ctx>, state: &State, current: &str) -> adw::ActionRow {
             for (j, m) in marks.borrow().iter().enumerate() {
                 m.set_opacity(if j == i { 1.0 } else { 0.0 });
             }
+            // Save first: moving the color button below fires its own
+            // handler, which must see this color as already chosen.
+            let chosen = hex.clone();
+            change(&ctx, &state, |s| s.accent = chosen);
             if let Ok(rgba) = gtk::gdk::RGBA::parse(hex.as_str()) {
                 custom.set_rgba(&rgba);
             }
-            let hex = hex.clone();
-            change(&ctx, &state, |s| s.accent = hex);
         });
         holder.append(&btn);
     }

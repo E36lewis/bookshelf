@@ -2,7 +2,7 @@ use std::path::Path;
 
 use rusqlite::Connection;
 
-use crate::Result;
+use crate::{Error, Result};
 
 /// Ordered migrations. Index + 1 == schema version (stored in PRAGMA user_version).
 /// Never edit an existing entry; append a new one.
@@ -109,8 +109,25 @@ pub fn open_in_memory() -> Result<Connection> {
     Ok(conn)
 }
 
+/// Folds the write-ahead log back into the main file and empties it. Call
+/// on quit: a leftover log would otherwise be replayed onto whatever file
+/// sits at the same path next time, such as a restored backup.
+pub fn checkpoint(conn: &Connection) -> Result<()> {
+    conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))?;
+    Ok(())
+}
+
 fn migrate(conn: &mut Connection) -> Result<()> {
     let current: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    // A newer Bookshelf made this journal; running on a schema we don't
+    // know could lose whatever the newer version stores.
+    if current > MIGRATIONS.len() {
+        return Err(Error::Invalid(format!(
+            "this journal was made by a newer version of Bookshelf (format {current}, \
+             this version understands up to {}). Please update Bookshelf to open it",
+            MIGRATIONS.len()
+        )));
+    }
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
         let tx = conn.transaction()?;
         tx.execute_batch(sql)?;
@@ -118,4 +135,33 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         tx.commit()?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_journal_from_a_newer_version_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("j.sqlite3");
+        drop(open(&path).unwrap());
+        let raw = Connection::open(&path).unwrap();
+        raw.pragma_update(None, "user_version", (MIGRATIONS.len() + 1) as i64).unwrap();
+        drop(raw);
+        let err = open(&path).unwrap_err().to_string();
+        assert!(err.contains("newer version"), "{err}");
+    }
+
+    #[test]
+    fn checkpoint_empties_the_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("j.sqlite3");
+        let conn = open(&path).unwrap();
+        crate::models::create_user(&conn, "Reader", None).unwrap();
+        let wal = dir.path().join("j.sqlite3-wal");
+        assert!(std::fs::metadata(&wal).unwrap().len() > 0);
+        checkpoint(&conn).unwrap();
+        assert_eq!(std::fs::metadata(&wal).unwrap().len(), 0);
+    }
 }

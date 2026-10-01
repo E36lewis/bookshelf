@@ -6,18 +6,22 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use adw::prelude::*;
+use gtk::glib;
 use bookshelf_core::models::format_date;
 use chrono::{Datelike, Local, NaiveDate};
 
 pub struct DatePicker {
-    inner: Rc<Inner>,
+    row: adw::ActionRow,
 }
 
+/// Shared by the picker's handlers. It refers to its widgets weakly: the
+/// widget tree owns them, and the handlers (owned by the widgets) own this,
+/// so nothing keeps the page alive after it's gone.
 struct Inner {
-    row: adw::ActionRow,
-    popover: gtk::Popover,
-    grid: gtk::Grid,
-    title: gtk::Label,
+    row: glib::WeakRef<adw::ActionRow>,
+    popover: glib::WeakRef<gtk::Popover>,
+    grid: glib::WeakRef<gtk::Grid>,
+    title: glib::WeakRef<gtk::Label>,
     view: Cell<NaiveDate>, // first day of the month being shown
     selected: Cell<Option<NaiveDate>>,
     sunday_first: bool,
@@ -84,10 +88,10 @@ impl DatePicker {
 
         let start = initial.unwrap_or_else(|| Local::now().date_naive());
         let inner = Rc::new(Inner {
-            row,
-            popover,
-            grid,
-            title: month_title,
+            row: row.downgrade(),
+            popover: popover.downgrade(),
+            grid: grid.downgrade(),
+            title: month_title.downgrade(),
             view: Cell::new(first_of_month(start)),
             selected: Cell::new(initial),
             sunday_first: week_start != "monday",
@@ -101,7 +105,7 @@ impl DatePicker {
         for (label, months) in [("«", -12), ("‹", -1)] {
             nav.append(&nav_button(&inner, label, months));
         }
-        nav.append(&inner.title);
+        nav.append(&month_title);
         for (label, months) in [("›", 1), ("»", 12)] {
             nav.append(&nav_button(&inner, label, months));
         }
@@ -110,7 +114,7 @@ impl DatePicker {
         {
             let this = inner.clone();
             clear.connect_clicked(move |_| {
-                this.popover.popdown();
+                this.popdown();
                 this.set(None);
             });
         }
@@ -120,25 +124,25 @@ impl DatePicker {
                 let today = Local::now().date_naive();
                 if (this.allowed)(today) {
                     this.set(Some(today));
-                } else {
-                    this.popover.popup(); // show why: today is greyed out
+                } else if let Some(p) = this.popover.upgrade() {
+                    p.popup(); // show why: today is greyed out
                 }
             });
         }
         {
             let this = inner.clone();
-            inner.popover.connect_show(move |_| {
+            popover.connect_show(move |_| {
                 let base = this.selected.get().unwrap_or_else(|| Local::now().date_naive());
                 this.view.set(first_of_month(base));
                 this.render();
             });
         }
 
-        Self { inner }
+        Self { row }
     }
 
     pub fn row(&self) -> &adw::ActionRow {
-        &self.inner.row
+        &self.row
     }
 }
 
@@ -153,12 +157,20 @@ fn nav_button(inner: &Rc<Inner>, label: &str, months: i32) -> gtk::Button {
 }
 
 impl Inner {
+    fn popdown(&self) {
+        if let Some(p) = self.popover.upgrade() {
+            p.popdown();
+        }
+    }
+
     fn refresh_row(&self) {
         let text = match self.selected.get() {
             Some(d) => format_date(&self.date_format, d),
             None => "Not set".to_string(),
         };
-        self.row.set_subtitle(&text);
+        if let Some(row) = self.row.upgrade() {
+            row.set_subtitle(&text);
+        }
     }
 
     fn set(self: &Rc<Self>, date: Option<NaiveDate>) {
@@ -175,11 +187,12 @@ impl Inner {
     }
 
     fn render(self: &Rc<Self>) {
-        while let Some(child) = self.grid.first_child() {
-            self.grid.remove(&child);
+        let (Some(grid), Some(title)) = (self.grid.upgrade(), self.title.upgrade()) else { return };
+        while let Some(child) = grid.first_child() {
+            grid.remove(&child);
         }
         let first = self.view.get();
-        self.title.set_label(&first.format("%B %Y").to_string());
+        title.set_label(&first.format("%B %Y").to_string());
 
         let names = if self.sunday_first {
             ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
@@ -187,7 +200,7 @@ impl Inner {
             ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
         };
         for (i, name) in names.iter().enumerate() {
-            self.grid.attach(
+            grid.attach(
                 &gtk::Label::builder()
                     .label(*name)
                     .css_classes(["calendar-weekday"])
@@ -228,10 +241,10 @@ impl Inner {
 
             let this = self.clone();
             btn.connect_clicked(move |_| {
-                this.popover.popdown();
+                this.popdown();
                 this.set(Some(date));
             });
-            self.grid.attach(&btn, idx % 7, idx / 7 + 1, 1, 1);
+            grid.attach(&btn, idx % 7, idx / 7 + 1, 1, 1);
         }
     }
 }

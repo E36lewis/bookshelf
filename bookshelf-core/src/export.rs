@@ -1,11 +1,12 @@
 //! Writes every summary of one profile out as a Markdown file.
 
 use std::io::{ErrorKind, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
 use crate::models::{self, Milestone, SummaryWithBook};
+use crate::paths::AppPaths;
 use crate::Result;
 
 /// Returns how many files were written. Existing files are never overwritten;
@@ -20,6 +21,15 @@ pub fn export_markdown(conn: &Connection, user_id: &str, dir: &Path) -> Result<u
         }
     }
     Ok(count)
+}
+
+/// Last resort when a summary can't be saved to the database: the text goes
+/// to `<data dir>/recovery/<title>-<time>.md` so it isn't lost.
+pub fn save_recovery_copy(paths: &AppPaths, title: &str, body: &str) -> Result<PathBuf> {
+    let dir = paths.data_dir.join("recovery");
+    std::fs::create_dir_all(&dir)?;
+    let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S");
+    write_new(&dir, &format!("{}-{stamp}", slug(title)), body)
 }
 
 fn render(item: &SummaryWithBook) -> String {
@@ -67,11 +77,16 @@ pub fn slug(title: &str) -> String {
 /// Writes `<stem>.md`, or `<stem>-2.md`, ... if taken. `create_new` makes
 /// the "is it free?" check and the create one step, and never follows a
 /// symlink that sits where the file would go.
-fn write_new(dir: &Path, stem: &str, contents: &str) -> Result<()> {
+fn write_new(dir: &Path, stem: &str, contents: &str) -> Result<PathBuf> {
     for n in 1.. {
         let name = if n == 1 { format!("{stem}.md") } else { format!("{stem}-{n}.md") };
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(dir.join(name)) {
-            Ok(mut file) => return Ok(file.write_all(contents.as_bytes())?),
+        let path = dir.join(name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(mut file) => {
+                file.write_all(contents.as_bytes())?;
+                file.sync_all()?;
+                return Ok(path);
+            }
             Err(e) if e.kind() == ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e.into()),
         }
@@ -87,6 +102,17 @@ mod tests {
     fn slugs() {
         assert_eq!(slug("The Hobbit: Or, There & Back!"), "the-hobbit-or-there-back");
         assert_eq!(slug("???"), "untitled");
+    }
+
+    #[test]
+    fn recovery_copies_keep_the_text() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = crate::paths::AppPaths::in_dir(dir.path()).unwrap();
+        let a = super::save_recovery_copy(&paths, "Dune", "Sand.").unwrap();
+        let b = super::save_recovery_copy(&paths, "Dune", "More sand.").unwrap();
+        assert_ne!(a, b, "a second copy in the same second gets its own file");
+        assert_eq!(std::fs::read_to_string(&a).unwrap(), "Sand.");
+        assert!(a.starts_with(dir.path().join("recovery")));
     }
 
     #[test]

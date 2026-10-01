@@ -27,6 +27,8 @@ struct Theme {
     accent: gtk::CssProvider,
     fonts: gtk::CssProvider,
     accent_hex: RefCell<String>,
+    /// What was last applied, so re-applying the same look costs nothing.
+    applied: RefCell<String>,
 }
 
 thread_local! {
@@ -55,6 +57,7 @@ pub fn install() {
         accent,
         fonts,
         accent_hex: RefCell::new(ACCENTS[0].1.to_string()),
+        applied: RefCell::default(),
     });
     theme.render_palette();
     theme.render_accent();
@@ -81,6 +84,16 @@ pub fn apply(settings: &UserSettings) {
 
 impl Theme {
     fn apply(&self, s: &UserSettings) {
+        // Reloading the style sheets restyles every widget; skip it when
+        // nothing that affects the look has changed.
+        let look = format!(
+            "{}|{}|{}|{}|{}",
+            s.theme, s.accent, s.heading_font, s.writing_font, s.writing_size
+        );
+        if *self.applied.borrow() == look {
+            return;
+        }
+        *self.applied.borrow_mut() = look;
         adw::StyleManager::default().set_color_scheme(match s.theme.as_str() {
             "light" => adw::ColorScheme::ForceLight,
             "dark" => adw::ColorScheme::ForceDark,
@@ -149,7 +162,7 @@ fn swatch_css() -> String {
 
 fn parse_hex(s: &str) -> Option<(u8, u8, u8)> {
     let s = s.strip_prefix('#')?;
-    if s.len() != 6 {
+    if s.len() != 6 || !s.is_ascii() {
         return None;
     }
     Some((
@@ -182,6 +195,7 @@ mod tests {
         assert_eq!(to_hex((0xb4, 0x53, 0x2a)), "#b4532a");
         assert_eq!(parse_hex("b4532a"), None);
         assert_eq!(parse_hex("#fff"), None);
+        assert_eq!(parse_hex("#ééé"), None); // 6 bytes, not 6 hex digits
     }
 
     #[test]

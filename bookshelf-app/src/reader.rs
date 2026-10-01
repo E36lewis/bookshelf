@@ -1,5 +1,5 @@
 //! Distraction-free reading view of a summary. In full screen every bit of
-//! chrome disappears; Esc, F11 or Ctrl+S brings you back.
+//! chrome disappears; Esc or F11 brings you back.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -86,7 +86,7 @@ pub fn reader_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     // ---- header -------------------------------------------------------------
     let full_btn = gtk::Button::builder()
         .icon_name("view-fullscreen-symbolic")
-        .tooltip_text("Full screen (Ctrl+S or F11)")
+        .tooltip_text("Full screen (F11)")
         .build();
     let edit_btn = gtk::Button::builder()
         .icon_name("document-edit-symbolic")
@@ -191,15 +191,7 @@ pub fn reader_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let shortcuts = gtk::ShortcutController::new();
     shortcuts.set_scope(gtk::ShortcutScope::Local);
     shortcuts.set_propagation_phase(gtk::PropagationPhase::Capture);
-    let ctrl = gtk::gdk::ModifierType::CONTROL_MASK;
     let plain = gtk::gdk::ModifierType::empty();
-    writer::add_shortcut(&shortcuts, writer::KEY_FULLSCREEN, ctrl, {
-        let toggle = toggle.clone();
-        move || {
-            toggle();
-            true
-        }
-    });
     writer::add_shortcut(&shortcuts, gtk::gdk::Key::F11, plain, {
         let toggle = toggle.clone();
         move || {

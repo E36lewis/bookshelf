@@ -410,14 +410,15 @@ pub enum Milestone {
 impl Milestone {
     fn filter_and_order(self) -> (&'static str, &'static str) {
         match self {
-            Milestone::Finished => ("finished_on IS NOT NULL", "finished_on DESC"),
+            // created_at breaks ties, so same-day entries keep their order.
+            Milestone::Finished => ("finished_on IS NOT NULL", "finished_on DESC, created_at DESC"),
             Milestone::Reading => (
                 "started_on IS NOT NULL AND finished_on IS NULL",
-                "started_on DESC",
+                "started_on DESC, created_at DESC",
             ),
             Milestone::Eventually => (
                 "started_on IS NULL AND finished_on IS NULL",
-                "created_at DESC",
+                "created_at DESC, id",
             ),
         }
     }

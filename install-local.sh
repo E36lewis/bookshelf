@@ -34,7 +34,19 @@ cargo build --release -p bookshelf-app
 mkdir -p "$BIN" "$APPS" "$ICONS" "$FONTS"
 install -m755 target/release/bookshelf-gtk "$BIN/bookshelf-gtk"
 install -m644 "packaging/$ID.svg" "$ICONS/$ID.svg"
-sed "s|@EXEC@|$BIN/bookshelf-gtk|" "packaging/$ID.desktop.in" > "$APPS/$ID.desktop"
+# Exec= needs the path quoted (spaces etc.), with \ " ` $ escaped per the
+# Desktop Entry spec. awk takes it from the environment, so nothing in the
+# path is treated as a pattern.
+exec_path="$BIN/bookshelf-gtk"
+exec_path=${exec_path//\\/\\\\\\\\}  # a literal \ is \\\\ in a quoted Exec
+exec_path=${exec_path//\"/\\\"}
+exec_path=${exec_path//\`/\\\`}
+exec_path=${exec_path//\$/\\\$}
+EXEC="\"$exec_path\"" awk '{
+  i = index($0, "@EXEC@")
+  if (i) $0 = substr($0, 1, i - 1) ENVIRON["EXEC"] substr($0, i + 6)
+  print
+}' "packaging/$ID.desktop.in" > "$APPS/$ID.desktop"
 cp -r packaging/fonts/. "$FONTS/"
 fc-cache -f "$FONTS" 2>/dev/null || true
 refresh_caches

@@ -58,6 +58,10 @@ pub fn to_pango(src: &str) -> String {
                 out.push_str("</tt>");
             }
             Event::Text(text) => out.push_str(&glib::markup_escape_text(&text)),
+            // HTML you typed shows as you typed it, never as markup.
+            Event::Html(text) | Event::InlineHtml(text) => {
+                out.push_str(&glib::markup_escape_text(&text))
+            }
             Event::SoftBreak | Event::HardBreak => out.push('\n'),
             Event::Rule => out.push_str("──────────\n\n"),
             _ => {}

@@ -80,6 +80,13 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     };
     let generation = Rc::new(Cell::new(0u64));
 
+    // Result rows hold on to the list through their click handlers; clearing
+    // them when the page goes lets it all be freed.
+    {
+        let list = ui.list.clone();
+        page.connect_hidden(move |_| list.remove_all());
+    }
+
     entry.connect_search_changed(move |entry| {
         let query = entry.text().trim().to_string();
         let gen = generation.get() + 1;
