@@ -1,6 +1,7 @@
 mod date_picker;
 mod editor;
 mod format;
+mod help;
 mod markdown;
 mod reader;
 mod search;
@@ -57,7 +58,16 @@ impl Ctx {
 
 fn main() -> glib::ExitCode {
     let app = adw::Application::builder().application_id(APP_ID).build();
-    app.connect_startup(|_| theme::install());
+    app.connect_startup(|_| {
+        theme::install();
+        // Titles, book details and the manual are selectable so you can copy
+        // from them. By default GTK selects all of a selectable label's text
+        // when it gets keyboard focus, which happens as a page opens and
+        // leaves the text highlighted. Keep the copying, drop the highlight.
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_label_select_on_focus(false);
+        }
+    });
     app.connect_activate(build_ui);
     app.run()
 }
@@ -72,7 +82,7 @@ fn build_ui(app: &adw::Application) {
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Bookshelf")
-        .default_width(720)
+        .default_width(1000)
         .default_height(900)
         .build();
 
@@ -92,6 +102,27 @@ fn build_ui(app: &adw::Application) {
             });
             nav.push(&profiles_page(&ctx));
             window.set_content(Some(&toasts));
+
+            // Help from anywhere: F1 the manual, Ctrl+? every shortcut.
+            let help_keys = gtk::ShortcutController::new();
+            help_keys.set_scope(gtk::ShortcutScope::Global);
+            {
+                let ctx = Rc::downgrade(&ctx);
+                writer::add_shortcut(&help_keys, gdk::Key::F1, gdk::ModifierType::empty(), move || {
+                    if let Some(ctx) = ctx.upgrade() {
+                        help::open_manual(&ctx);
+                    }
+                    true
+                });
+            }
+            {
+                let window = window.downgrade();
+                writer::add_shortcut(&help_keys, gdk::Key::question, gdk::ModifierType::CONTROL_MASK, move || {
+                    help::show_shortcuts(window.upgrade().map(|w| w.upcast::<gtk::Window>()).as_ref());
+                    true
+                });
+            }
+            window.add_controller(help_keys);
 
             // Today's copy now, and an hourly check (still one copy a day)
             // so it keeps happening if Bookshelf stays open for days.
@@ -190,6 +221,43 @@ pub(crate) fn display_path(path: &Path) -> String {
         Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
         Ok(rest) => format!("~/{}", rest.display()),
         Err(_) => path.display().to_string(),
+    }
+}
+
+/// Keyboard shortcuts that belong to one page. They act only while that page
+/// is the one showing, and they're handled before anything else on it (so
+/// "1" switches shelves instead of starting a type-to-search).
+pub(crate) struct PageKeys {
+    controller: gtk::ShortcutController,
+    nav: adw::NavigationView,
+    page: glib::WeakRef<adw::NavigationPage>,
+}
+
+impl PageKeys {
+    pub(crate) fn new(ctx: &Ctx, page: &adw::NavigationPage) -> Self {
+        let controller = gtk::ShortcutController::new();
+        controller.set_scope(gtk::ShortcutScope::Global);
+        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+        Self { controller, nav: ctx.nav.clone(), page: page.downgrade() }
+    }
+
+    /// `action` returns false to let the key through to the page.
+    pub(crate) fn add(
+        &self,
+        key: gdk::Key,
+        modifiers: gdk::ModifierType,
+        action: impl Fn() -> bool + 'static,
+    ) {
+        let nav = self.nav.clone();
+        let page = self.page.clone();
+        writer::add_shortcut(&self.controller, key, modifiers, move || {
+            let showing = page.upgrade().is_some_and(|p| nav.visible_page().as_ref() == Some(&p));
+            showing && action()
+        });
+    }
+
+    pub(crate) fn attach(self, to: &impl IsA<gtk::Widget>) {
+        to.add_controller(self.controller);
     }
 }
 
@@ -627,30 +695,46 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         .build();
 
     // ---- keyboard shortcuts (only while this page is the one showing) -----
-    let shortcuts = gtk::ShortcutController::new();
-    shortcuts.set_scope(gtk::ShortcutScope::Global);
-    let in_front: Rc<dyn Fn() -> bool> = {
-        let nav = ctx.nav.clone();
-        let page = page.downgrade();
-        Rc::new(move || page.upgrade().is_some_and(|p| nav.visible_page().as_ref() == Some(&p)))
-    };
-    let ctrl = gtk::gdk::ModifierType::CONTROL_MASK;
-    let on_front = |action: Rc<dyn Fn()>| {
-        let in_front = in_front.clone();
-        move || {
-            if !in_front() {
-                return false;
-            }
-            action();
+    let keys = PageKeys::new(ctx, &page);
+    let ctrl = gdk::ModifierType::CONTROL_MASK;
+    {
+        let open_search = open_search.clone();
+        keys.add(gdk::Key::n, ctrl, move || {
+            open_search();
             true
+        });
+    }
+    keys.add(gdk::Key::comma, ctrl, move || {
+        open_settings();
+        true
+    });
+    {
+        let search_btn = search_btn.clone();
+        keys.add(gdk::Key::f, ctrl, move || {
+            search_btn.set_active(!search_btn.is_active());
+            true
+        });
+    }
+    // 1, 2, 3: the three shelves, in the order of the tabs.
+    let shelf_keys = [
+        ([gdk::Key::_1, gdk::Key::KP_1], "reading"),
+        ([gdk::Key::_2, gdk::Key::KP_2], "finished"),
+        ([gdk::Key::_3, gdk::Key::KP_3], "eventually"),
+    ];
+    for (key_pair, shelf) in shelf_keys {
+        for key in key_pair {
+            let stack = stack.clone();
+            let search_bar = search_bar.clone();
+            keys.add(key, gdk::ModifierType::empty(), move || {
+                if search_bar.is_search_mode() {
+                    return false; // while searching, digits are part of the search
+                }
+                stack.set_visible_child_name(shelf);
+                true
+            });
         }
-    };
-    writer::add_shortcut(&shortcuts, gtk::gdk::Key::n, ctrl, on_front(open_search.clone()));
-    writer::add_shortcut(&shortcuts, gtk::gdk::Key::comma, ctrl, on_front(open_settings));
-    writer::add_shortcut(&shortcuts, gtk::gdk::Key::f, ctrl, on_front(Rc::new(move || {
-        search_btn.set_active(!search_btn.is_active());
-    })));
-    toolbar.add_controller(shortcuts);
+    }
+    keys.attach(&toolbar);
 
     // ---- filling the lists ------------------------------------------------
     let refresh: Rc<dyn Fn()> = {

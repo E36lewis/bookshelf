@@ -4,7 +4,7 @@
 //! a reading journal, not a web page.
 
 use gtk::glib;
-use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 pub fn to_pango(src: &str) -> String {
     let mut out = String::new();
@@ -18,8 +18,13 @@ pub fn to_pango(src: &str) -> String {
             Event::End(TagEnd::Strikethrough) => out.push_str("</s>"),
             Event::Start(Tag::Emphasis) => out.push_str("<i>"),
             Event::End(TagEnd::Emphasis) => out.push_str("</i>"),
-            Event::Start(Tag::Heading { .. }) => {
-                out.push_str("<span size=\"x-large\" weight=\"bold\">")
+            Event::Start(Tag::Heading { level, .. }) => {
+                let size = match level {
+                    HeadingLevel::H1 => "xx-large",
+                    HeadingLevel::H2 => "x-large",
+                    _ => "large",
+                };
+                out.push_str(&format!("<span size=\"{size}\" weight=\"bold\">"))
             }
             Event::End(TagEnd::Heading(_)) => out.push_str("</span>\n\n"),
             Event::End(TagEnd::Paragraph) => out.push_str("\n\n"),

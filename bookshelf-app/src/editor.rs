@@ -9,7 +9,7 @@ use bookshelf_core::models::*;
 use gtk::glib;
 
 use crate::date_picker::DatePicker;
-use crate::{cover_picture, friendly, markdown, plain_toast, reader, writer, Ctx};
+use crate::{cover_picture, friendly, markdown, plain_toast, reader, writer, Ctx, PageKeys};
 
 pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let loaded = get_summary(&ctx.conn, summary_id)
@@ -175,12 +175,13 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let write_btn = gtk::Button::builder()
         .label("Write")
         .valign(gtk::Align::Center)
+        .tooltip_text("Write or edit your summary (E)")
         .css_classes(["suggested-action"])
         .build();
     let read_btn = gtk::Button::builder()
         .label("Read")
         .valign(gtk::Align::Center)
-        .tooltip_text("Distraction-free reading, with full screen")
+        .tooltip_text("Distraction-free reading, with full screen (R)")
         .css_classes(["flat"])
         .build();
     let summary_head = gtk::Box::builder()
@@ -226,7 +227,10 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     column.append(&card);
 
     let clamp = adw::Clamp::builder().maximum_size(720).child(&column).build();
-    let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
+    let scroll = gtk::ScrolledWindow::builder()
+        .child(&clamp)
+        .focusable(true) // takes the focus when the page opens (see `shown`)
+        .build();
     overlay.set_child(Some(&scroll));
 
     let again_btn = gtk::Button::builder()
@@ -283,6 +287,27 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         read_btn.connect_clicked(move |_| ctx.nav.push(&reader::reader_page(&ctx, &id)));
     }
 
+    // E to write, R to read (only when there's something to read).
+    let keys = PageKeys::new(ctx, &page);
+    {
+        let open = open_writer.clone();
+        keys.add(gtk::gdk::Key::e, gtk::gdk::ModifierType::empty(), move || {
+            open();
+            true
+        });
+    }
+    {
+        let read_btn = read_btn.clone();
+        keys.add(gtk::gdk::Key::r, gtk::gdk::ModifierType::empty(), move || {
+            if !read_btn.is_visible() {
+                return false;
+            }
+            read_btn.emit_clicked();
+            true
+        });
+    }
+    keys.attach(&toolbar);
+
     // Coming back from the writer or reader: show the latest text.
     {
         let ctx = ctx.clone();
@@ -291,6 +316,14 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let write_btn = write_btn.clone();
         let read_btn = read_btn.clone();
         page.connect_showing(move |_| refresh_preview(&ctx, &id, &preview, &write_btn, &read_btn));
+    }
+    // Start with the focus on the page itself, not the selectable title,
+    // which would show a text cursor. Arrow keys then scroll right away.
+    {
+        let scroll = scroll.clone();
+        page.connect_shown(move |_| {
+            scroll.grab_focus();
+        });
     }
 
     // ---- read it again: a fresh entry, started today --------------------------

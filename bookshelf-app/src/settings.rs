@@ -227,6 +227,37 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         export_btn.connect_clicked(move |btn| export_to_folder(&ctx, &user_id, btn, &overlay));
     }
 
+    // ---- help -------------------------------------------------------------------
+    let help_group = adw::PreferencesGroup::builder().title("Help").build();
+    let help_row = |title: &str, subtitle: &str, key: &str| {
+        let row = adw::ActionRow::builder()
+            .title(title)
+            .subtitle(subtitle)
+            .activatable(true)
+            .build();
+        row.add_suffix(
+            &gtk::Label::builder()
+                .label(key)
+                .valign(gtk::Align::Center)
+                .css_classes(["dim-label", "caption"])
+                .build(),
+        );
+        row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
+        row
+    };
+    let shortcuts_row = help_row("Keyboard Shortcuts", "Every key, on one page", "Ctrl+?");
+    shortcuts_row.connect_activated(|row| {
+        crate::help::show_shortcuts(row.root().and_downcast::<gtk::Window>().as_ref());
+    });
+    let manual_row = help_row("User Manual", "How everything works", "F1");
+    {
+        let ctx = ctx.clone();
+        manual_row.connect_activated(move |_| crate::help::open_manual(&ctx));
+    }
+    help_group.add(&shortcuts_row);
+    help_group.add(&manual_row);
+    page.add(&help_group);
+
     // ---- danger zone --------------------------------------------------------
     let danger = adw::PreferencesGroup::new();
     let delete_btn = gtk::Button::builder()
