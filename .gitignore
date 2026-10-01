@@ -1,2 +1,6 @@
 target/
 dist/
+
+# Local working notes (not published)
+CLAUDE.md
+fixed/
