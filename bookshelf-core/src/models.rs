@@ -55,7 +55,8 @@ pub fn create_user(conn: &Connection, name: &str, color: Option<&str>) -> Result
         "INSERT INTO users (id, name, color, created_at, updated_at)
          VALUES (?1, ?2, COALESCE(?3, '#4f46e5'), ?4, ?4)",
         params![id, name, color, now],
-    )?;
+    )
+    .map_err(name_taken)?;
     conn.execute(
         "INSERT INTO user_settings (id, user_id, date_format, accent) VALUES (?1, ?2, 'long', ?3)",
         params![new_id(), id, DEFAULT_ACCENT],
@@ -80,18 +81,25 @@ pub fn rename_user(conn: &Connection, id: &str, name: &str) -> Result<()> {
     if name.is_empty() {
         return Err(Error::Invalid("name can't be blank".into()));
     }
-    match conn.execute(
-        "UPDATE users SET name = ?2, updated_at = ?3 WHERE id = ?1",
-        params![id, name, Utc::now()],
-    ) {
-        Ok(0) => Err(Error::NotFound),
-        Ok(_) => Ok(()),
-        Err(rusqlite::Error::SqliteFailure(e, _))
-            if e.code == rusqlite::ErrorCode::ConstraintViolation =>
-        {
-            Err(Error::Invalid("that name is already taken".into()))
+    match conn
+        .execute(
+            "UPDATE users SET name = ?2, updated_at = ?3 WHERE id = ?1",
+            params![id, name, Utc::now()],
+        )
+        .map_err(name_taken)?
+    {
+        0 => Err(Error::NotFound),
+        _ => Ok(()),
+    }
+}
+
+/// Profile names are unique; say so in words instead of a SQLite error.
+fn name_taken(e: rusqlite::Error) -> Error {
+    match e {
+        rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::ConstraintViolation => {
+            Error::Invalid("that name is already taken".into())
         }
-        Err(e) => Err(e.into()),
+        e => e.into(),
     }
 }
 
@@ -129,6 +137,28 @@ pub fn set_user_email(conn: &Connection, id: &str, email: &str) -> Result<()> {
 /// Removes the profile, its settings and its summaries. Books stay.
 pub fn delete_user(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM users WHERE id = ?1", [id])?;
+    Ok(())
+}
+
+// ------------------------------------------------------------- app settings
+
+/// A setting for the whole app (shared by every profile).
+pub fn app_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    Ok(conn
+        .query_row("SELECT value FROM app_settings WHERE key = ?1", [key], |r| r.get(0))
+        .optional()?)
+}
+
+/// `None` removes the setting, so the default applies again.
+pub fn set_app_setting(conn: &Connection, key: &str, value: Option<&str>) -> Result<()> {
+    match value {
+        Some(v) => conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, v],
+        )?,
+        None => conn.execute("DELETE FROM app_settings WHERE key = ?1", [key])?,
+    };
     Ok(())
 }
 
@@ -485,6 +515,19 @@ pub fn delete_summary(conn: &Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Puts back a summary exactly as it was (same id, dates and text). This is
+/// the "Undo" after removing a book from the shelf.
+pub fn restore_summary(conn: &Connection, s: &Summary) -> Result<()> {
+    conn.execute(
+        "INSERT INTO summaries (id, user_id, book_id, body, started_on, finished_on,
+                                days_to_complete, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        params![s.id, s.user_id, s.book_id, s.body, s.started_on, s.finished_on,
+                s.days_to_complete, s.created_at, s.updated_at],
+    )?;
+    Ok(())
+}
+
 pub fn get_summary(conn: &Connection, id: &str) -> Result<Summary> {
     conn.query_row("SELECT * FROM summaries WHERE id = ?1", [id], Summary::from_row)
         .optional()?
@@ -645,6 +688,8 @@ mod tests {
         let a = create_user(&conn, "Avery", None).unwrap();
         create_user(&conn, "Sam", None).unwrap();
         assert!(rename_user(&conn, &a.id, "Sam").is_err()); // taken
+        let taken = create_user(&conn, "Sam", None).unwrap_err().to_string();
+        assert!(taken.contains("already taken"), "{taken}");
         rename_user(&conn, &a.id, "Ave").unwrap();
         assert_eq!(get_user(&conn, &a.id).unwrap().name, "Ave");
         delete_user(&conn, &a.id).unwrap();
@@ -695,6 +740,21 @@ mod tests {
         assert!(set_user_email(&conn, &user.id, "nope").is_err());
         set_user_email(&conn, &user.id, "").unwrap();
         assert_eq!(get_user(&conn, &user.id).unwrap().email, None);
+    }
+
+    #[test]
+    fn removed_summary_can_be_restored() {
+        let conn = db::open_in_memory().unwrap();
+        let user = create_user(&conn, "Avery", None).unwrap();
+        let b = find_or_create_book(&conn, &book("/works/OL1W")).unwrap();
+        let s = create_summary(&conn, &user.id, &b.id, &SummaryInput {
+            body: "Sand.".into(), ..Default::default()
+        }).unwrap();
+        delete_summary(&conn, &s.id).unwrap();
+        assert!(get_summary(&conn, &s.id).is_err());
+        restore_summary(&conn, &s).unwrap();
+        let back = get_summary(&conn, &s.id).unwrap();
+        assert_eq!((back.body, back.created_at), (s.body, s.created_at));
     }
 
     #[test]

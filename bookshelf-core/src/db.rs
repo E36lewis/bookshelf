@@ -84,6 +84,13 @@ const MIGRATIONS: &[&str] = &[
     r#"
     ALTER TABLE users ADD COLUMN email TEXT;
     "#,
+    // 5: settings for the whole app (not per profile), e.g. the backup folder
+    r#"
+    CREATE TABLE app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    "#,
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

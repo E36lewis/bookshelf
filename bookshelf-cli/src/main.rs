@@ -4,7 +4,6 @@
 
 use std::env;
 use std::error::Error;
-use std::path::Path;
 
 use bookshelf_core::db;
 use bookshelf_core::models::*;
@@ -26,7 +25,8 @@ usage:
   bookshelf update <summary-id> [--started YYYY-MM-DD] [--finished YYYY-MM-DD] [--body TEXT]
   bookshelf delete <summary-id>
   bookshelf refresh <book-id>
-  bookshelf import <export-dir>           import CSV export from the Rails app (empty data dir only)
+  bookshelf import <export-dir>           import CSV export from the Rails app (empty data dir only;
+                                          needs a build with --features rails-import)
   bookshelf fetch-covers                  download any missing cover images";
 
 fn main() {
@@ -137,8 +137,13 @@ fn run() -> Res<()> {
                 if b.description.is_some() { "yes" } else { "no" }
             );
         }
+        #[cfg(not(feature = "rails-import"))]
+        ["import", _] => {
+            return Err("this build has no importer; rebuild with --features rails-import".into())
+        }
+        #[cfg(feature = "rails-import")]
         ["import", dir] => {
-            let r = bookshelf_core::import::import_rails_export(&conn, Path::new(dir))?;
+            let r = bookshelf_core::import::import_rails_export(&conn, std::path::Path::new(dir))?;
             println!("imported {} users, {} books, {} summaries", r.users, r.books, r.summaries);
             println!("summaries with no text: {}", r.summaries_without_text);
             println!("rich text names found on summaries: {:?}", r.rich_text_names);

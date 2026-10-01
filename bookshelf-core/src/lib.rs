@@ -5,17 +5,23 @@
 //! each worker thread) should call `db::open` for its own connection. WAL
 //! mode makes that safe.
 
+pub mod backup;
 pub mod covers;
 pub mod db;
 pub mod error;
 pub mod export;
-pub mod html_to_markdown;
-pub mod import;
 pub mod mdedit;
 pub mod models;
 pub mod openlibrary;
 pub mod paths;
 pub mod service;
+
+// The one-off import from the old Rails app. Only built with
+// `--features rails-import`, so it never ships in the app.
+#[cfg(feature = "rails-import")]
+pub mod html_to_markdown;
+#[cfg(feature = "rails-import")]
+pub mod import;
 
 pub use error::{Error, Result};
 pub use rusqlite;

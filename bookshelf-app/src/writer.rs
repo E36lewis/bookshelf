@@ -102,6 +102,22 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .css_classes(["writer"])
         .build();
 
+    // Faint prompts on an empty page, gone as soon as you type.
+    let prompt = gtk::Label::builder()
+        .label(prompts_for(summary.milestone()))
+        .wrap(true)
+        .xalign(0.0)
+        .valign(gtk::Align::Start)
+        .margin_top(40) // matches the text view's margins, so it sits where you'll type
+        .margin_start(24)
+        .margin_end(24)
+        .can_target(false)
+        .visible(summary.body.is_empty())
+        .css_classes(["writer-preview", "dim-label"])
+        .build();
+    let page_area = gtk::Overlay::builder().child(&text_view).build();
+    page_area.add_overlay(&prompt);
+
     let status = gtk::Label::builder().css_classes(["writer-status"]).build();
     // Counted when the text is saved, not on every keystroke.
     let words = Rc::new(Cell::new(word_count(&summary.body)));
@@ -158,7 +174,9 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let status = status.clone();
         let words = words.clone();
         let save_now = save_now.clone();
+        let prompt = prompt.clone();
         buffer.connect_changed(move |b| {
+            prompt.set_visible(b.char_count() == 0);
             // Highlighting is per line, so only the edited lines need redoing.
             match touched.take() {
                 Some((first, last)) => {
@@ -266,7 +284,7 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let clamp = adw::Clamp::builder()
         .maximum_size(column_width)
         .tightening_threshold(column_width - 120)
-        .child(&text_view)
+        .child(&page_area)
         .build();
     let scroll = gtk::ScrolledWindow::builder()
         .child(&clamp)
@@ -374,12 +392,31 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     });
     toolbar.add_controller(shortcuts);
 
+    // Closing the window while writing still saves the last few words.
+    let close_guard: Rc<RefCell<Option<(gtk::Window, glib::SignalHandlerId)>>> = Rc::default();
     {
         let text_view = text_view.clone();
-        page.connect_shown(move |_| {
+        let close_guard = close_guard.clone();
+        let save_now = save_now.clone();
+        page.connect_shown(move |p| {
             text_view.grab_focus();
+            if close_guard.borrow().is_some() {
+                return;
+            }
+            let Some(window) = p.root().and_downcast::<gtk::Window>() else { return };
+            let save_now = save_now.clone();
+            let id = window.connect_close_request(move |_| {
+                save_now();
+                glib::Propagation::Proceed
+            });
+            *close_guard.borrow_mut() = Some((window, id));
         });
     }
+    page.connect_hidden(move |_| {
+        if let Some((window, id)) = close_guard.borrow_mut().take() {
+            window.disconnect(id);
+        }
+    });
     {
         let save_now = save_now.clone();
         page.connect_hiding(move |p| {
@@ -414,6 +451,20 @@ fn full_text(buffer: &gtk::TextBuffer) -> String {
     buffer
         .text(&buffer.start_iter(), &buffer.end_iter(), false)
         .to_string()
+}
+
+/// Questions to get you started, depending on where the book is on your shelf.
+fn prompts_for(milestone: Milestone) -> &'static str {
+    match milestone {
+        Milestone::Eventually => "Why do you want to read this one?\n\
+                                  Who recommended it, and what did they say?",
+        Milestone::Reading => "Where are you in the story?\n\
+                               What has surprised you so far?\n\
+                               A line worth remembering…",
+        Milestone::Finished => "What stayed with you after the last page?\n\
+                                A line worth remembering…\n\
+                                Who would you give this book to?",
+    }
 }
 
 fn word_count(text: &str) -> usize {

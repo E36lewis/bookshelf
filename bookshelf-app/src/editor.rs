@@ -9,7 +9,7 @@ use bookshelf_core::models::*;
 use gtk::glib;
 
 use crate::date_picker::DatePicker;
-use crate::{cover_picture, markdown, plain_toast, reader, writer, Ctx};
+use crate::{cover_picture, friendly, markdown, plain_toast, reader, writer, Ctx};
 
 pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let loaded = get_summary(&ctx.conn, summary_id)
@@ -229,11 +229,19 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
     overlay.set_child(Some(&scroll));
 
+    let again_btn = gtk::Button::builder()
+        .label("Read it again")
+        .tooltip_text("Start a new entry for this book, with its own dates and thoughts")
+        .css_classes(["flat"])
+        .build();
     let remove_btn = gtk::Button::builder()
         .label("Remove from my shelf")
         .css_classes(["flat"])
         .build();
-    let popover = gtk::Popover::builder().child(&remove_btn).build();
+    let menu_items = gtk::Box::builder().orientation(gtk::Orientation::Vertical).build();
+    menu_items.append(&again_btn);
+    menu_items.append(&remove_btn);
+    let popover = gtk::Popover::builder().child(&menu_items).build();
     let menu = gtk::MenuButton::builder()
         .icon_name("view-more-symbolic")
         .popover(&popover)
@@ -285,31 +293,64 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         page.connect_showing(move |_| refresh_preview(&ctx, &id, &preview, &write_btn, &read_btn));
     }
 
-    // ---- remove ---------------------------------------------------------
+    // ---- read it again: a fresh entry, started today --------------------------
+    {
+        let ctx = ctx.clone();
+        let user_id = summary.user_id.clone();
+        let book_id = book.id.clone();
+        let popover = popover.clone();
+        let overlay = overlay.downgrade();
+        again_btn.connect_clicked(move |_| {
+            popover.popdown();
+            let input = SummaryInput {
+                started_on: Some(chrono::Local::now().date_naive()),
+                ..Default::default()
+            };
+            match create_summary(&ctx.conn, &user_id, &book_id, &input) {
+                Ok(new) => {
+                    ctx.nav.pop();
+                    ctx.nav.push(&summary_page(&ctx, &new.id));
+                    ctx.toasts.add_toast(plain_toast("New reading started today"));
+                }
+                Err(e) => toast(&overlay, &friendly(&e)),
+            }
+        });
+    }
+
+    // ---- remove: right away, with a way back --------------------------------
     {
         let ctx = ctx.clone();
         let id = summary.id.clone();
-        let page_ref = page.clone();
+        let title = book.title.clone();
         let popover = popover.clone();
+        let overlay = overlay.downgrade();
         remove_btn.connect_clicked(move |_| {
             popover.popdown();
-            let dialog = adw::AlertDialog::builder()
-                .heading("Remove this book?")
-                .body("Your summary and dates for this book will be deleted.")
-                .build();
-            dialog.add_responses(&[("cancel", "Cancel"), ("remove", "Remove")]);
-            dialog.set_response_appearance("remove", adw::ResponseAppearance::Destructive);
-            dialog.set_default_response(Some("cancel"));
-            dialog.set_close_response("cancel");
-
-            let ctx = ctx.clone();
-            let id = id.clone();
-            dialog.connect_response(None, move |_, response| {
-                if response == "remove" && delete_summary(&ctx.conn, &id).is_ok() {
-                    ctx.nav.pop();
-                }
+            // Keep the whole entry so Undo can put it back exactly as it was.
+            let removed = get_summary(&ctx.conn, &id).and_then(|s| {
+                delete_summary(&ctx.conn, &id)?;
+                Ok(s)
             });
-            dialog.present(Some(&page_ref));
+            let removed = match removed {
+                Ok(s) => s,
+                Err(e) => return toast(&overlay, &friendly(&e)),
+            };
+            ctx.nav.pop();
+
+            let undo = adw::Toast::builder()
+                .title(format!("Removed “{title}”"))
+                .use_markup(false)
+                .button_label("Undo")
+                .timeout(10)
+                .build();
+            let ctx_undo = ctx.clone();
+            undo.connect_button_clicked(move |_| match restore_summary(&ctx_undo.conn, &removed) {
+                Ok(()) => ctx_undo.refresh_home(),
+                Err(e) => ctx_undo
+                    .toasts
+                    .add_toast(plain_toast(&format!("Couldn't undo: {}", friendly(&e)))),
+            });
+            ctx.toasts.add_toast(undo);
         });
     }
 

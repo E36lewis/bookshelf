@@ -10,3 +10,7 @@ path = "src/main.rs"
 [dependencies]
 bookshelf-core = { path = "../bookshelf-core" }
 chrono = "0.4"
+
+[features]
+# Enables `bookshelf import <dir>`:  cargo run -p bookshelf-cli --features rails-import -- import <dir>
+rails-import = ["bookshelf-core/rails-import"]

@@ -8,17 +8,26 @@ mod settings;
 mod theme;
 mod writer;
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use adw::prelude::*;
-use bookshelf_core::db;
 use bookshelf_core::models::*;
 use bookshelf_core::openlibrary::OpenLibrary;
 use bookshelf_core::paths::AppPaths;
 use bookshelf_core::rusqlite::Connection;
+use bookshelf_core::{backup, db};
+use chrono::Datelike;
 use gtk::glib;
 
-const APP_ID: &str = "com.bookshelf.Bookshelf";
+/// Debug builds get their own id, so a development copy can run next to the
+/// installed app instead of handing off to it.
+const APP_ID: &str = if cfg!(debug_assertions) {
+    "com.bookshelf.Bookshelf.Devel"
+} else {
+    "com.bookshelf.Bookshelf"
+};
 
 /// Shared app state. The UI thread owns this connection; worker threads
 /// (search, cover downloads) open their own. The Open Library client is
@@ -28,6 +37,19 @@ pub(crate) struct Ctx {
     pub(crate) paths: AppPaths,
     pub(crate) nav: adw::NavigationView,
     pub(crate) ol: OpenLibrary,
+    /// App-wide toasts: they outlive the page that raised them ("Removed · Undo").
+    pub(crate) toasts: adw::ToastOverlay,
+    /// Reloads the home lists. Set by the home page; used after an Undo.
+    pub(crate) home_refresher: RefCell<Option<Rc<dyn Fn()>>>,
+}
+
+impl Ctx {
+    pub(crate) fn refresh_home(&self) {
+        let refresh = self.home_refresher.borrow().clone();
+        if let Some(refresh) = refresh {
+            refresh();
+        }
+    }
 }
 
 fn main() -> glib::ExitCode {
@@ -38,22 +60,80 @@ fn main() -> glib::ExitCode {
 }
 
 fn build_ui(app: &adw::Application) {
-    let paths = AppPaths::from_env().expect("could not create data directory");
-    let conn = db::open(&paths.db_path).expect("could not open database");
-    let ol = OpenLibrary::new().expect("could not set up the network client");
-    let nav = adw::NavigationView::new();
-    let ctx = Rc::new(Ctx { conn, paths, nav: nav.clone(), ol });
-
-    nav.push(&profiles_page(&ctx));
-
-    adw::ApplicationWindow::builder()
+    // Launched again while running: bring the open window forward instead
+    // of opening a second one.
+    if let Some(window) = app.active_window() {
+        window.present();
+        return;
+    }
+    let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Bookshelf")
         .default_width(720)
         .default_height(900)
-        .content(&nav)
-        .build()
-        .present();
+        .build();
+
+    match open_journal() {
+        Ok((paths, conn, ol)) => {
+            let nav = adw::NavigationView::new();
+            let toasts = adw::ToastOverlay::new();
+            toasts.set_child(Some(&nav));
+            let ctx = Rc::new(Ctx {
+                conn,
+                paths,
+                nav: nav.clone(),
+                ol,
+                toasts: toasts.clone(),
+                home_refresher: RefCell::default(),
+            });
+            nav.push(&profiles_page(&ctx));
+            window.set_content(Some(&toasts));
+            back_up_in_background(&ctx.paths);
+        }
+        Err(message) => {
+            eprintln!("[bookshelf] {message}");
+            window.set_content(Some(&startup_error(&message)));
+        }
+    }
+    window.present();
+}
+
+fn open_journal() -> Result<(AppPaths, Connection, OpenLibrary), String> {
+    let paths = AppPaths::from_env().map_err(|e| format!("Couldn't create the data folder: {e}"))?;
+    let conn = db::open(&paths.db_path)
+        .map_err(|e| format!("Couldn't open your journal ({}): {e}", paths.db_path.display()))?;
+    let ol = OpenLibrary::new().map_err(|e| format!("Couldn't set up the network connection: {e}"))?;
+    Ok((paths, conn, ol))
+}
+
+/// Shown instead of the app when the journal can't be opened, so the
+/// window explains itself rather than the app silently crashing.
+fn startup_error(message: &str) -> adw::ToolbarView {
+    let text = format!(
+        "{message}\n\nIf your journal file is damaged, daily backups are kept in the \
+         “backups” folder beside it."
+    );
+    let toolbar = flat_toolbar();
+    toolbar.add_top_bar(&adw::HeaderBar::new());
+    toolbar.set_content(Some(
+        &adw::StatusPage::builder()
+            .icon_name("dialog-error-symbolic")
+            .title("Bookshelf couldn't start")
+            .description(glib::markup_escape_text(&text)) // the description is markup
+            .build(),
+    ));
+    toolbar
+}
+
+/// Today's safety copy of the database, on its own thread and connection.
+fn back_up_in_background(paths: &AppPaths) {
+    let paths = paths.clone();
+    std::thread::spawn(move || {
+        let made = db::open(&paths.db_path).and_then(|conn| backup::daily(&conn, &paths, backup::KEEP));
+        if let Err(e) = made {
+            eprintln!("[bookshelf] daily backup failed: {e}");
+        }
+    });
 }
 
 /// A toast showing `message` as plain text. Toasts parse Pango markup by
@@ -62,10 +142,29 @@ pub(crate) fn plain_toast(message: &str) -> adw::Toast {
     adw::Toast::builder().title(message).use_markup(false).build()
 }
 
+/// An error as a sentence for people: "That name is already taken."
+pub(crate) fn friendly(e: &bookshelf_core::Error) -> String {
+    let text = match e {
+        bookshelf_core::Error::Invalid(msg) => msg.clone(),
+        other => other.to_string(),
+    };
+    let mut chars = text.chars();
+    let mut out: String = chars.next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
+    out.push_str(chars.as_str());
+    if !out.ends_with(['.', '!', '?']) {
+        out.push('.');
+    }
+    out
+}
+
 fn flat_toolbar() -> adw::ToolbarView {
     let toolbar = adw::ToolbarView::new();
     toolbar.set_top_bar_style(adw::ToolbarStyle::Flat);
     toolbar
+}
+
+fn books(n: usize) -> String {
+    if n == 1 { "1 book".to_string() } else { format!("{n} books") }
 }
 
 // ------------------------------------------------------------ profiles
@@ -76,48 +175,81 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
         .css_classes(["boxed-list"])
         .build();
 
-    let add = gtk::ListBox::builder()
-        .selection_mode(gtk::SelectionMode::None)
-        .css_classes(["boxed-list"])
-        .build();
-    let entry = adw::EntryRow::builder()
-        .title("New profile name")
-        .show_apply_button(true)
-        .build();
+    // ---- new profile: name, optional email, a clear button --------------
+    let name_row = adw::EntryRow::builder().title("Name").build();
     let email_entry = email_row();
-    add.append(&entry);
-    add.append(&email_entry);
+    let new_group = adw::PreferencesGroup::builder().title("New profile").build();
+    new_group.add(&name_row);
+    new_group.add(&email_entry);
 
-    let ctx_add = ctx.clone();
-    entry.connect_apply(move |row| {
-        // Check the email first so a bad one doesn't leave a half-made profile.
-        let email = match validate_email(email_entry.text().as_str()) {
-            Ok(email) => email,
-            Err(e) => {
-                eprintln!("could not create profile: {e}");
-                email_entry.add_css_class("error");
-                return;
-            }
-        };
-        let created = create_user(&ctx_add.conn, row.text().as_str(), None).and_then(|user| {
-            if let Some(e) = &email {
-                set_user_email(&ctx_add.conn, &user.id, e)?;
-            }
-            get_user(&ctx_add.conn, &user.id)
+    let create_btn = gtk::Button::builder()
+        .label("Create profile")
+        .halign(gtk::Align::Center)
+        .sensitive(false)
+        .css_classes(["pill", "suggested-action"])
+        .build();
+    let error = gtk::Label::builder()
+        .wrap(true)
+        .xalign(0.0)
+        .visible(false)
+        .css_classes(["error"])
+        .build();
+
+    {
+        let create_btn = create_btn.clone();
+        let error = error.clone();
+        name_row.connect_changed(move |r| {
+            r.remove_css_class("error");
+            error.set_visible(false);
+            create_btn.set_sensitive(!r.text().trim().is_empty());
         });
-        match created {
-            Ok(user) => {
-                row.set_text("");
-                email_entry.set_text("");
-                row.remove_css_class("error");
-                ctx_add.nav.push(&home_page(&ctx_add, &user));
-            }
-            Err(e) => {
-                eprintln!("could not create profile: {e}");
+    }
+    {
+        let error = error.clone();
+        email_entry.connect_changed(move |_| error.set_visible(false));
+    }
+
+    let create: Rc<dyn Fn()> = {
+        let ctx = ctx.clone();
+        let name_row = name_row.clone();
+        let email_entry = email_entry.clone();
+        let error = error.clone();
+        Rc::new(move || {
+            let show = |row: &adw::EntryRow, e: &bookshelf_core::Error| {
                 row.add_css_class("error");
+                error.set_label(&friendly(e));
+                error.set_visible(true);
+            };
+            // Check the email first so a bad one doesn't leave a half-made profile.
+            let email = match validate_email(email_entry.text().as_str()) {
+                Ok(email) => email,
+                Err(e) => return show(&email_entry, &e),
+            };
+            let created = create_user(&ctx.conn, name_row.text().as_str(), None).and_then(|user| {
+                if let Some(e) = &email {
+                    set_user_email(&ctx.conn, &user.id, e)?;
+                }
+                get_user(&ctx.conn, &user.id)
+            });
+            match created {
+                Ok(user) => {
+                    name_row.set_text("");
+                    email_entry.set_text("");
+                    ctx.nav.push(&home_page(&ctx, &user));
+                }
+                Err(e) => show(&name_row, &e),
             }
-        }
-    });
+        })
+    };
+    {
+        let create = create.clone();
+        create_btn.connect_clicked(move |_| create());
+    }
+    {
+        let create = create.clone();
+        name_row.connect_entry_activated(move |_| create());
+    }
+    email_entry.connect_entry_activated(move |_| create());
 
     let heading = gtk::Label::builder()
         .label("Who's reading?")
@@ -127,6 +259,7 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let lede = gtk::Label::builder()
         .label("Pick up where you left off.")
         .xalign(0.0)
+        .wrap(true)
         .margin_bottom(12)
         .css_classes(["journal-lede"])
         .build();
@@ -147,7 +280,9 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     intro.append(&lede);
     column.append(&intro);
     column.append(&existing);
-    column.append(&add);
+    column.append(&new_group);
+    column.append(&error);
+    column.append(&create_btn);
 
     let clamp = adw::Clamp::builder().maximum_size(480).child(&column).build();
     let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
@@ -165,7 +300,15 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     let ctx_show = ctx.clone();
     page.connect_showing(move |_| {
         theme::apply(&UserSettings::defaults()); // neutral look until someone is chosen
-        populate_profiles(&ctx_show, &existing);
+        let any = populate_profiles(&ctx_show, &existing);
+        // First run reads as a welcome, not a "who's back?".
+        heading.set_label(if any { "Who's reading?" } else { "Welcome" });
+        lede.set_label(if any {
+            "Pick up where you left off."
+        } else {
+            "Make a profile to start your reading journal."
+        });
+        new_group.set_title(if any { "New profile" } else { "Your profile" });
     });
     page
 }
@@ -194,10 +337,12 @@ pub(crate) fn email_row() -> adw::EntryRow {
     row
 }
 
-fn populate_profiles(ctx: &Rc<Ctx>, list: &gtk::ListBox) {
+/// Fills the list of profiles; returns whether there are any.
+fn populate_profiles(ctx: &Rc<Ctx>, list: &gtk::ListBox) -> bool {
     list.remove_all();
     let users = list_users(&ctx.conn).unwrap_or_default();
     list.set_visible(!users.is_empty());
+    let any = !users.is_empty();
     for user in users {
         let row = adw::ActionRow::builder()
             .title(&user.name)
@@ -210,6 +355,7 @@ fn populate_profiles(ctx: &Rc<Ctx>, list: &gtk::ListBox) {
         row.connect_activated(move |_| ctx.nav.push(&home_page(&ctx, &user)));
         list.append(&row);
     }
+    any
 }
 
 // ---------------------------------------------------------------- home
@@ -224,9 +370,47 @@ const TABS: [(&str, &str, &str, Milestone, &str, &str); 3] = [
      "Someday", "Books you want to read someday wait here."),
 ];
 
+/// One tab of the home page.
+struct Tab {
+    milestone: Milestone,
+    list: gtk::ListBox,
+    count: gtk::Label,
+    empty: adw::StatusPage,
+    empty_text: &'static str,
+    add_btn: gtk::Button,
+}
+
+impl Tab {
+    /// The empty state: an invitation normally, "no matches" while searching.
+    fn show_empty_state(&self, query: &str) {
+        if query.is_empty() {
+            self.empty.set_icon_name(Some("library-symbolic"));
+            self.empty.set_title("Nothing here yet");
+            self.empty.set_description(Some(self.empty_text));
+            self.add_btn.set_visible(true);
+        } else {
+            self.empty.set_icon_name(Some("system-search-symbolic"));
+            self.empty.set_title("No matches");
+            let text = format!("Nothing on this shelf matches “{query}”.");
+            self.empty.set_description(Some(&glib::markup_escape_text(&text)));
+            self.add_btn.set_visible(false);
+        }
+    }
+}
+
 fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
+    let open_search: Rc<dyn Fn()> = {
+        let ctx = ctx.clone();
+        let user = user.clone();
+        Rc::new(move || ctx.nav.push(&search::search_page(&ctx, &user)))
+    };
+    // Search state shared by every tab: the query, and per summary the
+    // lowercased text it can be found by (title, author, what you wrote).
+    let query: Rc<RefCell<String>> = Rc::default();
+    let haystacks: Rc<RefCell<HashMap<String, String>>> = Rc::default();
+
     let stack = adw::ViewStack::new();
-    let mut lists: Vec<(Milestone, gtk::ListBox, gtk::Label)> = vec![];
+    let mut tabs: Vec<Tab> = vec![];
 
     for (name, title, icon, milestone, heading, empty_text) in TABS {
         let list = gtk::ListBox::builder()
@@ -234,13 +418,34 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             .css_classes(["entries"])
             .valign(gtk::Align::Start)
             .build();
-        list.set_placeholder(Some(
-            &adw::StatusPage::builder()
-                .icon_name("library-symbolic")
-                .title("Nothing here yet")
-                .description(empty_text)
-                .build(),
-        ));
+
+        let add_btn = gtk::Button::builder()
+            .label("Add a book")
+            .halign(gtk::Align::Center)
+            .css_classes(["pill", "suggested-action"])
+            .build();
+        {
+            let open_search = open_search.clone();
+            add_btn.connect_clicked(move |_| open_search());
+        }
+        let empty = adw::StatusPage::builder().child(&add_btn).build();
+        list.set_placeholder(Some(&empty));
+
+        {
+            let query = query.clone();
+            let haystacks = haystacks.clone();
+            list.set_filter_func(move |row| {
+                let query = query.borrow();
+                if query.is_empty() {
+                    return true;
+                }
+                // Year headings have no entry, so they step aside while searching.
+                haystacks
+                    .borrow()
+                    .get(row.widget_name().as_str())
+                    .is_some_and(|text| query.split_whitespace().all(|word| text.contains(word)))
+            });
+        }
         {
             let ctx = ctx.clone();
             list.connect_row_activated(move |_, row| {
@@ -254,7 +459,7 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             .xalign(0.0)
             .css_classes(["page-title"])
             .build();
-        let count_label = gtk::Label::builder()
+        let count = gtk::Label::builder()
             .xalign(0.0)
             .css_classes(["page-count"])
             .build();
@@ -264,7 +469,7 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             .margin_bottom(14)
             .build();
         head.append(&title_label);
-        head.append(&count_label);
+        head.append(&count);
 
         let column = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
@@ -279,8 +484,12 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let clamp = adw::Clamp::builder().maximum_size(720).child(&column).build();
         let scroll = gtk::ScrolledWindow::builder().child(&clamp).build();
         stack.add_titled_with_icon(&scroll, Some(name), title, icon);
-        lists.push((milestone, list, count_label));
+
+        let tab = Tab { milestone, list, count, empty, empty_text, add_btn };
+        tab.show_empty_state("");
+        tabs.push(tab);
     }
+    let tabs = Rc::new(tabs);
 
     let switcher = adw::ViewSwitcher::builder()
         .stack(&stack)
@@ -291,34 +500,77 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
 
     let add_btn = gtk::Button::builder()
         .icon_name("list-add-symbolic")
-        .tooltip_text("Add a book")
+        .tooltip_text("Add a book (Ctrl+N)")
         .build();
     {
-        let ctx = ctx.clone();
-        let user = user.clone();
-        add_btn.connect_clicked(move |_| ctx.nav.push(&search::search_page(&ctx, &user)));
+        let open_search = open_search.clone();
+        add_btn.connect_clicked(move |_| open_search());
     }
     header.pack_start(&add_btn);
 
-    let settings_btn = gtk::Button::builder()
-        .icon_name("emblem-system-symbolic")
-        .tooltip_text("Settings")
-        .build();
-    {
+    let open_settings: Rc<dyn Fn()> = {
         let ctx = ctx.clone();
         let user = user.clone();
-        settings_btn.connect_clicked(move |_| ctx.nav.push(&settings::settings_page(&ctx, &user)));
+        Rc::new(move || ctx.nav.push(&settings::settings_page(&ctx, &user)))
+    };
+    let settings_btn = gtk::Button::builder()
+        .icon_name("emblem-system-symbolic")
+        .tooltip_text("Settings (Ctrl+,)")
+        .build();
+    {
+        let open_settings = open_settings.clone();
+        settings_btn.connect_clicked(move |_| open_settings());
     }
     header.pack_end(&settings_btn);
 
-    let first_look = get_settings(&ctx.conn, &user.id).ok();
-    if let Some(s) = &first_look {
+    // ---- search your shelf ----------------------------------------------
+    let search_btn = gtk::ToggleButton::builder()
+        .icon_name("system-search-symbolic")
+        .tooltip_text("Search your shelf (Ctrl+F)")
+        .build();
+    header.pack_end(&search_btn);
+
+    let search_entry = gtk::SearchEntry::builder()
+        .placeholder_text("Title, author, or something you wrote")
+        .hexpand(true)
+        .build();
+    let search_bar = gtk::SearchBar::builder()
+        .child(&adw::Clamp::builder().maximum_size(720).child(&search_entry).build())
+        .build();
+    search_bar.connect_entry(&search_entry);
+    search_btn
+        .bind_property("active", &search_bar, "search-mode-enabled")
+        .bidirectional()
+        .build();
+    {
+        let search_entry = search_entry.clone();
+        search_bar.connect_search_mode_enabled_notify(move |bar| {
+            if !bar.is_search_mode() {
+                search_entry.set_text(""); // closing the search shows everything again
+            }
+        });
+    }
+    {
+        let query = query.clone();
+        let tabs = tabs.clone();
+        search_entry.connect_search_changed(move |entry| {
+            *query.borrow_mut() = entry.text().trim().to_lowercase();
+            for tab in tabs.iter() {
+                tab.list.invalidate_filter();
+                tab.show_empty_state(&query.borrow());
+            }
+        });
+    }
+
+    if let Ok(s) = get_settings(&ctx.conn, &user.id) {
         stack.set_visible_child_name(&s.start_tab);
     }
 
     let toolbar = flat_toolbar();
     toolbar.add_top_bar(&header);
+    toolbar.add_top_bar(&search_bar);
     toolbar.set_content(Some(&stack));
+    search_bar.set_key_capture_widget(Some(&toolbar)); // just start typing to search
 
     let page = adw::NavigationPage::builder()
         .title(&user.name)
@@ -326,42 +578,136 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         .child(&toolbar)
         .build();
 
-    let ctx = ctx.clone();
-    let user_id = user.id.clone();
-    page.connect_showing(move |_| {
-        let settings = get_settings(&ctx.conn, &user_id).unwrap_or_else(|_| UserSettings::defaults());
-        theme::apply(&settings);
-        for (milestone, list, count) in &lists {
-            let n = populate_list(&ctx, &user_id, *milestone, list, &settings.date_format);
-            count.set_label(&match n {
-                1 => "1 book".to_string(),
-                n => format!("{n} books"),
-            });
+    // ---- keyboard shortcuts (only while this page is the one showing) -----
+    let shortcuts = gtk::ShortcutController::new();
+    shortcuts.set_scope(gtk::ShortcutScope::Global);
+    let in_front: Rc<dyn Fn() -> bool> = {
+        let nav = ctx.nav.clone();
+        let page = page.downgrade();
+        Rc::new(move || page.upgrade().is_some_and(|p| nav.visible_page().as_ref() == Some(&p)))
+    };
+    let ctrl = gtk::gdk::ModifierType::CONTROL_MASK;
+    let on_front = |action: Rc<dyn Fn()>| {
+        let in_front = in_front.clone();
+        move || {
+            if !in_front() {
+                return false;
+            }
+            action();
+            true
         }
-    });
+    };
+    writer::add_shortcut(&shortcuts, gtk::gdk::Key::n, ctrl, on_front(open_search.clone()));
+    writer::add_shortcut(&shortcuts, gtk::gdk::Key::comma, ctrl, on_front(open_settings));
+    writer::add_shortcut(&shortcuts, gtk::gdk::Key::f, ctrl, on_front(Rc::new(move || {
+        search_btn.set_active(!search_btn.is_active());
+    })));
+    toolbar.add_controller(shortcuts);
+
+    // ---- filling the lists ------------------------------------------------
+    let refresh: Rc<dyn Fn()> = {
+        let ctx = Rc::downgrade(ctx);
+        let user_id = user.id.clone();
+        Rc::new(move || {
+            let Some(ctx) = ctx.upgrade() else { return };
+            let settings =
+                get_settings(&ctx.conn, &user_id).unwrap_or_else(|_| UserSettings::defaults());
+            theme::apply(&settings);
+            haystacks.borrow_mut().clear();
+            for tab in tabs.iter() {
+                let (n, this_year) =
+                    populate_list(&ctx, &user_id, tab, &settings.date_format, &haystacks);
+                tab.count.set_label(&if this_year > 0 {
+                    format!("{} · {this_year} this year", books(n))
+                } else {
+                    books(n)
+                });
+                tab.show_empty_state(&query.borrow());
+            }
+        })
+    };
+    *ctx.home_refresher.borrow_mut() = Some(refresh.clone());
+    page.connect_showing(move |_| refresh());
     page
 }
 
+/// Fills one tab. Finished books are grouped under year headings. Returns
+/// (books on the shelf, books finished this calendar year).
 fn populate_list(
     ctx: &Rc<Ctx>,
     user_id: &str,
-    milestone: Milestone,
-    list: &gtk::ListBox,
+    tab: &Tab,
     date_format: &str,
-) -> usize {
-    list.remove_all();
-    match list_summaries(&ctx.conn, user_id, milestone) {
-        Ok(rows) => {
-            for row in &rows {
-                list.append(&summary_row(ctx, row, milestone, date_format));
-            }
-            rows.len()
-        }
+    haystacks: &RefCell<HashMap<String, String>>,
+) -> (usize, usize) {
+    tab.list.remove_all();
+    let rows = match list_summaries(&ctx.conn, user_id, tab.milestone) {
+        Ok(rows) => rows,
         Err(e) => {
-            eprintln!("could not load {milestone:?} list: {e}");
-            0
+            eprintln!("could not load {:?} list: {e}", tab.milestone);
+            return (0, 0);
+        }
+    };
+
+    let by_year = tab.milestone == Milestone::Finished;
+    let year_of = |item: &SummaryWithBook| item.summary.finished_on.map(|d| d.year());
+    let mut per_year: HashMap<i32, usize> = HashMap::new();
+    if by_year {
+        for year in rows.iter().filter_map(year_of) {
+            *per_year.entry(year).or_default() += 1;
         }
     }
+
+    let mut current = None;
+    for item in &rows {
+        if by_year && year_of(item) != current {
+            current = year_of(item);
+            if let Some(year) = current {
+                tab.list.append(&year_row(year, per_year[&year]));
+            }
+        }
+        let text = format!(
+            "{} {} {}",
+            item.book.title,
+            item.book.author.as_deref().unwrap_or(""),
+            item.summary.body
+        );
+        haystacks.borrow_mut().insert(item.summary.id.clone(), text.to_lowercase());
+        tab.list.append(&summary_row(ctx, item, tab.milestone, date_format));
+    }
+    let this_year = chrono::Local::now().year();
+    (rows.len(), per_year.get(&this_year).copied().unwrap_or(0))
+}
+
+/// "2026 · 12 books" between the finished entries.
+fn year_row(year: i32, count: usize) -> gtk::ListBoxRow {
+    let line = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(10)
+        .margin_top(18)
+        .margin_bottom(4)
+        .build();
+    line.append(
+        &gtk::Label::builder()
+            .label(year.to_string())
+            .xalign(0.0)
+            .css_classes(["section-title"])
+            .build(),
+    );
+    line.append(
+        &gtk::Label::builder()
+            .label(books(count))
+            .xalign(0.0)
+            .valign(gtk::Align::Baseline)
+            .css_classes(["page-count"])
+            .build(),
+    );
+    gtk::ListBoxRow::builder()
+        .activatable(false)
+        .selectable(false)
+        .focusable(false)
+        .child(&line)
+        .build()
 }
 
 fn wrapped_label(text: &str, class: &str, lines: i32) -> gtk::Label {

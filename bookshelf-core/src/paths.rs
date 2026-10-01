@@ -2,12 +2,13 @@ use std::path::{Path, PathBuf};
 
 use crate::Result;
 
-/// Where everything lives on disk. Default: ~/.local/share/Bookshelf/
+/// Where everything lives on disk. Default: ~/.local/share/bookshelf/
 #[derive(Debug, Clone)]
 pub struct AppPaths {
     pub data_dir: PathBuf,
     pub db_path: PathBuf,
     pub covers_dir: PathBuf,
+    pub backups_dir: PathBuf,
 }
 
 impl AppPaths {
@@ -29,7 +30,9 @@ impl AppPaths {
     /// the current user (0700): summaries are personal.
     pub fn in_dir(dir: &Path) -> Result<Self> {
         let covers_dir = dir.join("covers");
+        let backups_dir = dir.join("backups");
         std::fs::create_dir_all(&covers_dir)?;
+        std::fs::create_dir_all(&backups_dir)?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -39,6 +42,7 @@ impl AppPaths {
             data_dir: dir.to_path_buf(),
             db_path: dir.join("bookshelf.sqlite3"),
             covers_dir,
+            backups_dir,
         })
     }
 

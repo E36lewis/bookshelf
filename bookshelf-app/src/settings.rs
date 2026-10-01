@@ -1,14 +1,15 @@
 //! Per-profile settings. Every control saves and applies immediately.
 
 use std::cell::RefCell;
+use std::path::Path;
 use std::rc::Rc;
 
 use adw::prelude::*;
-use bookshelf_core::export;
 use bookshelf_core::models::*;
-use gtk::gio;
+use bookshelf_core::{backup, db, export};
+use gtk::{gio, glib};
 
-use crate::{email_row, plain_toast, theme, Ctx};
+use crate::{email_row, friendly, plain_toast, theme, Ctx};
 
 type State = Rc<RefCell<UserSettings>>;
 type Options = &'static [(&'static str, &'static str)];
@@ -87,12 +88,10 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     {
         let ctx = ctx.clone();
         let id = user.id.clone();
-        name_row.connect_apply(move |row| match rename_user(&ctx.conn, &id, row.text().as_str()) {
-            Ok(()) => row.remove_css_class("error"),
-            Err(e) => {
-                eprintln!("could not rename: {e}");
-                row.add_css_class("error");
-            }
+        let overlay = overlay.downgrade();
+        name_row.connect_apply(move |row| {
+            let result = rename_user(&ctx.conn, &id, row.text().as_str());
+            report(&overlay, row, result, "Name saved");
         });
     }
     profile.add(&name_row);
@@ -104,12 +103,11 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     {
         let ctx = ctx.clone();
         let id = user.id.clone();
-        email.connect_apply(move |row| match set_user_email(&ctx.conn, &id, row.text().as_str()) {
-            Ok(()) => row.remove_css_class("error"),
-            Err(e) => {
-                eprintln!("could not save email: {e}");
-                row.add_css_class("error");
-            }
+        let overlay = overlay.downgrade();
+        email.connect_apply(move |row| {
+            let result = set_user_email(&ctx.conn, &id, row.text().as_str());
+            let done = if row.text().trim().is_empty() { "Email removed" } else { "Email saved" };
+            report(&overlay, row, result, done);
         });
     }
     profile.add(&email);
@@ -211,7 +209,7 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     let data = adw::PreferencesGroup::builder().title("Your data").build();
     let export_row = adw::ActionRow::builder()
         .title("Export my summaries")
-        .subtitle("Saves each one as a Markdown file in a folder you choose")
+        .subtitle("Each summary becomes a Markdown file, in a “Bookshelf summaries” folder inside the folder you choose")
         .build();
     let export_btn = gtk::Button::builder()
         .label("Export…")
@@ -220,30 +218,13 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     export_row.add_suffix(&export_btn);
     export_row.set_activatable_widget(Some(&export_btn));
     data.add(&export_row);
+    data.add(&backups_row(ctx, &initial.date_format, &overlay));
     page.add(&data);
     {
         let ctx = ctx.clone();
         let user_id = user.id.clone();
         let overlay = overlay.downgrade();
-        export_btn.connect_clicked(move |btn| {
-            let window = btn.root().and_downcast::<gtk::Window>();
-            let dialog = gtk::FileDialog::builder().title("Export summaries to…").build();
-            let ctx = ctx.clone();
-            let user_id = user_id.clone();
-            let overlay = overlay.clone();
-            dialog.select_folder(window.as_ref(), gio::Cancellable::NONE, move |chosen| {
-                let Ok(folder) = chosen else { return };
-                let Some(path) = folder.path() else { return };
-                let message =
-                    match export::export_markdown(&ctx.conn, &user_id, &path.join("Bookshelf summaries")) {
-                        Ok(n) => format!("Exported {n} summaries"),
-                        Err(e) => format!("Export failed: {e}"),
-                    };
-                if let Some(overlay) = overlay.upgrade() {
-                    overlay.add_toast(plain_toast(&message));
-                }
-            });
-        });
+        export_btn.connect_clicked(move |btn| export_to_folder(&ctx, &user_id, btn, &overlay));
     }
 
     // ---- danger zone --------------------------------------------------------
@@ -273,26 +254,310 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let name = user.name.clone();
         let anchor = nav_page.clone();
         delete_btn.connect_clicked(move |_| {
+            // The name may have been changed on this page since it opened.
+            let name = get_user(&ctx.conn, &id).map(|u| u.name).unwrap_or_else(|_| name.clone());
             let dialog = adw::AlertDialog::builder()
                 .heading(format!("Delete {name}?"))
-                .body("Their summaries, dates and settings will be deleted. The books themselves stay.")
+                .body("Their summaries, dates and settings will be deleted. The books themselves stay.\n\n\
+                       Export first to keep a copy of everything they wrote.")
                 .build();
-            dialog.add_responses(&[("cancel", "Cancel"), ("delete", "Delete")]);
+            dialog.add_responses(&[
+                ("cancel", "Cancel"),
+                ("export", "Export first…"),
+                ("delete", "Delete"),
+            ]);
             dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
 
             let ctx = ctx.clone();
             let id = id.clone();
-            dialog.connect_response(None, move |_, response| {
-                if response == "delete" && delete_user(&ctx.conn, &id).is_ok() {
-                    ctx.nav.pop_to_tag("profiles");
-                }
+            let near = anchor.clone();
+            let overlay = overlay.downgrade();
+            dialog.connect_response(None, move |_, response| match response {
+                "export" => export_to_folder(&ctx, &id, &near, &overlay),
+                "delete" => confirm_delete_by_name(&ctx, &id, &name, &near),
+                _ => {}
             });
             dialog.present(Some(&anchor));
         });
     }
     nav_page
+}
+
+/// Marks the row and says what happened, in words.
+fn report(
+    overlay: &glib::WeakRef<adw::ToastOverlay>,
+    row: &adw::EntryRow,
+    result: bookshelf_core::Result<()>,
+    done: &str,
+) {
+    let message = match result {
+        Ok(()) => {
+            row.remove_css_class("error");
+            done.to_string()
+        }
+        Err(e) => {
+            row.add_css_class("error");
+            friendly(&e)
+        }
+    };
+    if let Some(overlay) = overlay.upgrade() {
+        overlay.add_toast(plain_toast(&message));
+    }
+}
+
+/// Pick a folder, then write every summary of `user_id` into it as Markdown.
+fn export_to_folder(
+    ctx: &Rc<Ctx>,
+    user_id: &str,
+    near: &impl IsA<gtk::Widget>,
+    overlay: &glib::WeakRef<adw::ToastOverlay>,
+) {
+    let window = near.root().and_downcast::<gtk::Window>();
+    let dialog = gtk::FileDialog::builder()
+        .title("Choose where to save the summaries")
+        .accept_label("Export Here")
+        .build();
+    let ctx = ctx.clone();
+    let user_id = user_id.to_string();
+    let overlay = overlay.clone();
+    dialog.select_folder(window.as_ref(), gio::Cancellable::NONE, move |chosen| {
+        let Ok(folder) = chosen else { return };
+        let Some(path) = folder.path() else { return };
+        let target = path.join("Bookshelf summaries");
+        let toast = match export::export_markdown(&ctx.conn, &user_id, &target) {
+            Ok(n) => {
+                let what = if n == 1 { "1 summary".to_string() } else { format!("{n} summaries") };
+                let toast = adw::Toast::builder()
+                    .title(format!("Exported {what} to {}", display_path(&target)))
+                    .use_markup(false)
+                    .button_label("Open")
+                    .timeout(8)
+                    .build();
+                toast.connect_button_clicked(move |_| open_folder(&target));
+                toast
+            }
+            Err(e) => plain_toast(&format!("Export failed: {}", friendly(&e))),
+        };
+        if let Some(overlay) = overlay.upgrade() {
+            overlay.add_toast(toast);
+        }
+    });
+}
+
+/// Second step of deleting a profile: the name has to be typed, so a stray
+/// click can't delete someone's journal.
+fn confirm_delete_by_name(ctx: &Rc<Ctx>, id: &str, name: &str, near: &adw::NavigationPage) {
+    let entry = gtk::Entry::builder().placeholder_text(name).build();
+    entry.update_property(&[gtk::accessible::Property::Label("Profile name")]);
+    let dialog = adw::AlertDialog::builder()
+        .heading(format!("Delete {name} for good?"))
+        .body(format!(
+            "This can't be undone. All of {name}'s summaries and dates will be gone.\n\n\
+             Type “{name}” to confirm."
+        ))
+        .extra_child(&entry)
+        .build();
+    dialog.add_responses(&[("cancel", "Cancel"), ("delete", "Delete Forever")]);
+    dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+    dialog.set_response_enabled("delete", false);
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+    {
+        let dialog = dialog.downgrade(); // the entry lives inside the dialog
+        let name = name.trim().to_string();
+        entry.connect_changed(move |e| {
+            if let Some(dialog) = dialog.upgrade() {
+                dialog.set_response_enabled("delete", e.text().trim() == name);
+            }
+        });
+    }
+    let ctx = ctx.clone();
+    let id = id.to_string();
+    let name = name.to_string();
+    dialog.connect_response(Some("delete"), move |_, _| match delete_user(&ctx.conn, &id) {
+        Ok(()) => {
+            ctx.nav.pop_to_tag("profiles");
+            ctx.toasts.add_toast(plain_toast(&format!("Deleted {name}")));
+        }
+        Err(e) => ctx.toasts.add_toast(plain_toast(&friendly(&e))),
+    });
+    dialog.present(Some(near));
+    entry.grab_focus();
+}
+
+/// A path for people: the home folder shown as `~`.
+fn display_path(path: &Path) -> String {
+    let home = glib::home_dir();
+    match path.strip_prefix(&home) {
+        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
+        Ok(rest) => format!("~/{}", rest.display()),
+        Err(_) => path.display().to_string(),
+    }
+}
+
+/// Opens a folder in the file manager.
+fn open_folder(dir: &Path) {
+    let dir = dir.to_path_buf();
+    gtk::FileLauncher::new(Some(&gio::File::for_path(&dir))).launch(
+        None::<&gtk::Window>,
+        gio::Cancellable::NONE,
+        move |result| {
+            if let Err(e) = result {
+                eprintln!("could not open {}: {e}", dir.display());
+            }
+        },
+    );
+}
+
+/// Where backups go (with a way to change it), and when the last one was made.
+fn backups_row(ctx: &Rc<Ctx>, date_format: &str, overlay: &adw::ToastOverlay) -> adw::ActionRow {
+    let row = adw::ActionRow::builder()
+        .title("Daily backups")
+        .use_markup(false)
+        .build();
+    let reset_btn = gtk::Button::builder()
+        .icon_name("edit-undo-symbolic")
+        .tooltip_text("Use the default folder again")
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    let open_btn = gtk::Button::builder()
+        .icon_name("folder-open-symbolic")
+        .tooltip_text("Open the backup folder")
+        .valign(gtk::Align::Center)
+        .css_classes(["flat"])
+        .build();
+    let change_btn = gtk::Button::builder()
+        .label("Change…")
+        .tooltip_text("Keep backups somewhere else, like a USB drive or a synced folder, \
+                       so they survive if this computer's disk fails")
+        .valign(gtk::Align::Center)
+        .build();
+    row.add_suffix(&reset_btn);
+    row.add_suffix(&open_btn);
+    row.add_suffix(&change_btn);
+
+    let refresh: Rc<dyn Fn()> = {
+        let ctx = ctx.clone();
+        let row = row.downgrade();
+        let reset_btn = reset_btn.downgrade();
+        let date_format = date_format.to_string();
+        Rc::new(move || {
+            let (Some(row), Some(reset_btn)) = (row.upgrade(), reset_btn.upgrade()) else { return };
+            let Ok((dir, chosen)) = backup::folder(&ctx.conn, &ctx.paths) else { return };
+            reset_btn.set_visible(chosen);
+            let place = display_path(&dir);
+            let subtitle = if !dir.is_dir() {
+                format!(
+                    "Saved to {place}\nThat folder isn't available right now (is the drive \
+                     plugged in?). Backups are paused until it's back, or until you choose \
+                     another folder."
+                )
+            } else {
+                let latest = backup::list(&dir)
+                    .ok()
+                    .and_then(|found| found.first().and_then(|p| backup::date_of(p)));
+                let when = match latest {
+                    Some(d) => format!("Latest: {}", format_date(&date_format, d)),
+                    None => "The first one is made the next time Bookshelf starts.".to_string(),
+                };
+                format!(
+                    "Saved to {place}\nOne copy a day of every profile; the last {} are kept. {when}",
+                    backup::KEEP
+                )
+            };
+            row.set_subtitle(&subtitle);
+        })
+    };
+    refresh();
+
+    {
+        let ctx = ctx.clone();
+        let overlay = overlay.downgrade();
+        open_btn.connect_clicked(move |_| match backup::folder(&ctx.conn, &ctx.paths) {
+            Ok((dir, _)) if dir.is_dir() => open_folder(&dir),
+            _ => toast(&overlay, "That folder isn't available right now."),
+        });
+    }
+    {
+        let ctx = ctx.clone();
+        let overlay = overlay.downgrade();
+        let refresh = refresh.clone();
+        change_btn.connect_clicked(move |btn| {
+            let window = btn.root().and_downcast::<gtk::Window>();
+            let dialog = gtk::FileDialog::builder()
+                .title("Choose where to keep backups")
+                .accept_label("Keep Backups Here")
+                .build();
+            if let Ok((dir, _)) = backup::folder(&ctx.conn, &ctx.paths) {
+                if dir.is_dir() {
+                    dialog.set_initial_folder(Some(&gio::File::for_path(&dir)));
+                }
+            }
+            let ctx = ctx.clone();
+            let overlay = overlay.clone();
+            let refresh = refresh.clone();
+            dialog.select_folder(window.as_ref(), gio::Cancellable::NONE, move |chosen| {
+                let Some(dir) = chosen.ok().and_then(|f| f.path()) else { return };
+                match backup::set_folder(&ctx.conn, Some(&dir)) {
+                    Ok(()) => back_up_now(
+                        &ctx,
+                        overlay,
+                        refresh,
+                        format!("Backups now go to {}", display_path(&dir)),
+                    ),
+                    Err(e) => toast(&overlay, &friendly(&e)),
+                }
+            });
+        });
+    }
+    {
+        let ctx = ctx.clone();
+        let overlay = overlay.downgrade();
+        reset_btn.connect_clicked(move |_| match backup::set_folder(&ctx.conn, None) {
+            Ok(()) => back_up_now(
+                &ctx,
+                overlay.clone(),
+                refresh.clone(),
+                "Backups are back in the default folder".to_string(),
+            ),
+            Err(e) => toast(&overlay, &friendly(&e)),
+        });
+    }
+    row
+}
+
+/// Makes today's backup in the (new) folder right away, on a worker thread.
+fn back_up_now(
+    ctx: &Ctx,
+    overlay: glib::WeakRef<adw::ToastOverlay>,
+    refresh: Rc<dyn Fn()>,
+    done: String,
+) {
+    let paths = ctx.paths.clone();
+    glib::spawn_future_local(async move {
+        let made = gio::spawn_blocking(move || {
+            db::open(&paths.db_path)
+                .and_then(|conn| backup::daily(&conn, &paths, backup::KEEP))
+                .map_err(|e| friendly(&e))
+        })
+        .await;
+        refresh();
+        let message = match made {
+            Ok(Ok(_)) => done,
+            Ok(Err(e)) => format!("Couldn't make a backup: {e}"),
+            Err(_) => "Couldn't make a backup.".to_string(),
+        };
+        toast(&overlay, &message);
+    });
+}
+
+fn toast(overlay: &glib::WeakRef<adw::ToastOverlay>, message: &str) {
+    if let Some(overlay) = overlay.upgrade() {
+        overlay.add_toast(plain_toast(message));
+    }
 }
 
 /// A row of color swatches plus a custom color button.

@@ -8,7 +8,7 @@ use bookshelf_core::openlibrary::OpenLibrary;
 use bookshelf_core::service;
 use gtk::{gio, glib};
 
-use crate::{editor, plain_toast, Ctx};
+use crate::{editor, friendly, plain_toast, Ctx};
 
 /// Everything the result rows need, cloned cheaply into callbacks.
 #[derive(Clone)]
@@ -140,7 +140,7 @@ fn result_row(ui: &Ui, book: NewBook) -> adw::ActionRow {
 }
 
 /// User picked a result: save it (description + cover) on a worker thread,
-/// then open its summary page. Books you haven't started land in "Eventually".
+/// then ask which shelf it goes on and open its page.
 fn pick(ui: &Ui, picked: NewBook) {
     ui.list.set_sensitive(false);
     ui.spinner.set_spinning(true);
@@ -168,23 +168,75 @@ fn pick(ui: &Ui, picked: NewBook) {
             Err(_) => return,
         };
 
-        let summary = find_user_summary_for_book(&ui.ctx.conn, &ui.user.id, &book.id)
-            .and_then(|found| match found {
-                Some(s) => Ok(s),
-                None => create_summary(
-                    &ui.ctx.conn,
-                    &ui.user.id,
-                    &book.id,
-                    &SummaryInput::default(),
-                ),
-            });
-
-        match summary {
-            Ok(s) => {
-                ui.ctx.nav.pop_to_tag("home");
-                ui.ctx.nav.push(&editor::summary_page(&ui.ctx, &s.id));
-            }
-            Err(e) => ui.overlay.add_toast(plain_toast(&format!("Could not save: {e}"))),
+        match find_user_summary_for_book(&ui.ctx.conn, &ui.user.id, &book.id) {
+            Ok(Some(existing)) => ask_open_or_reread(&ui, &book, existing.id),
+            Ok(None) => ask_shelf(&ui, &book),
+            Err(e) => ui.overlay.add_toast(plain_toast(&format!("Could not save: {}", friendly(&e)))),
         }
     });
+}
+
+fn open_entry(ui: &Ui, summary_id: &str) {
+    ui.ctx.nav.pop_to_tag("home");
+    ui.ctx.nav.push(&editor::summary_page(&ui.ctx, summary_id));
+}
+
+/// Already on their shelf: open that entry, or log another reading.
+fn ask_open_or_reread(ui: &Ui, book: &Book, existing_id: String) {
+    let dialog = adw::AlertDialog::builder()
+        .heading("You've logged this book before")
+        .body(format!(
+            "Open your entry for “{}”, or start a new one for this reading?",
+            book.title
+        ))
+        .build();
+    dialog.add_responses(&[("open", "Open my entry"), ("again", "Read it again")]);
+    dialog.set_response_appearance("again", adw::ResponseAppearance::Suggested);
+    dialog.set_default_response(Some("open"));
+    dialog.set_close_response("cancel");
+
+    let this = ui.clone();
+    let book = book.clone();
+    dialog.connect_response(None, move |_, response| match response {
+        "open" => open_entry(&this, &existing_id),
+        "again" => ask_shelf(&this, &book),
+        _ => {}
+    });
+    dialog.present(Some(&ui.list));
+}
+
+/// Which shelf does a newly added book go on? Dates start as today and can
+/// be changed on the book page.
+fn ask_shelf(ui: &Ui, book: &Book) {
+    let dialog = adw::AlertDialog::builder()
+        .heading(format!("Add “{}”", book.title))
+        .body("Which shelf does it go on? You can change the dates afterwards.")
+        .build();
+    dialog.add_responses(&[
+        ("eventually", "Someday"),
+        ("reading", "Reading now"),
+        ("finished", "Finished"),
+    ]);
+    dialog.set_response_appearance("reading", adw::ResponseAppearance::Suggested);
+    dialog.set_default_response(Some("reading"));
+    dialog.set_close_response("cancel"); // Esc adds nothing
+
+    let this = ui.clone();
+    let book_id = book.id.clone();
+    dialog.connect_response(None, move |_, response| {
+        let today = chrono::Local::now().date_naive();
+        let input = match response {
+            "eventually" => SummaryInput::default(),
+            "reading" => SummaryInput { started_on: Some(today), ..Default::default() },
+            "finished" => SummaryInput { finished_on: Some(today), ..Default::default() },
+            _ => return,
+        };
+        match create_summary(&this.ctx.conn, &this.user.id, &book_id, &input) {
+            Ok(s) => open_entry(&this, &s.id),
+            Err(e) => this
+                .overlay
+                .add_toast(plain_toast(&format!("Could not save: {}", friendly(&e)))),
+        }
+    });
+    dialog.present(Some(&ui.list));
 }
