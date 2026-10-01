@@ -53,6 +53,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.e36lewis.Bookshelf.UITests
         TEST_TARGET_NAME: Bookshelf
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Bookshelf:
     build:
