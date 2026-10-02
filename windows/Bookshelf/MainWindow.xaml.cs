@@ -88,6 +88,12 @@ public sealed partial class MainWindow : Window
             var (journal, open) = _options.DemoJournal
                 ? await OpenDemoAsync()
                 : (await JournalService.OpenDefaultAsync(Channel.Preview), null);
+            if (_options.DemoJournal && _options.DemoSaveFails)
+            {
+                // After the demo's own notes are in.
+                journal.FailBodySavesForTesting();
+                StartupLog.Step("Demo journal: saving the writing page will fail (--demo-save-fails)");
+            }
             _session = new Session(journal);
             _session.ShelvesChanged += UpdateBadges;
             _session.SearchChanged += UpdateBadges;
@@ -129,11 +135,6 @@ public sealed partial class MainWindow : Window
             throw new InvalidOperationException($"{folder} isn't empty and doesn't hold a demo journal, so it was left alone.");
         }
         var journal = await JournalService.OpenAsync(folder);
-        if (_options.DemoSaveFails)
-        {
-            journal.FailBodySavesForTesting();
-            StartupLog.Step("Demo journal: saving the writing page will fail (--demo-save-fails)");
-        }
         if (state == DemoJournal.FolderState.Demo) return (journal, null);
         await Task.Run(() => DemoJournal.Mark(folder));
         if (_options.DemoEmpty) return (journal, null);

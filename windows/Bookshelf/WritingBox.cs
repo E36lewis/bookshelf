@@ -38,7 +38,7 @@ public sealed class WritingBox
     private readonly RichEditBox _box;
     private readonly UndoHistory _history = new();
     private readonly Typewriter _typewriter;
-    private readonly AccessibilitySettings _accessibility = new();
+    private readonly UISettings _system = new(); // kept: its event lives as long as it does
     private WritingColors _colors;
     private WriterSpacing? _spacing;
     private string _text = "";
@@ -82,10 +82,12 @@ public sealed class WritingBox
         };
         _box.PreviewKeyDown += OnPreviewKeyDown;
         _box.Paste += OnPaste;
-        // Light, dark and High Contrast each have their own colors.
+        // Light, dark and High Contrast each have their own colors. (A
+        // desktop app can't watch AccessibilitySettings; Windows' colors
+        // changing covers High Contrast going on or off.)
         _box.ActualThemeChanged += (_, _) => Recolor();
-        _accessibility.HighContrastChanged += OnHighContrastChanged;
-        _box.Unloaded += (_, _) => _accessibility.HighContrastChanged -= OnHighContrastChanged;
+        _system.ColorValuesChanged += OnSystemColorsChanged;
+        _box.Unloaded += (_, _) => _system.ColorValuesChanged -= OnSystemColorsChanged;
     }
 
     /// <summary>Replaces everything (e.g. when a summary is opened); clears undo.</summary>
@@ -352,7 +354,8 @@ public sealed class WritingBox
 
     // ---- styling ----------------------------------------------------------------
 
-    private void OnHighContrastChanged(AccessibilitySettings sender, object args) =>
+    /// <summary>Raised off the UI thread.</summary>
+    private void OnSystemColorsChanged(UISettings sender, object args) =>
         _box.DispatcherQueue.TryEnqueue(Recolor);
 
     /// <summary>Picks the colors for the theme the editor has now, and restyles everything in them.</summary>
