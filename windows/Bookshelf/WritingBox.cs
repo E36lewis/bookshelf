@@ -126,6 +126,7 @@ public sealed class WritingBox
     /// <summary>Replaces everything (e.g. when a summary is opened); clears undo.</summary>
     public void SetText(string text)
     {
+        var clock = Stopwatch.StartNew();
         var plain = text.Replace("\r\n", "\r").Replace('\n', '\r');
         _applying = true;
         _box.Document.SetText(TextSetOptions.None, plain);
@@ -139,8 +140,15 @@ public sealed class WritingBox
         _history.Clear();
         _pending.Clear();
         _selection = CurrentSelection();
+        _formats.Clear(); // made again from this text's font
+        var loaded = clock.Elapsed.TotalMilliseconds;
         ApplySpacing();
         RestyleAll();
+        if (LogTimings)
+        {
+            StartupLog.Step($"Writer: opened {_text.Length:N0} characters in {clock.Elapsed.TotalMilliseconds:F0} ms " +
+                $"(the text {loaded:F0}, spacing and highlighting {clock.Elapsed.TotalMilliseconds - loaded:F0})");
+        }
     }
 
     /// <summary>
@@ -585,14 +593,16 @@ public sealed class WritingBox
     }
 
     /// <summary>
-    /// The formatting for one look, made once from the document's own default
-    /// (its font) and kept until the colors or the size change.
+    /// The formatting for one look, made once and kept until the colors or
+    /// the size change. It starts from the text's own formatting, for its
+    /// font: the box's FontFamily (a bundled font) reaches the text that way,
+    /// not through the document's default format, whose font is the system's.
     /// </summary>
     private ITextCharacterFormat FormatFor(TextStyle style)
     {
         if (_formats.TryGetValue(style, out var format)) return format;
         var c = _colors;
-        format = _box.Document.GetDefaultCharacterFormat().GetClone();
+        format = _box.Document.GetRange(0, 0).CharacterFormat.GetClone();
         format.Bold = (style & (TextStyle.Heading | TextStyle.Bold)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Italic = (style & (TextStyle.Italic | TextStyle.Quote)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Strikethrough = (style & TextStyle.Strike) != 0 ? FormatEffect.On : FormatEffect.Off;

@@ -476,7 +476,10 @@ Step 'Writer: Markdown is highlighted as you type' {
     if ($color -ne [Windows.Automation.TextPattern]::MixedAttributeValue) { throw "'**bold**' is all one color ($color)" }
     $quote = $doc.FindText('Big ideas', $true, $false)
     if (-not $quote.GetAttributeValue([Windows.Automation.TextPattern]::IsItalicAttribute)) { throw 'the quote is not italic' }
-    Write-Host "      'bold' weight $weight, 'move' $plainWeight; '**bold**' has mixed colors"
+    # One font throughout, the writing font (the bundled iA Writer Duo here).
+    $fonts = @($word, $plain, $quote) | ForEach-Object { $_.GetAttributeValue([Windows.Automation.TextPattern]::FontNameAttribute) }
+    if (@($fonts | Select-Object -Unique).Count -ne 1 -or $fonts[0] -notlike 'iA Writer*') { throw "fonts: $($fonts -join ', ')" }
+    Write-Host "      'bold' weight $weight, 'move' $plainWeight; '**bold**' has mixed colors; all in $($fonts[0])"
     Snap '40-writer-typed-markdown'
 }
 Step 'Writer: Ctrl+B on a word, and one Ctrl+Z takes it back' {
