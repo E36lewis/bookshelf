@@ -291,7 +291,7 @@ public sealed partial class MainWindow : Window
             ProfileMenu.Items.Add(item);
         }
         ProfileMenu.Items.Add(new MenuFlyoutSeparator());
-        var add = new MenuFlyoutItem { Text = "New profile…", Icon = new FontIcon { Glyph = "" } };
+        var add = new MenuFlyoutItem { Text = "New profile…", Icon = new FontIcon { Glyph = "\uE8FA" } };
         add.Click += (_, _) => ShowWelcome(firstRun: false);
         ProfileMenu.Items.Add(add);
         FlyoutBase.ShowAttachedFlyout(ProfileItem);
@@ -481,18 +481,19 @@ public sealed partial class MainWindow : Window
     /// <summary>The shortcuts that work everywhere, from the core's Windows table.</summary>
     private void AddKeyboardShortcuts()
     {
-        Root.KeyboardAcceleratorPlacementMode = KeyboardAcceleratorPlacementMode.Hidden;
-        Keys.Add(Root, ShortcutKeys.Titles.Reading, () => ShowShelf(Shelf.Reading));
-        Keys.Add(Root, ShortcutKeys.Titles.Finished, () => ShowShelf(Shelf.Finished));
-        Keys.Add(Root, ShortcutKeys.Titles.Eventually, () => ShowShelf(Shelf.Eventually));
-        Keys.Add(Root, ShortcutKeys.Titles.AddBook, () => _ = AddBookAsync());
-        Keys.Add(Root, ShortcutKeys.Titles.Search, FocusSearch);
-        Keys.Add(Root, ShortcutKeys.Titles.Settings, OpenSettings);
-        Keys.Add(Root, ShortcutKeys.Titles.Manual, OpenManual);
-        Keys.Add(Root, ShortcutKeys.Titles.Shortcuts, () => _ = ShowShortcutsAsync());
+        // None of these mean anything to a text box, so they work while typing too.
+        Keys.AddGlobal(ShortcutKeys.Titles.Reading, () => ShowShelf(Shelf.Reading));
+        Keys.AddGlobal(ShortcutKeys.Titles.Finished, () => ShowShelf(Shelf.Finished));
+        Keys.AddGlobal(ShortcutKeys.Titles.Eventually, () => ShowShelf(Shelf.Eventually));
+        Keys.AddGlobal(ShortcutKeys.Titles.AddBook, () => _ = AddBookAsync());
+        Keys.AddGlobal(ShortcutKeys.Titles.Search, FocusSearch);
+        Keys.AddGlobal(ShortcutKeys.Titles.Settings, OpenSettings);
+        Keys.AddGlobal(ShortcutKeys.Titles.Manual, OpenManual);
+        Keys.AddGlobal(ShortcutKeys.Titles.Shortcuts, () => _ = ShowShortcutsAsync());
         // Windows' own Back keys.
-        Keys.Add(Root, VirtualKey.Left, VirtualKeyModifiers.Menu, GoBack);
-        Keys.Add(Root, VirtualKey.GoBack, VirtualKeyModifiers.None, GoBack);
+        Keys.AddGlobal(VirtualKey.Left, VirtualKeyModifiers.Menu, GoBack);
+        Keys.AddGlobal(VirtualKey.GoBack, VirtualKeyModifiers.None, GoBack);
+        Keys.Attach(Root);
     }
 
     // ---- notices ----------------------------------------------------------------

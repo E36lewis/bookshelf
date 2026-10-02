@@ -58,7 +58,7 @@ public sealed partial class AddBookDialog : ContentDialog
         if (Query.Text.Trim().Length == 0)
         {
             Busy.Visibility = Visibility.Collapsed;
-            ShowHint("", "Find a book", "Results come from Open Library.");
+            ShowHint("\uE721", "Find a book", "Results come from Open Library.");
             return;
         }
         _debounce.Start();
@@ -91,7 +91,7 @@ public sealed partial class AddBookDialog : ContentDialog
             if (generation != _generation) return; // a newer search is on its way
             if (found.Length == 0)
             {
-                ShowHint("", "No books found", "Try another title, an author's name or an ISBN.");
+                ShowHint("\uE721", "No books found", "Try another title, an author's name or an ISBN.");
                 return;
             }
             Results.ItemsSource = found.Select(r => new ResultItem(r)).ToList();

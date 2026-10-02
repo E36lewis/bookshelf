@@ -272,7 +272,7 @@ public sealed partial class SettingsPage : BookshelfPage
             {
                 swatch.Children.Add(new FontIcon
                 {
-                    Glyph = "",
+                    Glyph = "\uE73E",
                     FontSize = 14,
                     Foreground = new SolidColorBrush(tick),
                 });

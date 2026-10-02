@@ -57,7 +57,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
-                x:Name="BookTitle"
+                x:Name="WriterTitle"
                 VerticalAlignment="Center"
                 Style="{StaticResource CaptionSecondaryStyle}"
                 TextTrimming="CharacterEllipsis" />

@@ -102,14 +102,14 @@ public sealed partial class ShelfPage : BookshelfPage
         Entries.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         if (empty && Session.IsSearching)
         {
-            EmptyGlyph.Glyph = ""; // search
+            EmptyGlyph.Glyph = "\uE721"; // search
             EmptyTitle.Text = "No matches";
             EmptyText.Text = ShelfText.NoMatches(Session.Query);
             EmptyAddButton.Visibility = Visibility.Collapsed;
         }
         else if (empty)
         {
-            EmptyGlyph.Glyph = ""; // library
+            EmptyGlyph.Glyph = "\uE8F1"; // library
             EmptyTitle.Text = "Nothing here yet";
             EmptyText.Text = ShelfText.Empty(shelf);
             EmptyAddButton.Visibility = Visibility.Visible;

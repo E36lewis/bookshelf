@@ -68,7 +68,7 @@ public sealed partial class ReaderPage : BookshelfPage
     private void OnFullScreenChanged()
     {
         var on = Shell.IsFullScreen;
-        FullScreenIcon.Glyph = on ? "" : "";
+        FullScreenIcon.Glyph = on ? "\uE73F" : "\uE740";
         var label = on ? "Leave full screen (Esc)" : "Full screen (F11)";
         ToolTipService.SetToolTip(FullScreenButton, label);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(FullScreenButton, label);

@@ -65,7 +65,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             var settings = Session.Settings ?? await Session.Journal.SettingsAsync(entry.UserId);
             var layout = BookshelfFfiMethods.WriterLayout(settings);
             _title = entry.Book.Title;
-            BookTitle.Text = _title;
+            WriterTitle.Text = _title;
             Column.MaxWidth = layout.ColumnWidth + 64; // the column plus its padding
 
             Editor.FontFamily = Look.Writing;
@@ -212,33 +212,41 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
     }
 
     /// <summary>
-    /// RichEditBox has its own Ctrl shortcuts for alignment and line spacing
-    /// (Ctrl+E, R, L, J, 1, 2, 5) that would format the text behind the
-    /// Markdown's back. Ctrl+1/2/3 switch shelves instead, as everywhere.
+    /// The RichEditBox keeps keys from keyboard accelerators, so the writing
+    /// page's own keys are handled here: Ctrl+S saves, F11 and Esc go in
+    /// and out of full screen. It also has Ctrl shortcuts for alignment and
+    /// line spacing (Ctrl+E, R, L, J, 1, 2, 5) that would format the text
+    /// behind the Markdown's back; those do nothing. (Ctrl+1/2/3 switch
+    /// shelves, as everywhere: see MainWindow.)
     /// </summary>
     private void OnEditorKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(CoreVirtualKeyStates.Down);
-        if (!ctrl) return;
-        switch (e.Key)
+        var modifiers = Keys.Modifiers();
+        if (modifiers == VirtualKeyModifiers.None && e.Key == VirtualKey.F11)
         {
-            case VirtualKey.Number1:
-                e.Handled = true;
-                Shell.ShowShelf(Shelf.Reading);
-                break;
-            case VirtualKey.Number2:
-                e.Handled = true;
-                Shell.ShowShelf(Shelf.Finished);
-                break;
-            case VirtualKey.Number3:
-                e.Handled = true;
-                Shell.ShowShelf(Shelf.Eventually);
-                break;
-            case VirtualKey.E or VirtualKey.R or VirtualKey.L or VirtualKey.J or VirtualKey.Number5:
-                e.Handled = true;
-                break;
+            e.Handled = true;
+            Shell.SetFullScreen(!Shell.IsFullScreen);
+        }
+        else if (modifiers == VirtualKeyModifiers.None && e.Key == VirtualKey.Escape && Shell.IsFullScreen)
+        {
+            e.Handled = true;
+            Shell.SetFullScreen(false);
+        }
+        else if (modifiers == VirtualKeyModifiers.Control)
+        {
+            switch (e.Key)
+            {
+                case VirtualKey.S:
+                    e.Handled = true;
+                    _ = SaveAsync();
+                    break;
+                case VirtualKey.E or VirtualKey.R or VirtualKey.L or VirtualKey.J or VirtualKey.Number5:
+                    e.Handled = true;
+                    break;
+            }
         }
     }
+
 
     private void OnSave(object sender, RoutedEventArgs e) => _ = SaveAsync();
 
@@ -247,7 +255,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
     private void OnFullScreenChanged()
     {
         var on = Shell.IsFullScreen;
-        FullScreenIcon.Glyph = on ? "" : "";
+        FullScreenIcon.Glyph = on ? "\uE73F" : "\uE740";
         var label = on ? "Leave full screen (Esc)" : "Full screen (F11)";
         ToolTipService.SetToolTip(FullScreenButton, label);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(FullScreenButton, label);
