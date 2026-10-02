@@ -199,8 +199,12 @@ pub fn shortcuts_markdown(platform: Platform) -> String {
         }
         out.push_str(&format!("**{}**\n\n", group.title));
         for item in &group.items {
-            let keys = shortcuts::key_label(platform, &item.accel);
-            out.push_str(&format!("- **{keys}**: {}\n", item.title));
+            let keys = std::iter::once(&item.accel)
+                .chain(&item.also)
+                .map(|accel| format!("**{}**", shortcuts::key_label(platform, accel)))
+                .collect::<Vec<_>>()
+                .join(" or ");
+            out.push_str(&format!("- {keys}: {}\n", item.title));
         }
     }
     out
@@ -513,8 +517,11 @@ mod tests {
         let windows = shortcuts_markdown(Platform::Windows);
         assert!(windows.contains("- **Ctrl+E**: Write or edit your summary\n"));
         assert!(windows.contains("\n\n**Help**\n\n- **F1**: User manual\n"));
+        assert!(windows.contains("- **F11** or **Ctrl+Shift+Enter**: Full screen\n"));
+        assert!(mac.contains("- **⌃⌘F**: Full screen\n"));
         let linux = shortcuts_markdown(Platform::Linux);
         assert!(linux.contains("- **Ctrl+,**: Settings\n"));
+        assert!(linux.contains("- **F11**: Full screen\n"));
         assert!(!linux.contains("Link"));
     }
 

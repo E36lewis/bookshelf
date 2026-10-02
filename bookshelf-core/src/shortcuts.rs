@@ -26,6 +26,9 @@ pub struct ShortcutGroup {
 pub struct Shortcut {
     pub title: String,
     pub accel: Accel,
+    /// Other keys that do the same, listed after `accel` with "or"
+    /// between. Usually none.
+    pub also: Vec<Accel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,14 +71,15 @@ pub fn shortcuts(platform: Platform) -> Vec<ShortcutGroup> {
             items: rows
                 .iter()
                 .filter_map(|row| {
-                    let accel = match platform {
-                        Platform::Linux => Accel::Gtk(row.linux?.to_string()),
-                        Platform::Mac => Accel::Keys(row.mac?),
-                        Platform::Windows => Accel::Keys(row.windows?),
+                    let (accel, also) = match platform {
+                        Platform::Linux => (Accel::Gtk(row.linux?.to_string()), None),
+                        Platform::Mac => (Accel::Keys(row.mac?), None),
+                        Platform::Windows => (Accel::Keys(row.windows?), row.windows_also),
                     };
                     Some(Shortcut {
                         title: row.title.to_string(),
                         accel,
+                        also: also.into_iter().map(Accel::Keys).collect(),
                     })
                 })
                 .collect(),
@@ -109,6 +113,16 @@ pub fn key_label(platform: Platform, accel: &Accel) -> String {
             s + &key_name(k.key, "Enter")
         }
     }
+}
+
+/// All of a shortcut's keys, as [`key_label`] writes each, with "or"
+/// between: "F11 or Ctrl+Shift+Enter".
+pub fn keys_label(platform: Platform, shortcut: &Shortcut) -> String {
+    std::iter::once(&shortcut.accel)
+        .chain(&shortcut.also)
+        .map(|accel| key_label(platform, accel))
+        .collect::<Vec<_>>()
+        .join(" or ")
 }
 
 fn key_name(key: Key, enter: &str) -> String {
@@ -153,6 +167,18 @@ struct Row {
     linux: Option<&'static str>,
     mac: Option<KeyCombo>,
     windows: Option<KeyCombo>,
+    /// A second Windows key for the same action (see [`Row::or_on_windows`]).
+    windows_also: Option<KeyCombo>,
+}
+
+impl Row {
+    /// Windows takes `combo` as well as its own column's key.
+    const fn or_on_windows(self, combo: KeyCombo) -> Row {
+        Row {
+            windows_also: Some(combo),
+            ..self
+        }
+    }
 }
 
 const fn row(
@@ -166,6 +192,7 @@ const fn row(
         linux,
         mac,
         windows,
+        windows_also: None,
     }
 }
 
@@ -262,12 +289,16 @@ const TABLE: &[(&str, &[Row])] = &[
     (
         "Writing and reading",
         &[
+            // On many laptops F11 is a hardware key (brightness, or HP's
+            // network settings) unless Fn is held, so Windows has a second
+            // key that's never on the function row.
             row(
                 "Full screen",
                 Some("F11"),
                 Some(combo(ch('f'), true, true, false)),
                 bare(Key::F(11)),
-            ),
+            )
+            .or_on_windows(combo(Key::Return, false, true, true)),
             row(
                 "Leave full screen",
                 Some("Escape"),
@@ -404,6 +435,7 @@ mod tests {
         );
         assert_eq!(label(Platform::Windows, "Focus mode"), "Ctrl+Shift+F");
         assert_eq!(label(Platform::Windows, "Full screen"), "F11");
+        assert_eq!(label(Platform::Windows, "Leave full screen"), "Esc");
         assert_eq!(label(Platform::Windows, "Keyboard shortcuts"), "Ctrl+?");
         assert_eq!(label(Platform::Linux, "Reading"), "1");
         assert_eq!(label(Platform::Linux, "Write or edit your summary"), "E");
@@ -427,6 +459,32 @@ mod tests {
             ),
             "Ctrl+Shift+Enter"
         );
+    }
+
+    #[test]
+    fn windows_has_a_second_full_screen_key() {
+        let all = |p| -> Vec<Shortcut> { shortcuts(p).into_iter().flat_map(|g| g.items).collect() };
+        let windows = all(Platform::Windows);
+        let full = windows.iter().find(|s| s.title == "Full screen").unwrap();
+        let enter = Accel::Keys(combo(Key::Return, false, true, true));
+        assert_eq!(full.also, std::slice::from_ref(&enter));
+        assert_eq!(
+            keys_label(Platform::Windows, full),
+            "F11 or Ctrl+Shift+Enter"
+        );
+        // No other Windows shortcut has either key.
+        for other in windows.iter().filter(|s| s.title != "Full screen") {
+            assert!(other.also.is_empty(), "{}", other.title);
+            assert_ne!(other.accel, enter, "{}", other.title);
+            assert_ne!(other.accel, full.accel, "{}", other.title);
+        }
+        // Linux and the Mac keep one key each.
+        for p in [Platform::Linux, Platform::Mac] {
+            for s in all(p) {
+                assert!(s.also.is_empty(), "{}", s.title);
+                assert_eq!(keys_label(p, &s), key_label(p, &s.accel));
+            }
+        }
     }
 
     #[test]

@@ -118,6 +118,10 @@ pub struct Shortcut {
     pub title: String,
     /// The keys.
     pub accel: Accel,
+    /// Other keys that do the same, shown after `accel` with "or"
+    /// between: Windows' Ctrl+Shift+Enter for full screen, besides F11.
+    /// Usually empty.
+    pub also: Vec<Accel>,
 }
 
 /// The keys for a shortcut.
@@ -208,6 +212,7 @@ pub fn shortcuts(platform: Platform) -> Vec<ShortcutGroup> {
                 .map(|s| Shortcut {
                     title: s.title,
                     accel: s.accel.into(),
+                    also: s.also.into_iter().map(Accel::from).collect(),
                 })
                 .collect(),
         })
@@ -318,6 +323,20 @@ mod tests {
             find(Platform::Windows, "Full screen"),
             combo(ShortcutKey::Function { number: 11 }, false, false, false)
         );
+        let full_screen = shortcuts(Platform::Windows)
+            .into_iter()
+            .flat_map(|g| g.items)
+            .find(|s| s.title == "Full screen")
+            .unwrap();
+        assert_eq!(
+            full_screen.also,
+            [combo(ShortcutKey::Return, false, true, true)]
+        );
+        assert!(shortcuts(Platform::Mac)
+            .iter()
+            .chain(&shortcuts(Platform::Linux))
+            .flat_map(|g| &g.items)
+            .all(|s| s.also.is_empty()));
         assert_eq!(
             find(Platform::Windows, "Leave full screen"),
             combo(ShortcutKey::Escape, false, false, false)

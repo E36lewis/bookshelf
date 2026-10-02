@@ -293,8 +293,7 @@ Press **F11**, or the full screen button, to fill the whole screen. **Esc** or *
 Press **⌃⌘F** (Control-Command-F), choose **View › Enter Full Screen**, or click the window's green button, to fill the whole screen. The toolbar hides until you move the pointer to the top. **Esc** or **⌃⌘F** brings you back.
 <!-- /platform -->
 <!-- platform: windows -->
-<!-- TODO(owner): the Windows app is getting a second full-screen key. Add it here, under Reading, in the Keyboard shortcuts "More keys" list and in "F11 doesn't go full screen". -->
-Press **F11**, or the full screen button above the page, to fill the whole screen. **Esc** or **F11** brings you back.
+Press **F11** or **Ctrl+Shift+Enter**, or the full screen button above the page, to fill the whole screen. **Esc**, **F11** or **Ctrl+Shift+Enter** brings you back.
 <!-- /platform -->
 
 ## Reading
@@ -306,7 +305,7 @@ The reading page shows your summary nicely formatted, with nothing around it. Pr
 The reading page shows your summary nicely formatted, with nothing around it. Press **⌃⌘F** for full screen; the toolbar hides too. **Esc** leaves full screen, and pressed again takes you back to your shelf. To make a change, press **Edit**, or **⌘↩**.
 <!-- /platform -->
 <!-- platform: windows -->
-The reading page shows your summary nicely formatted, with nothing around it. Press **F11**, or the full screen button at the top right, for full screen; the title bar disappears too. **Esc** brings you back. To make a change, press the pencil button at the top right.
+The reading page shows your summary nicely formatted, with nothing around it. Press **F11** or **Ctrl+Shift+Enter**, or the full screen button at the top right, for full screen; the title bar disappears too. **Esc** brings you back. To make a change, press the pencil button at the top right.
 <!-- /platform -->
 
 ## Settings
@@ -619,7 +618,7 @@ Press **Ctrl+?** in Bookshelf (on most keyboards that's **Ctrl+Shift+/**) to see
 
 **Writing and reading**
 
-- **F11**: Full screen
+- **F11** or **Ctrl+Shift+Enter**: Full screen
 - **Esc**: Leave full screen
 
 **Help**
@@ -657,8 +656,11 @@ Allow Bookshelf through it, then search again: for Windows' own firewall, that's
 <!-- /platform -->
 Bookshelf only ever connects to `openlibrary.org` and `covers.openlibrary.org`.
 
-<!-- platform: linux, windows -->
+<!-- platform: linux -->
 **F11 doesn't go full screen.** On many laptops the top row of keys controls brightness, volume and so on, and needs **Fn** held down to work as **F11**. Press **Fn+F11**, or use the full screen button.
+<!-- /platform -->
+<!-- platform: windows -->
+**F11 doesn't go full screen.** On many laptops the top row of keys controls brightness, volume and so on (on some, F11 opens Windows' network settings), and needs **Fn** held down to work as **F11**. Press **Ctrl+Shift+Enter** instead, which works on every keyboard, or **Fn+F11**, or use the full screen button.
 <!-- /platform -->
 
 **The bottom line says "Not saved".** See *It saves as you type*. Your text is safe, and Bookshelf tells you where it put it.

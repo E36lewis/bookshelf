@@ -3259,6 +3259,12 @@ public struct Shortcut: Equatable, Hashable {
      * The keys.
      */
     public var accel: Accel
+    /**
+     * Other keys that do the same, shown after `accel` with "or"
+     * between: Windows' Ctrl+Shift+Enter for full screen, besides F11.
+     * Usually empty.
+     */
+    public var also: [Accel]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -3268,9 +3274,15 @@ public struct Shortcut: Equatable, Hashable {
          */title: String, 
         /**
          * The keys.
-         */accel: Accel) {
+         */accel: Accel, 
+        /**
+         * Other keys that do the same, shown after `accel` with "or"
+         * between: Windows' Ctrl+Shift+Enter for full screen, besides F11.
+         * Usually empty.
+         */also: [Accel]) {
         self.title = title
         self.accel = accel
+        self.also = also
     }
 
     
@@ -3290,13 +3302,15 @@ public struct FfiConverterTypeShortcut: FfiConverterRustBuffer {
         return
             try Shortcut(
                 title: FfiConverterString.read(from: &buf), 
-                accel: FfiConverterTypeAccel.read(from: &buf)
+                accel: FfiConverterTypeAccel.read(from: &buf), 
+                also: FfiConverterSequenceTypeAccel.read(from: &buf)
         )
     }
 
     public static func write(_ value: Shortcut, into buf: inout [UInt8]) {
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterTypeAccel.write(value.accel, into: &buf)
+        FfiConverterSequenceTypeAccel.write(value.also, into: &buf)
     }
 }
 
@@ -6085,6 +6099,31 @@ fileprivate struct FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeStyleSpan.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAccel: FfiConverterRustBuffer {
+    typealias SwiftType = [Accel]
+
+    public static func write(_ value: [Accel], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAccel.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Accel] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Accel]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAccel.read(from: &buf))
         }
         return seq
     }

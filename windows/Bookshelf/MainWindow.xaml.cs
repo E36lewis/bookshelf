@@ -234,7 +234,10 @@ public sealed partial class MainWindow : Window
         // Nothing but the page in full screen.
         AppTitleBar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
         Nav.IsPaneVisible = !on && _session?.Profile is not null;
-        if (on) ShowNotice("Press Esc to leave full screen", InfoBarSeverity.Informational, seconds: 3);
+        // Every key out, from the core's table: F11 does something else on many laptops.
+        var keys = ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen);
+        if (on) ShowNotice($"Press {keys} to leave full screen", InfoBarSeverity.Informational, seconds: 4);
+        else Announce("Left full screen");
         FullScreenChanged?.Invoke();
     }
 

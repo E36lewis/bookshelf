@@ -5407,6 +5407,11 @@ class FfiConverterTypeShelfView: FfiConverterRustBuffer<ShelfView> {
 /// <param name="Accel">
 /// The keys.
 /// </param>
+/// <param name="Also">
+/// Other keys that do the same, shown after `accel` with "or"
+/// between: Windows' Ctrl+Shift+Enter for full screen, besides F11.
+/// Usually empty.
+/// </param>
 public record Shortcut (
     /// <summary>
     /// What it does ("Bold").
@@ -5415,7 +5420,13 @@ public record Shortcut (
     /// <summary>
     /// The keys.
     /// </summary>
-    Accel Accel
+    Accel Accel, 
+    /// <summary>
+    /// Other keys that do the same, shown after `accel` with "or"
+    /// between: Windows' Ctrl+Shift+Enter for full screen, besides F11.
+    /// Usually empty.
+    /// </summary>
+    Accel[] Also
 ) {
 }
 
@@ -5425,19 +5436,22 @@ class FfiConverterTypeShortcut: FfiConverterRustBuffer<Shortcut> {
     public override Shortcut Read(BigEndianStream stream) {
         return new Shortcut(
             Title: FfiConverterString.INSTANCE.Read(stream),
-            Accel: FfiConverterTypeAccel.INSTANCE.Read(stream)
+            Accel: FfiConverterTypeAccel.INSTANCE.Read(stream),
+            Also: FfiConverterSequenceTypeAccel.INSTANCE.Read(stream)
         );
     }
 
     public override int AllocationSize(Shortcut value) {
         return 0
             + FfiConverterString.INSTANCE.AllocationSize(value.Title)
-            + FfiConverterTypeAccel.INSTANCE.AllocationSize(value.Accel);
+            + FfiConverterTypeAccel.INSTANCE.AllocationSize(value.Accel)
+            + FfiConverterSequenceTypeAccel.INSTANCE.AllocationSize(value.Also);
     }
 
     public override void Write(Shortcut value, BigEndianStream stream) {
             FfiConverterString.INSTANCE.Write(value.Title, stream);
             FfiConverterTypeAccel.INSTANCE.Write(value.Accel, stream);
+            FfiConverterSequenceTypeAccel.INSTANCE.Write(value.Also, stream);
     }
 }
 
@@ -7956,6 +7970,52 @@ class FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer<StyleSpan[]> {
 
         stream.WriteInt(value.Length);
         var writerFn = FfiConverterTypeStyleSpan.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeAccel: FfiConverterRustBuffer<Accel[]> {
+    public static FfiConverterSequenceTypeAccel INSTANCE = new FfiConverterSequenceTypeAccel();
+
+    public override Accel[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new Accel[length];
+        var readFn = FfiConverterTypeAccel.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(Accel[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeAccel.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(Accel[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeAccel.INSTANCE.Write;
         value.ForEach(item => writerFn(item, stream));
     }
 }

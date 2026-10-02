@@ -169,6 +169,12 @@ public sealed class AppLogicTests : IDisposable
             ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen));
         Assert.Null(ShortcutKeys.Labels("No such thing"));
 
+        // From the core's table, not the app: the shortcut's own second key.
+        var row = BookshelfFfiMethods.Shortcuts(Platform.Windows)
+            .SelectMany(g => g.Items)
+            .Single(s => s.Title == ShortcutKeys.Titles.FullScreen);
+        Assert.Equal(keys[1], Assert.IsType<Accel.Keys>(Assert.Single(row.Also)).Combo);
+
         // No other shortcut has it.
         var others = BookshelfFfiMethods.Shortcuts(Platform.Windows)
             .SelectMany(g => g.Items)

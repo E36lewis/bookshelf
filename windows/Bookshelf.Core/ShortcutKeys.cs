@@ -39,33 +39,27 @@ public static class ShortcutKeys
         ];
     }
 
-    /// <summary>
-    /// Keys the Windows app takes as well as the table's, until the table
-    /// lists them. Full screen: Ctrl+Shift+Enter besides F11, because many
-    /// laptops keep F11 for a hardware key unless Fn is held (on HP's, it
-    /// opens Windows' network settings).
-    /// </summary>
-    private static readonly (string Title, KeyCombo Combo)[] Also =
-    [
-        (Titles.FullScreen, new KeyCombo(new ShortcutKey.Return(), Command: false, Control: true, Shift: true)),
-    ];
+    /// <summary>The core's Windows table, read once: it never changes while the app runs.</summary>
+    private static readonly Lazy<Shortcut[]> Table =
+        new(() => BookshelfFfiMethods.Shortcuts(Platform.Windows).SelectMany(g => g.Items).ToArray());
 
     /// <summary>The Windows shortcut titled <paramref name="title"/>, if the table has one.</summary>
     public static KeyCombo? Find(string title) => FindAll(title).FirstOrDefault();
 
-    /// <summary>Every Windows key for <paramref name="title"/>: the table's first, then any the app takes as well.</summary>
-    public static IReadOnlyList<KeyCombo> FindAll(string title)
-    {
-        var all = BookshelfFfiMethods.Shortcuts(Platform.Windows)
-            .SelectMany(g => g.Items)
+    /// <summary>
+    /// Every Windows key for <paramref name="title"/>: the table's main one,
+    /// then any others it lists for the same action (full screen is F11 or
+    /// Ctrl+Shift+Enter, because many laptops keep F11 for a hardware key
+    /// unless Fn is held).
+    /// </summary>
+    public static IReadOnlyList<KeyCombo> FindAll(string title) =>
+        Table.Value
             .Where(s => s.Title == title)
-            .Select(s => s.Accel)
+            .SelectMany(s => s.Also.Prepend(s.Accel))
             .OfType<Accel.Keys>()
             .Select(k => k.Combo)
+            .Distinct()
             .ToList();
-        all.AddRange(Also.Where(a => a.Title == title && !all.Contains(a.Combo)).Select(a => a.Combo));
-        return all;
-    }
 
     /// <summary>
     /// All the keys for these shortcuts as one label, for a tooltip:
