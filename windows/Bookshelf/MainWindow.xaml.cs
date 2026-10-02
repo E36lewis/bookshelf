@@ -44,6 +44,8 @@ public sealed partial class MainWindow : Window
         StartupLog.Step("Loading MainWindow.xaml");
         InitializeComponent();
         Title = AppFolders.AppName;
+        // The taskbar's name for the window, whatever the title bar shows.
+        Root.Loaded += (_, _) => Title = AppFolders.AppName;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;

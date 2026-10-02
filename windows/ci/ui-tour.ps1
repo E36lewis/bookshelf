@@ -62,15 +62,18 @@ Write-Host ("Screen: {0}" -f [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 function Start-Bookshelf([string[]] $Arguments) {
     $app = Start-Process $Exe -ArgumentList $Arguments -PassThru
     $clock = [Diagnostics.Stopwatch]::StartNew()
-    while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited) {
-        $app.Refresh()
-        if ($app.MainWindowTitle -eq 'Bookshelf Preview') { break }
-        Start-Sleep -Milliseconds 300
+    $mine = New-Object Windows.Automation.AndCondition(
+        (New-Object Windows.Automation.PropertyCondition($A::ProcessIdProperty, $app.Id)),
+        (New-Object Windows.Automation.PropertyCondition($A::NameProperty, 'Bookshelf Preview')))
+    $found = $null
+    while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited -and -not $found) {
+        $found = $A::RootElement.FindFirst($Scope::Children, $mine)
+        if (-not $found) { Start-Sleep -Milliseconds 300 }
     }
-    if ($app.MainWindowTitle -ne 'Bookshelf Preview') { throw "No window for $Arguments" }
+    if (-not $found) { throw "No window for $Arguments" }
     $script:app = $app
-    $script:hwnd = $app.MainWindowHandle
-    $script:window = $A::FromHandle($app.MainWindowHandle)
+    $script:hwnd = [IntPtr]$found.Current.NativeWindowHandle
+    $script:window = $found
 }
 
 function Stop-Bookshelf {

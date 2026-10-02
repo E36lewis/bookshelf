@@ -73,22 +73,28 @@ jobs:
           $crashLog = Join-Path $logs 'crash.log'
           $startupLog = Join-Path $logs 'startup.log'
           $title = 'Bookshelf Preview'
+          Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+          $A = [Windows.Automation.AutomationElement]
+          # The process's top-level windows, through UI Automation.
+          function Get-Windows($process) {
+            $mine = New-Object Windows.Automation.PropertyCondition($A::ProcessIdProperty, $process.Id)
+            @($A::RootElement.FindAll([Windows.Automation.TreeScope]::Children, $mine))
+          }
           $clock = [Diagnostics.Stopwatch]::StartNew()
           $app = Start-Process "$alone/Bookshelf.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
           # Wait for the main window (first start unpacks ~230 MB), then a
           # little longer in case something fails just after it appears.
-          while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited) {
-            $app.Refresh()
-            if ($app.MainWindowTitle -eq $title) { break }
-            Start-Sleep -Milliseconds 500
+          $window = $null
+          while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited -and -not $window) {
+            $window = Get-Windows $app | Where-Object { $_.Current.Name -eq $title } | Select-Object -First 1
+            if (-not $window) { Start-Sleep -Milliseconds 500 }
           }
           $opened = $clock.Elapsed.TotalSeconds
+          Write-Host ("Windows of Bookshelf.exe: " + ((Get-Windows $app | ForEach-Object { "'$($_.Current.Name)'" }) -join ', '))
           # A first run (this PC has no journal yet) asks for a profile. A
           # journal that can't be opened shows "Bookshelf couldn't start".
           $heading = $null
-          if ($app.MainWindowTitle -eq $title) {
-            Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-            $window = [Windows.Automation.AutomationElement]::FromHandle($app.MainWindowHandle)
+          if ($window) {
             $ids = 'WelcomeHeading', 'ProblemTitle' | ForEach-Object {
               New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::AutomationIdProperty, $_)
             }
@@ -112,7 +118,7 @@ jobs:
             throw "Bookshelf.exe exited on its own (exit code $($app.ExitCode))"
           }
           if (Test-Path $crashLog) { Get-Content $crashLog; throw "crash.log was written" }
-          if ($app.MainWindowTitle -ne $title) { throw "No Bookshelf window after 90 seconds" }
+          if (-not $window) { throw "No '$title' window after 90 seconds" }
           Stop-Process -Id $app.Id
           Write-Host "The window shows: $heading"
           if ($heading -ne 'Welcome') { throw "The first run didn't ask for a profile" }
