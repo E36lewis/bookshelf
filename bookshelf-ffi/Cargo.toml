@@ -15,7 +15,7 @@ crate-type = ["lib", "staticlib", "cdylib"]
 bookshelf-core = { path = "../bookshelf-core" }
 # Pinned to the version uniffi-bindgen-cs (C#) supports; the Swift bindings
 # come from tools/uniffi-bindgen at the same version.
-uniffi = "=0.31.0"
+uniffi = "=0.32.2"
 thiserror = "2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"

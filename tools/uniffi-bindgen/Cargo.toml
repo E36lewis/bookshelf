@@ -8,4 +8,4 @@ description = "Generates the Swift bindings for bookshelf-ffi (see scripts/gen-b
 
 [dependencies]
 # Must match bookshelf-ffi's uniffi version exactly.
-uniffi = { version = "=0.31.0", features = ["cli"] }
+uniffi = { version = "=0.32.2", features = ["cli"] }
