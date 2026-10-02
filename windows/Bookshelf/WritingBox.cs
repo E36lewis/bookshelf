@@ -602,7 +602,9 @@ public sealed class WritingBox
     {
         if (_formats.TryGetValue(style, out var format)) return format;
         var c = _colors;
-        format = _box.Document.GetRange(0, 0).CharacterFormat.GetClone();
+        // A real character (the first, or the final paragraph mark of an empty text): an empty
+        // range gives the insertion point's format, which has the theme's font.
+        format = _box.Document.GetRange(0, 1).CharacterFormat.GetClone();
         format.Bold = (style & (TextStyle.Heading | TextStyle.Bold)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Italic = (style & (TextStyle.Italic | TextStyle.Quote)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Strikethrough = (style & TextStyle.Strike) != 0 ? FormatEffect.On : FormatEffect.Off;
