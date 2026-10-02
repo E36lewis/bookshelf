@@ -9,7 +9,9 @@ namespace Bookshelf.Writing;
 /// <summary>
 /// Typewriter scrolling for focus mode: keeps the line being written in the
 /// middle of the page, by scrolling the RichEditBox's own ScrollViewer.
-/// Without Windows' animation effects, it jumps instead of gliding.
+/// Without Windows' animation effects, it jumps instead of gliding. Also
+/// gives the text room above and below inside that ScrollViewer
+/// (<see cref="SetRoom"/>).
 /// </summary>
 /// <remarks>
 /// RichEdit reports where the caret is in "client coordinates", and it isn't
@@ -23,7 +25,21 @@ internal sealed class Typewriter(RichEditBox box)
     private readonly UISettings _ui = new();
     private ScrollViewer? _scroller;
     private (int Caret, double Offset, double Y)? _lastSeen;
+    private Thickness _room;
     private static bool? _yIsInView; // learned once per run
+    private static bool _described; // startup.log says once what holds the text
+
+    /// <summary>
+    /// Space above the first line and below the last, scrolling with the
+    /// text. (The RichEditBox's own Padding sits outside its scrolling area,
+    /// so text would vanish into it.) The room below lets the last line come
+    /// up to the middle of the page.
+    /// </summary>
+    public void SetRoom(double above, double below)
+    {
+        _room = new Thickness(0, above, 0, below);
+        if (Scroller?.Content is FrameworkElement text) text.Margin = _room;
+    }
 
     /// <summary>Scrolls so the caret's line sits mid-page (if it isn't already).</summary>
     public void CenterCaret()
@@ -43,7 +59,7 @@ internal sealed class Typewriter(RichEditBox box)
         var y = rect.Y + rect.Height / 2;
         var offset = scroller.VerticalOffset;
         Learn(selection.StartPosition, offset, y);
-        return _yIsInView == false ? y : y + offset;
+        return _yIsInView == false ? y + _room.Top : y + offset;
     }
 
     private void Learn(int caret, double offset, double y)
@@ -71,7 +87,14 @@ internal sealed class Typewriter(RichEditBox box)
         {
             if (_scroller is not null) return _scroller;
             _scroller = Find<ScrollViewer>(box);
-            if (_scroller is not null) _scroller.ViewChanged += OnViewChanged;
+            if (_scroller is null) return null;
+            _scroller.ViewChanged += OnViewChanged;
+            if (_scroller.Content is FrameworkElement text) text.Margin = _room;
+            if (!_described)
+            {
+                _described = true;
+                StartupLog.Step($"Writer: the text scrolls in a {_scroller.Content?.GetType().Name ?? "nothing"}");
+            }
             return _scroller;
         }
     }

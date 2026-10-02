@@ -130,6 +130,9 @@ public sealed class WritingBox
     /// </summary>
     public void CatchUp() => OnTextChanged();
 
+    /// <summary>Room above the first line and below the last, inside the scrolling area (see <see cref="Typewriter.SetRoom"/>).</summary>
+    public void SetRoom(double above, double below) => _typewriter.SetRoom(above, below);
+
     /// <summary>The page's line spacing (see <see cref="WriterSpacing"/>), for the text there is and all that's typed later.</summary>
     public void SetSpacing(WriterSpacing spacing)
     {

@@ -533,7 +533,11 @@ Step 'Writer: 10,000 words, typing in the middle stays fast' {
         $words = try { Status-Words } catch { 0 }
     } while ($words -lt 10000 -and $clock.Elapsed.TotalSeconds -lt 60)
     if ($words -lt 10000) { throw "only $words words after pasting" }
-    $pasted = Writer-Timings
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        Start-Sleep -Milliseconds 500
+        $pasted = Writer-Timings
+    } while ($pasted.background -eq 0 -and $clock.Elapsed.TotalSeconds -lt 30)
     # Open it again, as someone would the next day: that's the restyle that matters.
     Keys '%{LEFT}'
     Wait-Name 'BookTitle' 'Piranesi' | Out-Null

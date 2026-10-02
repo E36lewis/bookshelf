@@ -110,6 +110,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
                 writing.Timed += () => Timing.Text = writing.Timings.Summary;
                 Timing.Text = writing.Timings.Summary;
             }
+            LayOut();
             _words = BookshelfFfiMethods.WordCount(entry.Body);
             UpdatePrompt();
             ShowStatus(announce: false);
@@ -163,7 +164,8 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         if (_layout is not { } layout || PageArea.ActualWidth <= 0) return;
         var side = Math.Max(SideMargin, (PageArea.ActualWidth - layout.ColumnWidth) / 2);
         var below = Math.Max(120, PageArea.ActualHeight / 2);
-        Editor.Padding = new Thickness(side, TopMargin, side, below);
+        Editor.Padding = new Thickness(side, 0, side, 0);
+        _writing?.SetRoom(TopMargin, below);
         Prompt.Margin = new Thickness(side, TopMargin, side, 0);
     }
 
