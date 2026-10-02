@@ -4,7 +4,6 @@ using Bookshelf.Ffi;
 using Bookshelf.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
-using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -98,6 +97,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             _layout = layout;
             _title = entry.Book.Title;
             WriterTitle.Text = _title;
+            AutomationProperties.SetName(Editor, $"Your summary of {_title}");
 
             Editor.FontFamily = Look.Writing;
             Editor.FontSize = layout.FontPx;
@@ -349,7 +349,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         Problem.Visibility = Visibility.Collapsed;
         Status.Visibility = Visibility.Visible;
         Status.Text = WriterText.Status(_words, saved: !_dirty);
-        if (announce) RaiseLiveRegionChanged(Status);
+        if (announce) ScreenReader.LiveRegionChanged(Status);
     }
 
     private void ShowProblem(string message)
@@ -357,13 +357,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         Problem.Text = message;
         Problem.Visibility = Visibility.Visible;
         Status.Visibility = Visibility.Collapsed;
-        RaiseLiveRegionChanged(Problem);
-    }
-
-    private static void RaiseLiveRegionChanged(UIElement element)
-    {
-        var peer = FrameworkElementAutomationPeer.FromElement(element) ?? FrameworkElementAutomationPeer.CreatePeerForElement(element);
-        peer?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
+        ScreenReader.LiveRegionChanged(Problem);
     }
 
     private void OnSave(object sender, RoutedEventArgs e) => _ = SaveAsync();

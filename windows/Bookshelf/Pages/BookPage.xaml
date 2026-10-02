@@ -23,11 +23,13 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- Decoration: the title is right beside it. -->
                 <Border
                     x:Name="CoverFrame"
                     Width="128"
                     Height="192"
                     VerticalAlignment="Top"
+                    AutomationProperties.AccessibilityView="Raw"
                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"

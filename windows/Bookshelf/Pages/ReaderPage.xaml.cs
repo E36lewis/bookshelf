@@ -39,6 +39,8 @@ public sealed partial class ReaderPage : BookshelfPage
             Column.MaxWidth = (layout?.ColumnWidth ?? 720) + 64; // the column plus its padding
             BookTitle.Text = entry.Book.Title;
             BookTitle.FontFamily = Look.Heading;
+            // The scroller has the focus (for the arrow keys), so it's what Narrator names first.
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(Scroller, $"Your summary of {entry.Book.Title}");
             Author.Text = entry.Book.Author ?? "";
             Author.Visibility = string.IsNullOrEmpty(entry.Book.Author) ? Visibility.Collapsed : Visibility.Visible;
             var empty = string.IsNullOrWhiteSpace(entry.Body);

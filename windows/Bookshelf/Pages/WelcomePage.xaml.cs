@@ -75,6 +75,7 @@ public sealed partial class WelcomePage : BookshelfPage
         {
             Error.Text = ex.UserMessage();
             Error.Visibility = Visibility.Visible;
+            ScreenReader.LiveRegionChanged(Error);
             CreateButton.IsEnabled = NameBox.Text.Trim().Length > 0;
         }
     }

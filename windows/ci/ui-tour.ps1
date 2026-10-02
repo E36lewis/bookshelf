@@ -396,12 +396,36 @@ function Open-Writer([string] $Shelf, [string] $Title) {
     Wait-Focused 'Editor'
 }
 
+# ---- Accessibility --------------------------------------------------------------
+
+# Every control Narrator can reach on the page has a name: walks the UI
+# Automation tree for keyboard-focusable controls (text and documents read
+# out their own text, so they're left out) and notes any without one as a
+# failure of its own, so the step it's in still goes on.
+$interactive = 'Button', 'CheckBox', 'ComboBox', 'Edit', 'Hyperlink', 'List', 'ListItem', 'MenuItem',
+    'Pane', 'RadioButton', 'Slider', 'Spinner', 'SplitButton', 'TabItem', 'Tree', 'TreeItem'
+function Check-Names([string] $Where) {
+    $focusable = New-Object Windows.Automation.PropertyCondition($A::IsKeyboardFocusableProperty, $true)
+    $nameless = @($script:window.FindAll($Scope::Descendants, $focusable) | ForEach-Object {
+        $type = $_.Current.ControlType.ProgrammaticName -replace '^ControlType\.', ''
+        if (($interactive -contains $type) -and -not ("$($_.Current.Name)".Trim())) {
+            "$type '$($_.Current.AutomationId)' ($($_.Current.ClassName))"
+        }
+    })
+    if ($nameless.Count) {
+        Write-Host "FAIL  Names on $Where : $($nameless -join ', ')"
+        $failures.Add("Names on $Where : no name for $($nameless -join ', ')")
+    }
+    else { Write-Host "ok    Names on $Where" }
+}
+
 # ---- First run: an empty journal asks for a profile ---------------------------
 Start-Bookshelf @('--demo-empty')
 Step 'First run asks for a profile' {
     Wait-Name 'WelcomeHeading' 'Welcome' | Out-Null
     Find-Id 'NewProfileName' | Out-Null
     Snap '00-welcome'
+    Check-Names 'the welcome page'
 }
 Stop-Bookshelf
 
@@ -415,6 +439,7 @@ Step 'Reading shelf lists books' {
     Write-Host ("      " + (($items | ForEach-Object { $_.Current.Name }) -join ' | '))
     if (-not ($items | Where-Object { $_.Current.Name -like 'The Left Hand of Darkness*' })) { throw 'no Left Hand of Darkness' }
     Snap '01-reading'
+    Check-Names 'a shelf'
 }
 Step 'Ctrl+2: Finished, by year' {
     Keys '^2'
@@ -435,11 +460,13 @@ Step 'Open a book' {
     Keys '{ENTER}'
     Wait-Name 'BookTitle' 'Dune' | Out-Null
     Snap '04-book'
+    Check-Names "a book's page"
 }
 Step 'Ctrl+R: read' {
     Keys '^r'
     Find-Id 'ReaderText' | Out-Null
     Snap '05-reader'
+    Check-Names 'the reading page'
 }
 Step 'F11 or Ctrl+Shift+Enter: full screen, Esc to leave' {
     Keys '{F11}'
@@ -462,6 +489,7 @@ Step 'Alt+Left, then Ctrl+E: write' {
     Wait-Focused 'Editor'
     Keys '^{HOME}'
     Snap '07-writer'
+    Check-Names 'the writing page'
 }
 Step 'Typing saves by itself' {
     $before = (Find-Id 'WriterStatus').Current.Name
@@ -486,6 +514,7 @@ Step 'Ctrl+, : settings' {
     Keys '^,'
     Find-Id 'SettingsScroller' | Out-Null
     Snap '09-settings'
+    Check-Names 'Settings'
     $scroll = (Find-Id 'SettingsScroller').GetCurrentPattern([Windows.Automation.ScrollPattern]::Pattern)
     $scroll.SetScrollPercent(-1, 45)
     Snap '10-settings-middle'
@@ -497,6 +526,7 @@ Step 'F1: the manual' {
     Find-Id 'ManualContents' | Out-Null
     Find-Id 'getting-started' | Out-Null
     Snap '12-manual'
+    Check-Names 'the manual'
 }
 Step 'Ctrl+?: shortcuts' {
     Keys '^?'
@@ -504,6 +534,7 @@ Step 'Ctrl+?: shortcuts' {
     Start-Sleep -Seconds 1
     if (-not $script:window.FindFirst($Scope::Descendants, $condition)) { throw 'no Keyboard shortcuts dialog' }
     Snap '13-shortcuts'
+    Check-Names 'the shortcuts list'
     Keys '{ESC}'
 }
 Step 'Ctrl+N: add a book' {
@@ -512,6 +543,7 @@ Step 'Ctrl+N: add a book' {
     Keys '^n'
     Find-Id 'BookSearch' | Out-Null
     Snap '14-add-book'
+    Check-Names 'Add a book'
     Keys '{ESC}'
 }
 Step 'Delete, then Undo' {
@@ -974,6 +1006,7 @@ Step 'Empty shelf' {
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
     Find-Id 'EmptyAddBookButton' | Out-Null
     Snap '30-empty-shelf'
+    Check-Names 'an empty shelf'
 }
 Stop-Bookshelf
 

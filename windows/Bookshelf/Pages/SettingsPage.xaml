@@ -29,7 +29,7 @@
                         AutomationProperties.Name="Name"
                         KeyDown="OnNameKeyDown"
                         TextChanged="OnNameChanged" />
-                    <Button x:Name="SaveName" Click="OnSaveName" Content="Save" IsEnabled="False" />
+                    <Button x:Name="SaveName" AutomationProperties.Name="Save name" Click="OnSaveName" Content="Save" IsEnabled="False" />
                 </StackPanel>
             </controls:SettingsCard>
             <controls:SettingsCard
@@ -46,11 +46,12 @@
                         KeyDown="OnEmailKeyDown"
                         PlaceholderText="you@example.com"
                         TextChanged="OnEmailChanged" />
-                    <Button x:Name="SaveEmail" Click="OnSaveEmail" Content="Save" IsEnabled="False" />
+                    <Button x:Name="SaveEmail" AutomationProperties.Name="Save email" Click="OnSaveEmail" Content="Save" IsEnabled="False" />
                     <Button
                         x:Name="EmailInfo"
                         AutomationProperties.Name="Why an email?"
-                        Style="{StaticResource SubtleButtonStyle}">
+                        Style="{StaticResource SubtleButtonStyle}"
+                        ToolTipService.ToolTip="Why an email?">
                         <FontIcon FontSize="16" Glyph="&#xE946;" />
                         <Button.Flyout>
                             <Flyout>
@@ -227,13 +228,13 @@
             <controls:SettingsCard Description="Every key, on one page" Glyph="&#xE765;" Header="Keyboard shortcuts">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock x:Name="ShortcutsKey" VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" />
-                    <Button Click="OnShortcuts" Content="Show" AutomationProperties.Name="Show the keyboard shortcuts" />
+                    <Button x:Name="ShortcutsButton" Click="OnShortcuts" Content="Show" AutomationProperties.Name="Show the keyboard shortcuts" />
                 </StackPanel>
             </controls:SettingsCard>
             <controls:SettingsCard Description="How everything works" Glyph="&#xE897;" Header="User manual">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock x:Name="ManualKey" VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" />
-                    <Button Click="OnManual" Content="Open" AutomationProperties.Name="Open the user manual" />
+                    <Button x:Name="ManualButton" Click="OnManual" Content="Open" AutomationProperties.Name="Open the user manual" />
                 </StackPanel>
             </controls:SettingsCard>
             <controls:SettingsCard x:Name="AboutCard" Glyph="&#xE946;" Header="Bookshelf Preview">

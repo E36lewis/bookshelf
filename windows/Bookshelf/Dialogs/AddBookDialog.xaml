@@ -43,7 +43,7 @@
             TextChanged="OnQueryChanged" />
 
         <StackPanel Grid.Row="1" Spacing="8">
-            <ProgressBar x:Name="Busy" IsIndeterminate="True" Visibility="Collapsed" />
+            <ProgressBar x:Name="Busy" AutomationProperties.Name="Searching" IsIndeterminate="True" Visibility="Collapsed" />
             <InfoBar x:Name="Problem" IsOpen="False" Severity="Error" />
         </StackPanel>
 
@@ -67,6 +67,7 @@
             Spacing="8">
             <FontIcon
                 x:Name="HintGlyph"
+                AutomationProperties.AccessibilityView="Raw"
                 FontSize="40"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                 Glyph="&#xE721;" />

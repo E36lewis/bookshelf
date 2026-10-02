@@ -36,6 +36,8 @@ public sealed partial class SettingsPage : BookshelfPage
         // The keys from the core's Windows table, as the shortcuts list and the manual show them.
         ShortcutsKey.Text = ShortcutKeys.Labels(ShortcutKeys.Titles.Shortcuts) ?? "";
         ManualKey.Text = ShortcutKeys.Labels(ShortcutKeys.Titles.Manual) ?? "";
+        AutomationProperties.SetAcceleratorKey(ShortcutsButton, ShortcutsKey.Text);
+        AutomationProperties.SetAcceleratorKey(ManualButton, ManualKey.Text);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -121,7 +123,7 @@ public sealed partial class SettingsPage : BookshelfPage
     {
         Problem.Title = title;
         Problem.Message = message;
-        Problem.IsOpen = true;
+        ScreenReader.Open(Problem);
     }
 
     // ---- profile ----------------------------------------------------------------
@@ -191,6 +193,7 @@ public sealed partial class SettingsPage : BookshelfPage
     {
         ProfileError.Text = message;
         ProfileError.Visibility = Visibility.Visible;
+        ScreenReader.LiveRegionChanged(ProfileError);
     }
 
     private async void OnDeleteProfile(object sender, RoutedEventArgs e)

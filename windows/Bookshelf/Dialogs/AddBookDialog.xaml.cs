@@ -1,5 +1,6 @@
 using Bookshelf.Core;
 using Bookshelf.Ffi;
+using Bookshelf.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -37,6 +38,7 @@ public sealed partial class AddBookDialog : ContentDialog
         _debounce.IsRepeating = false;
         _debounce.Tick += (_, _) => _ = SearchAsync();
         Opened += (_, _) => Query.Focus(FocusState.Programmatic);
+        Query.Loaded += (_, _) => MainWindow.NameTextBox(Query);
         Closed += (_, _) => _debounce.Stop();
     }
 
@@ -97,6 +99,7 @@ public sealed partial class AddBookDialog : ContentDialog
             Results.ItemsSource = found.Select(r => new ResultItem(r)).ToList();
             Results.Visibility = Visibility.Visible;
             Hint.Visibility = Visibility.Collapsed;
+            MainWindow.Instance.Announce(found.Length == 1 ? "1 book found" : $"{found.Length} books found");
         }
         catch (CoreException ex)
         {
@@ -146,12 +149,13 @@ public sealed partial class AddBookDialog : ContentDialog
         HintTitle.Text = title;
         HintText.Text = text;
         Hint.Visibility = Visibility.Visible;
+        ScreenReader.LiveRegionChanged(HintTitle);
     }
 
     private void ShowProblem(string title, string message)
     {
         Problem.Title = title;
         Problem.Message = message;
-        Problem.IsOpen = true;
+        ScreenReader.Open(Problem);
     }
 }

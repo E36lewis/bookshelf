@@ -34,6 +34,7 @@
                             <FontIcon
                                 x:Name="PART_Icon"
                                 VerticalAlignment="Center"
+                                AutomationProperties.AccessibilityView="Raw"
                                 FontSize="20"
                                 Glyph="{TemplateBinding Glyph}" />
                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">

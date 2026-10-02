@@ -161,7 +161,7 @@ public sealed partial class BookPage : BookshelfPage
             _entry = saved;
             Problem.IsOpen = false;
             ShowDates(saved);
-            Shell.Announce("Dates saved");
+            Shell.Announce(DaysText.Visibility == Visibility.Visible ? $"Dates saved. {DaysText.Text}" : "Dates saved");
             await Session.RefreshShelvesAsync();
         }
         catch (CoreException ex)
@@ -249,6 +249,6 @@ public sealed partial class BookPage : BookshelfPage
     {
         Problem.Title = title;
         Problem.Message = message;
-        Problem.IsOpen = true;
+        ScreenReader.Open(Problem);
     }
 }

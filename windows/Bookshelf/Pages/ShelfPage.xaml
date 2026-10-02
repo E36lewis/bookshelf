@@ -14,10 +14,12 @@
                     <ColumnDefinition Width="64" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- Decoration: the row's name says which book it is. -->
                 <Border
                     Width="64"
                     Height="96"
                     VerticalAlignment="Top"
+                    AutomationProperties.AccessibilityView="Raw"
                     Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
@@ -159,6 +161,7 @@
             Visibility="Collapsed">
             <FontIcon
                 x:Name="EmptyGlyph"
+                AutomationProperties.AccessibilityView="Raw"
                 FontSize="44"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                 Glyph="&#xE8F1;" />

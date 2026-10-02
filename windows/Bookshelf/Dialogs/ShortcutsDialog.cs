@@ -46,7 +46,12 @@ internal static class ShortcutsDialog
         var row = new Grid { ColumnSpacing = 24, MinHeight = 32 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
+        var name = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        // A Grid has no name of its own for Narrator: the title carries the
+        // keys ("Full screen: F11 or Ctrl+Shift+Enter"), and the key caps
+        // stay out of its way.
+        AutomationProperties.SetName(name, $"{title}: {string.Join(" or ", combos.Select(ShortcutKeys.Label))}");
+        row.Children.Add(name);
 
         var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         foreach (var combo in combos)
@@ -64,8 +69,8 @@ internal static class ShortcutsDialog
             AddKeyCaps(keys, combo);
         }
         Grid.SetColumn(keys, 1);
+        AutomationProperties.SetAccessibilityView(keys, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         row.Children.Add(keys);
-        AutomationProperties.SetName(row, $"{title}: {string.Join(" or ", combos.Select(ShortcutKeys.Label))}");
         return row;
     }
 

@@ -88,7 +88,12 @@ public sealed partial class ShelfPage : BookshelfPage
             }
         }
 
-        CountLine.Text = Session.IsSearching ? ShelfText.Matches(items.Count) : view.CountLine;
+        var count = Session.IsSearching ? ShelfText.Matches(items.Count) : view.CountLine;
+        if (count != CountLine.Text)
+        {
+            CountLine.Text = count;
+            ScreenReader.LiveRegionChanged(CountLine); // "3 matches" as you search
+        }
         // Year headings step aside while searching, as in the GTK app.
         Entries.ItemsSource = groups.Count > 0 && !Session.IsSearching
             ? new CollectionViewSource { IsSourceGrouped = true, Source = groups }.View

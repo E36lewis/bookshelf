@@ -14,6 +14,7 @@
         Spacing="12">
         <FontIcon
             HorizontalAlignment="Left"
+            AutomationProperties.AccessibilityView="Raw"
             FontSize="40"
             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
             Glyph="&#xE783;" />

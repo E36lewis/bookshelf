@@ -60,6 +60,7 @@ public sealed partial class MainWindow : Window
         _noticeTimer.Tick += (_, _) => Notice.IsOpen = false;
         SetShellVisible(false);
         AddKeyboardShortcuts();
+        SearchBox.Loaded += (_, _) => NameTextBox(SearchBox);
         StartupLog.Step("Checking the bundled fonts");
         Look.LoadFonts();
         Look.Apply(null, Root, AppWindow);
@@ -514,6 +515,18 @@ public sealed partial class MainWindow : Window
         if (FindChild<TextBox>(SearchBox) is { } box) box.SelectionStart = box.Text.Length;
     }
 
+    /// <summary>
+    /// Gives a search box's own text box the search box's name, if its
+    /// template didn't, so Narrator never lands in a nameless field.
+    /// </summary>
+    internal static void NameTextBox(AutoSuggestBox search)
+    {
+        if (FindChild<TextBox>(search) is { } box && string.IsNullOrEmpty(AutomationProperties.GetName(box)))
+        {
+            AutomationProperties.SetName(box, AutomationProperties.GetName(search));
+        }
+    }
+
     private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
@@ -581,7 +594,7 @@ public sealed partial class MainWindow : Window
             Notice.ActionButton = null;
         }
         NoticeHost.Visibility = Visibility.Visible;
-        Notice.IsOpen = true;
+        ScreenReader.Open(Notice);
         _noticeTimer.Stop();
         if (autoHide)
         {
