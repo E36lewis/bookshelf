@@ -61,7 +61,7 @@ final class JournalWorkerTests: XCTestCase {
             return XCTFail("expected an entry, got \(reading.rows)")
         }
         XCTAssertEqual(item.title, "Dune")
-        XCTAssertEqual(item.excerpt, "Dune Spice must flow.")
+        XCTAssertEqual(item.excerpt, "Spice must flow.") // the heading line is skipped
         XCTAssertTrue(item.meta.hasSuffix("day 1"), item.meta)
         XCTAssertTrue(matches(haystack: item.haystack, terms: queryTerms(query: "SPICE herbert")))
 

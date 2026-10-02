@@ -64,7 +64,7 @@ public sealed class JournalServiceTests : IDisposable
         Assert.Equal("1 book", reading.CountLine);
         var item = Assert.IsType<ShelfRow.Entry>(reading.Rows[0]).Item;
         Assert.Equal("Dune", item.Title);
-        Assert.Equal("Dune Spice must flow.", item.Excerpt);
+        Assert.Equal("Spice must flow.", item.Excerpt); // the heading line is skipped
         Assert.EndsWith("day 1", item.Meta);
         Assert.True(BookshelfFfiMethods.Matches(item.Haystack, BookshelfFfiMethods.QueryTerms("SPICE herbert")));
 
