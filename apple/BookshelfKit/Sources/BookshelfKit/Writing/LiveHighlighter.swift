@@ -62,7 +62,14 @@ public enum Sentences {
                 stop.pointee = true
             }
         }
-        return found ?? last ?? NSRange(location: caret, length: 0)
+        guard var sentence = found ?? last else { return NSRange(location: caret, length: 0) }
+        // The spaces after a sentence aren't part of it.
+        while sentence.length > 0,
+              let scalar = UnicodeScalar(text.character(at: NSMaxRange(sentence) - 1)),
+              CharacterSet.whitespaces.contains(scalar) {
+            sentence.length -= 1
+        }
+        return sentence
     }
 }
 
