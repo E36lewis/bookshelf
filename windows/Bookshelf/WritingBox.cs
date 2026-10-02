@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Bookshelf.Core.Editing;
 using Bookshelf.Ffi;
 using Bookshelf.Writing;
-using Microsoft.UI.Dispatching;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using Microsoft.UI.Input;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
