@@ -108,9 +108,10 @@ final class WritingSessionTests: XCTestCase {
         XCTAssertEqual(rescued, ["Keep me safe"])
         XCTAssertNil(pasteboard.string(forType: .string))
 
-        let message = Wording.rescue(outcome, shownFile: "~/recovery/Dune.md")
+        let message = Wording.rescue(outcome)
         XCTAssertTrue(message.hasPrefix("The disk is full."))
-        XCTAssertTrue(message.contains("~/recovery/Dune.md"))
+        XCTAssertTrue(message.contains("in its recovery folder, as “Dune.md”"), message)
+        XCTAssertFalse(message.contains("/tmp"), "the long sandbox path isn't spelled out")
         XCTAssertEqual(Wording.notSaved("Dune"), "Your summary of “Dune” couldn't be saved")
     }
 
@@ -141,7 +142,7 @@ final class WritingSessionTests: XCTestCase {
         let outcome = await page.finish(pasteboard: pasteboard)
         XCTAssertEqual(outcome, .copied(problem: "The disk is full.", rescueProblem: "The recovery folder is read-only."))
         XCTAssertEqual(pasteboard.string(forType: .string), "Last resort")
-        let message = Wording.rescue(outcome, shownFile: nil)
+        let message = Wording.rescue(outcome)
         XCTAssertTrue(message.contains("(The recovery folder is read-only), so your text was copied to the clipboard"),
                       message)
     }

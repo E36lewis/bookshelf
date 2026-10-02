@@ -149,14 +149,16 @@ extension Wording {
         "Your summary of “\(title)” couldn't be saved"
     }
 
-    /// What the alert says happened to the text. `shownFile` is the
-    /// recovery file as people know it (`~/…`).
-    public static func rescue(_ outcome: WritingSession.Outcome, shownFile: String?) -> String {
+    /// What the alert says happened to the text. The recovery folder is
+    /// deep in the app's sandbox container, so it's named rather than
+    /// spelled out: the alert has a Show in Finder button for it.
+    public static func rescue(_ outcome: WritingSession.Outcome) -> String {
         switch outcome {
         case .saved:
             return ""
         case let .rescued(problem, file):
-            return "\(problem)\n\nBookshelf kept a copy of your text in \(shownFile ?? file.path). Nothing was lost."
+            return "\(problem)\n\nBookshelf kept a copy of your text in its recovery folder, "
+                + "as “\(file.lastPathComponent)”. Nothing was lost."
         case let .copied(problem, rescueProblem):
             let why = rescueProblem.hasSuffix(".") ? String(rescueProblem.dropLast()) : rescueProblem
             return "\(problem)\n\nA recovery copy couldn't be written either (\(why)), so your text was "

@@ -641,7 +641,7 @@ final class AppModel {
             guard !leavingWriter else { return false }
             leavingWriter = true
             defer { leavingWriter = false }
-            guard await finish(writer) else { return false }
+            guard await finish(writer, quitting: false) else { return false }
             if self.writer === writer { self.writer = nil }
             if let id = selectedEntryID { await loadEntry(id) }
             try? await reloadShelves()
@@ -657,17 +657,19 @@ final class AppModel {
         guard !leavingWriter else { return false }
         leavingWriter = true
         defer { leavingWriter = false }
-        guard await finish(writer) else { return false }
+        guard await finish(writer, quitting: true) else { return false }
         self.writer = nil
         return true
     }
 
     /// The writer's last save; if it failed (the text is rescued by now),
-    /// asks Keep Open or Close Anyway. Returns whether to go.
-    private func finish(_ writer: WritingSession) async -> Bool {
+    /// asks Keep Open, or Close Anyway (Quit Anyway when `quitting`).
+    /// Returns whether to go.
+    private func finish(_ writer: WritingSession, quitting: Bool) async -> Bool {
         let outcome = await writer.finish()
         guard outcome != .saved else { return true }
-        return await RescueAlert.ask(outcome, title: writer.title, in: mainWindow) == .closeAnyway
+        let choice = await RescueAlert.ask(outcome, title: writer.title, quitting: quitting, in: mainWindow)
+        return choice == .closeAnyway
     }
 
     // MARK: Backups, export, quitting

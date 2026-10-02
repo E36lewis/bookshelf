@@ -201,15 +201,23 @@ final class WriterTests: XCTestCase {
         app.buttons["page.back"].firstMatch.click()
         let keepOpen = alertButton(app, "Keep Open")
         XCTAssertTrue(keepOpen.waitForExistence(timeout: 5), "no rescue alert")
-        let said = app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'kept a copy' OR label CONTAINS 'kept a copy'"))
+        let said = app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'recovery folder' OR label CONTAINS 'recovery folder'"))
         XCTAssertGreaterThan(said.count, 0, "the alert doesn't say where the copy is")
+        let container = app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'Containers' OR label CONTAINS 'Containers'"))
+        XCTAssertEqual(container.count, 0, "the alert spells out the sandbox path")
+        // Show in Finder is there (not clicked: the Finder would take over the screen).
+        XCTAssertTrue(app.sheets.buttons["rescue.showInFinder"].exists, "no Show in Finder")
+        XCTAssertTrue(alertButton(app, "Close Anyway").exists)
         keep(app, "28-rescue-alert", .light)
         keepOpen.click()
         XCTAssertTrue(waitFor(text) { $0 == "Keep me safe." })
 
-        // Quitting asks too; Keep Open cancels the quit.
+        // Quitting asks too, with Quit Anyway; Keep Open cancels the quit.
         app.typeKey("q", modifierFlags: .command)
         XCTAssertTrue(keepOpen.waitForExistence(timeout: 5), "no rescue alert on quitting")
+        XCTAssertTrue(alertButton(app, "Quit Anyway").exists, "quitting, the alert should offer Quit Anyway")
+        XCTAssertFalse(alertButton(app, "Close Anyway").exists)
+        keep(app, "28-rescue-alert-quitting", .light)
         keepOpen.click()
         XCTAssertTrue(text.waitForExistence(timeout: 5))
         XCTAssertEqual(app.state, .runningForeground)
