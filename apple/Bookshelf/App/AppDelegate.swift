@@ -41,11 +41,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    /// Switching to another app saves the writing page now, rather than
+    /// after the autosave pause.
+    func applicationWillResignActive(_ notification: Notification) {
+        guard let writer = model.writer else { return }
+        Task { await writer.save() }
+    }
+
+    /// Quitting while writing (closing the window quits too): the last
+    /// save first. If it fails, the text is rescued and an alert asks;
+    /// Keep Open cancels the quit and brings the window back.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard model.writer != nil else { return .terminateNow }
         Task {
-            await model.finishWritingBeforeQuit()
-            sender.reply(toApplicationShouldTerminate: true)
+            let quit = await model.finishWritingBeforeQuit()
+            sender.reply(toApplicationShouldTerminate: quit)
+            if !quit { showMainWindowIfNeeded() }
         }
         return .terminateLater
     }

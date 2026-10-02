@@ -77,6 +77,7 @@ struct ReaderView: View {
                 .help("Edit this summary (⌘↩)")
             }
         }
+        .toolbarHidesInFullScreen()
         .frame(minWidth: 600, minHeight: 480)
     }
 
@@ -86,95 +87,5 @@ struct ReaderView: View {
         } else {
             model.closePage()
         }
-    }
-}
-
-/// A plain writing page until the real writer arrives (Phase 4): the text
-/// in the profile's writing font, saved a moment after typing stops and
-/// again on leaving.
-struct WriterView: View {
-    @Environment(AppModel.self) private var model
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        if let session = model.writer {
-            page(session)
-        } else {
-            Color.clear
-        }
-    }
-
-    private func page(_ session: WriterSession) -> some View {
-        let settings = model.settings
-        let size = settings?.textSize ?? 15
-        let font = Typeface.writing(settings?.writingFont ?? .iaDuo, size: size)
-        let layout = model.layout
-        return VStack(spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: Binding(get: { session.text }, set: { session.update($0) }))
-                    .font(font)
-                    .lineSpacing(layout?.wrapPoints ?? 4)
-                    .scrollContentBackground(.hidden)
-                    .focused($focused)
-                    .accessibilityLabel("Summary of \(session.title)")
-                    .accessibilityIdentifier("writer.text")
-                if session.text.isEmpty {
-                    Text(session.prompts)
-                        .font(font)
-                        .lineSpacing(layout?.wrapPoints ?? 4)
-                        .foregroundStyle(.tertiary)
-                        // Lines up with the text view's own inset.
-                        .padding(.leading, 5)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
-                }
-            }
-            .frame(maxWidth: (layout?.columnPoints ?? 540) + 10)
-            .padding(.horizontal, 32)
-            .padding(.top, 28)
-            .frame(maxWidth: .infinity)
-            Divider()
-            HStack(spacing: 6) {
-                Text(Wording.words(session.words))
-                Text("·").accessibilityHidden(true)
-                if case .failed = session.status {
-                    Label(session.statusText, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                } else {
-                    Text(session.statusText)
-                }
-                Spacer()
-            }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("writer.status")
-        }
-        .background(Color(nsColor: .textBackgroundColor))
-        .navigationTitle(session.title)
-        .navigationSubtitle("Writing")
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    model.closePage()
-                } label: {
-                    Label("Done", systemImage: "chevron.backward")
-                }
-                .help("Save and go back to your shelf")
-                .accessibilityIdentifier("page.back")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    model.openReader()
-                } label: {
-                    Label("Read", systemImage: "book.pages")
-                }
-                .help("Read your summary (⌘R)")
-            }
-        }
-        .onAppear { focused = true }
-        .frame(minWidth: 600, minHeight: 480)
     }
 }

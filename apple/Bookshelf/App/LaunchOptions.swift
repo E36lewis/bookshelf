@@ -20,6 +20,13 @@ struct LaunchOptions: Sendable {
     var appearance: Theme?
     /// The main window's content size (`-BookshelfWindowSize 1200x760`).
     var windowSize: CGSize?
+    /// Debug builds: the writing page's saves fail (`-BookshelfFailSaves`),
+    /// to test the rescue path, and so do recovery copies with
+    /// `-BookshelfFailRescue`.
+    var failSaves = false
+    var failRescue = false
+    /// The writing page reports what it styled (`-BookshelfStyleProbe`).
+    var styleProbe = false
 
     static let current = LaunchOptions(arguments: CommandLine.arguments)
 
@@ -29,8 +36,13 @@ struct LaunchOptions: Sendable {
         } else if arguments.contains("-BookshelfFreshJournal") {
             journal = .fresh
         }
-        // The look and size are only for test journals.
+        // The look, size and test switches are only for test journals.
         guard journal != .preview else { return }
+        styleProbe = arguments.contains("-BookshelfStyleProbe")
+        #if DEBUG
+        failSaves = arguments.contains("-BookshelfFailSaves")
+        failRescue = failSaves && arguments.contains("-BookshelfFailRescue")
+        #endif
         switch Self.value(after: "-BookshelfAppearance", in: arguments) {
         case "light": appearance = .light
         case "dark": appearance = .dark

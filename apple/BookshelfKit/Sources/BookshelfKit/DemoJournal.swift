@@ -93,6 +93,8 @@ public enum DemoJournal {
                 - The weather is a character of its own
 
                 > Light is the left hand of darkness.
+
+                Next time: the *Handdara* chapters, and words like `shifgrethor`. ~~Skim~~ Savour the ice.
                 """),
         Book(
             key: "/works/DEMO2W", title: "Middlemarch", subtitle: "A Study of Provincial Life",

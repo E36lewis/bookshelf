@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import BookshelfKit
 
@@ -32,6 +33,31 @@ enum Typeface {
         case .sans: .system(size: size)
         case .mono: .system(size: size, design: .monospaced)
         }
+    }
+
+    /// The writing page's typeface as AppKit fonts, with the bold and
+    /// italic faces Markdown needs. Code is set in the system's monospace,
+    /// unless the writing font is already fixed-width (or iA Writer Duo,
+    /// which is nearly).
+    @MainActor
+    static func writingFonts(_ font: WritingFont, size: CGFloat) -> WritingFonts {
+        let mono = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+        let regular: NSFont
+        switch font {
+        case .iaDuo: regular = family(duoFamily, size: size) ?? mono
+        case .serif: regular = family(serifFamily, size: size) ?? .systemFont(ofSize: size)
+        case .sans: regular = .systemFont(ofSize: size)
+        case .mono: regular = mono
+        }
+        let code = font == .iaDuo || font == .mono
+            ? regular : NSFont.monospacedSystemFont(ofSize: (size * 0.9).rounded(), weight: .regular)
+        return WritingFonts(regular: regular, code: code)
+    }
+
+    /// A bundled family's regular face, if it's registered.
+    @MainActor
+    private static func family(_ name: String, size: CGFloat) -> NSFont? {
+        NSFontManager.shared.font(withFamily: name, traits: [], weight: 5, size: size)
     }
 
     /// Code in summaries.

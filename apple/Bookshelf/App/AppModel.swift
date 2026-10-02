@@ -68,7 +68,12 @@ final class AppModel {
     private(set) var summaryBlocks: [Block] = []
     private(set) var summaryPrompts = ""
     private(set) var page: Page = .shelves
-    private(set) var writer: WriterSession?
+    /// The writing page's text and saving, while it's open.
+    private(set) var writer: WritingSession?
+    /// Focus mode on the writing page.
+    var focusMode = false
+    /// Edit › Spelling and Grammar and Substitutions, for the writing page.
+    let writingPreferences = WritingPreferences()
     /// The entry just removed, until something else is picked: the book
     /// page shows it with an Undo button.
     private(set) var lastRemoval: Removal?
@@ -79,6 +84,14 @@ final class AppModel {
 
     let options = LaunchOptions.current
     @ObservationIgnored weak var undoManager: UndoManager?
+    /// The main window, for sheets.
+    @ObservationIgnored weak var mainWindow: NSWindow?
+    /// The writing page's text view, which the Format, Find and other text
+    /// menus act on.
+    @ObservationIgnored weak var editor: WritingTextView?
+    /// Leaving the writer is underway (saving, maybe asking): don't start again.
+    @ObservationIgnored private var leavingWriter = false
+    @ObservationIgnored private var openingWriter = false
     @ObservationIgnored private(set) var worker: JournalWorker?
     @ObservationIgnored private var backups: Task<Void, Never>?
     @ObservationIgnored private var settingsWrites = SerialTasks()
@@ -159,7 +172,7 @@ final class AppModel {
     func switchTo(_ profile: Profile) {
         guard profile.id != self.profile?.id else { return }
         Task {
-            await leavePage()
+            guard await leavePage() else { return }
             await openProfile(profile)
         }
     }
@@ -258,7 +271,7 @@ final class AppModel {
     func deleteProfile() async {
         guard let worker, let profile else { return }
         do {
-            await leavePage()
+            guard await leavePage() else { return }
             try await worker.deleteProfile(profile.id)
             UserDefaults.standard.removeObject(forKey: Self.lastProfileKey)
             try await loadProfiles()
@@ -336,7 +349,7 @@ final class AppModel {
     func focusSearch() {
         Task {
             if page != .shelves {
-                await leavePage()
+                guard await leavePage() else { return }
                 // Let the shelves, and their search field, come back first.
                 try? await Task.sleep(for: .milliseconds(100))
             }
@@ -569,7 +582,7 @@ final class AppModel {
         guard selectedEntry != nil else { return }
         if page == .writer {
             Task {
-                await leavePage()
+                guard await leavePage() else { return }
                 page = .reader
             }
         } else {
@@ -577,17 +590,41 @@ final class AppModel {
         }
     }
 
-    /// Opens the writing page for the selected entry.
+    /// Opens the writing page for the selected entry, in focus mode if the
+    /// profile likes it.
     func openWriter() {
-        guard let worker, let entry = selectedEntry, page != .writer else { return }
+        guard let worker, let entry = selectedEntry, page != .writer, !openingWriter else { return }
+        openingWriter = true
         Task {
+            defer { openingWriter = false }
             let delay = await JournalWorker.autosaveDelay()
             let words = await JournalWorker.words(in: entry.body)
-            writer = WriterSession(
-                worker: worker, summaryID: entry.summaryId, title: entry.book.title, text: entry.body,
-                words: words, delay: delay, prompts: summaryPrompts)
+            guard selectedEntryID == entry.summaryId else { return }
+            focusMode = settings?.focusDefault ?? false
+            writer = WritingSession(
+                title: entry.book.title, text: entry.body, words: words, prompts: summaryPrompts, delay: delay,
+                store: writingStore(for: entry.summaryId, title: entry.book.title, worker: worker))
             page = .writer
         }
+    }
+
+    /// Where the writing page's text goes: the journal, through the worker.
+    private func writingStore(for id: String, title: String, worker: JournalWorker) -> WritingSession.Store {
+        #if DEBUG
+        if options.failSaves {
+            // UI tests of the rescue path: the journal "refuses" the text.
+            let rescueFails = options.failRescue
+            return WritingSession.Store(
+                save: { _ in throw CoreError.Io(message: "Saving is switched off for this test.") },
+                rescue: { body in
+                    if rescueFails { throw CoreError.Io(message: "Recovery copies are switched off for this test.") }
+                    return try await worker.rescueBody(title: title, body: body)
+                })
+        }
+        #endif
+        return WritingSession.Store(
+            save: { try await worker.saveBody(id, $0).words },
+            rescue: { try await worker.rescueBody(title: title, body: $0) })
     }
 
     /// Back to the shelves, saving the writing page first.
@@ -596,48 +633,41 @@ final class AppModel {
     }
 
     /// Leaves the reader or writer. The writer saves first; if that fails,
-    /// its text goes to the recovery folder and an alert says where.
-    func leavePage() async {
+    /// its text is rescued and an alert asks whether to keep writing.
+    /// Returns whether the page was left.
+    @discardableResult
+    func leavePage() async -> Bool {
         if let writer {
-            let outcome = await writer.finish()
-            self.writer = nil
-            report(outcome, title: writer.title)
+            guard !leavingWriter else { return false }
+            leavingWriter = true
+            defer { leavingWriter = false }
+            guard await finish(writer) else { return false }
+            if self.writer === writer { self.writer = nil }
             if let id = selectedEntryID { await loadEntry(id) }
             try? await reloadShelves()
         }
         page = .shelves
+        return true
     }
 
-    /// Quitting: the writer's last save, before the journal closes.
-    func finishWritingBeforeQuit() async {
-        guard let writer else { return }
-        let outcome = await writer.finish()
+    /// Quitting: the writer's last save. Returns false to stay open (the
+    /// person chose to keep writing after a failed save).
+    func finishWritingBeforeQuit() async -> Bool {
+        guard let writer else { return true }
+        guard !leavingWriter else { return false }
+        leavingWriter = true
+        defer { leavingWriter = false }
+        guard await finish(writer) else { return false }
         self.writer = nil
-        if case .rescued(let file) = outcome {
-            let alert = NSAlert()
-            alert.messageText = "Your summary of “\(writer.title)” couldn't be saved"
-            alert.informativeText = "Bookshelf kept a copy of your text in \(file.path)."
-            alert.runModal()
-        } else if case .lost(let message) = outcome {
-            let alert = NSAlert()
-            alert.messageText = "Your summary of “\(writer.title)” couldn't be saved"
-            alert.informativeText = message
-            alert.runModal()
-        }
+        return true
     }
 
-    private func report(_ outcome: WriterSession.Outcome, title: String) {
-        switch outcome {
-        case .saved:
-            break
-        case .rescued(let file):
-            problem = Problem(
-                title: "Your summary couldn't be saved",
-                message: "Bookshelf kept a copy of your summary of “\(title)” in \(file.path). "
-                    + "Nothing was lost.")
-        case .lost(let message):
-            problem = Problem(title: "Your summary couldn't be saved", message: message)
-        }
+    /// The writer's last save; if it failed (the text is rescued by now),
+    /// asks Keep Open or Close Anyway. Returns whether to go.
+    private func finish(_ writer: WritingSession) async -> Bool {
+        let outcome = await writer.finish()
+        guard outcome != .saved else { return true }
+        return await RescueAlert.ask(outcome, title: writer.title, in: mainWindow) == .closeAnyway
     }
 
     // MARK: Backups, export, quitting

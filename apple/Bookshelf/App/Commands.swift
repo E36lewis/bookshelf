@@ -10,13 +10,20 @@ struct BookshelfCommands: Commands {
         CommandGroup(replacing: .newItem) {
             FileMenuItems(model: model)
         }
-        // Find in this app means searching the shelves.
+        // ⌘F searches the shelves; on the writing page it finds in the
+        // text instead (Find ▸ Find…). See `TextMenuItems`.
         CommandGroup(replacing: .textEditing) {
-            SearchMenuItem(model: model)
+            TextMenuItems(model: model)
+        }
+        CommandGroup(replacing: .textFormatting) {
+            FormatMenuItems(model: model)
         }
         CommandGroup(before: .sidebar) {
             ShelfMenuItems(model: model)
             Divider()
+        }
+        CommandGroup(after: .sidebar) {
+            FocusModeMenuItem(model: model)
         }
         CommandMenu("Book") {
             BookMenuItems(model: model)
@@ -39,16 +46,11 @@ private struct FileMenuItems: View {
         Divider()
         Button("New Profile…") { model.isCreatingProfile = true }
             .disabled(model.phase != .ready || model.page != .shelves)
-    }
-}
-
-private struct SearchMenuItem: View {
-    let model: AppModel
-
-    var body: some View {
-        Button("Search Your Shelves") { model.focusSearch() }
-            .keyboardShortcut(model.shortcut(MenuShortcuts.search))
-            .disabled(model.phase != .ready || model.page == .writer || model.isAddingBook)
+        Divider()
+        // It saves as you type; this is for the reflex.
+        Button("Save") { model.saveWriting() }
+            .keyboardShortcut(model.shortcut(MenuShortcuts.save))
+            .disabled(!model.isWriting)
     }
 }
 
@@ -75,7 +77,7 @@ private struct BookMenuItems: View {
             .disabled(!onShelves && model.page != .reader)
         Button("Read Summary") { model.openReader() }
             .keyboardShortcut(model.shortcut(MenuShortcuts.read))
-            .disabled(!onShelves)
+            .disabled(!onShelves && !model.isWriting)
         Divider()
         Button("Read It Again") { model.readAgain() }
             .disabled(!onShelves)

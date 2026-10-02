@@ -27,6 +27,7 @@ struct RootView: View {
                 // Edit › Undo asks the window for its undo manager: register
                 // removals there, so the menu names them.
                 if let windowUndo = window.undoManager { model.undoManager = windowUndo }
+                model.mainWindow = window
                 if let size = model.options.windowSize {
                     window.setContentSize(size)
                     window.center()
