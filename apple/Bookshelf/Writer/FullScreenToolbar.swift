@@ -46,19 +46,26 @@ private struct FullScreenToolbar: NSViewRepresentable {
             observers = []
         }
 
-        /// Only valid in full screen with the menu bar hiding too, which is
-        /// how the system sets full screen up; anything else is left alone.
+        /// The options before the toolbar was hidden, to go back to.
+        private static var before: NSApplication.PresentationOptions?
+
+        /// Auto-hiding the toolbar is only allowed in full screen with the
+        /// menu bar auto-hiding too, which is how the system sets full
+        /// screen up (`currentSystemPresentationOptions`, what's in effect;
+        /// `presentationOptions` is only what the app asked for).
         static func hideToolbar() {
-            let options = NSApp.presentationOptions
-            guard options.isSuperset(of: [.fullScreen, .autoHideMenuBar]), !options.contains(.autoHideToolbar)
+            let current = NSApp.currentSystemPresentationOptions
+            guard before == nil, current.isSuperset(of: [.fullScreen, .autoHideMenuBar]),
+                  !current.contains(.autoHideToolbar)
             else { return }
-            NSApp.presentationOptions = options.union(.autoHideToolbar)
+            before = NSApp.presentationOptions
+            NSApp.presentationOptions = current.union(.autoHideToolbar)
         }
 
         static func showToolbar() {
-            let options = NSApp.presentationOptions
-            guard options.contains(.autoHideToolbar) else { return }
-            NSApp.presentationOptions = options.subtracting(.autoHideToolbar)
+            guard let before else { return }
+            self.before = nil
+            NSApp.presentationOptions = before
         }
     }
 }

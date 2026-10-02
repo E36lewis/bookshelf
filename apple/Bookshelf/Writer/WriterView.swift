@@ -172,8 +172,8 @@ extension Color {
     /// gray falls just short of 4.5:1 on the writing page.
     static let quietText = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(white: 0.66, alpha: 1)
-            : NSColor(white: 0.4, alpha: 1)
+            ? NSColor(white: 0.72, alpha: 1)
+            : NSColor(white: 0.33, alpha: 1)
     })
 
     /// Red text that reads clearly on the window: darker than system red

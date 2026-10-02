@@ -48,6 +48,27 @@ extension AppModel {
 }
 
 extension KeyCombo {
+    /// Whether `event` is this key with exactly these modifiers.
+    func matches(_ event: NSEvent) -> Bool {
+        let held = event.modifierFlags.intersection([.command, .control, .shift, .option])
+        var wanted: NSEvent.ModifierFlags = []
+        if command { wanted.insert(.command) }
+        if control { wanted.insert(.control) }
+        if shift { wanted.insert(.shift) }
+        guard held == wanted else { return false }
+        switch key {
+        case .character(let text):
+            return event.charactersIgnoringModifiers?.lowercased() == text.lowercased()
+        case .return:
+            return event.charactersIgnoringModifiers == "\r"
+        case .escape:
+            return event.charactersIgnoringModifiers == "\u{1b}"
+        case .function(let number):
+            guard let scalar = UnicodeScalar(UInt32(NSF1FunctionKey) + UInt32(number) - 1) else { return false }
+            return event.charactersIgnoringModifiers == String(Character(scalar))
+        }
+    }
+
     /// The combo as the menus write it: ⌃⇧⌘F.
     var symbols: String {
         var text = ""

@@ -34,29 +34,33 @@ final class WriterTests: XCTestCase {
         keep(app, "21-writer-focus", look)
         app.typeKey("f", modifierFlags: [.command, .shift])
 
-        // View › Enter Full Screen: the toolbar slides away. Esc comes back.
+        // View: Focus Mode is there, with its keys.
         let view = app.menuBars.menuBarItems["View"]
         view.click()
         let focusItem = view.menuItems["Focus Mode"]
         XCTAssertTrue(focusItem.waitForExistence(timeout: 2))
         XCTAssertTrue(focusItem.isEnabled)
         keepScreen("30-view-menu", look)
-        let enter = view.menuItems.matching(NSPredicate(format: "title CONTAINS 'Full Screen'")).firstMatch
-        if enter.exists {
-            enter.click()
-        } else {
-            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
-            app.typeKey("f", modifierFlags: [.command, .control])
-        }
-        sleep(4)
-        let window = app.windows.firstMatch.frame
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+
+        // Full screen (⌃⌘F): the toolbar slides away. Esc comes back.
+        let windowed = app.windows.firstMatch.frame
+        app.typeKey("f", modifierFlags: [.command, .control])
+        sleep(3)
+        // Away from the top edge, where the toolbar would slide back.
+        text.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).hover()
+        sleep(2)
         let screen = XCUIScreen.main.screenshot().image.size
-        note("window \(window), screen \(screen), menu item: \(enter.exists ? enter.title : "none")",
+        let full = app.windows.firstMatch.frame
+        note("windowed \(windowed), full screen \(full), screen \(screen), "
+             + "toolbar \(app.toolbars.firstMatch.exists ? "\(app.toolbars.firstMatch.frame)" : "gone")",
              named: "full-screen-\(look.rawValue)")
+        XCTAssertEqual(full.width, screen.width, "not full screen")
         keepScreen("22-writer-full-screen", look)
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         sleep(3)
         XCTAssertTrue(text.exists)
+        XCTAssertLessThan(app.windows.firstMatch.frame.width, screen.width, "still full screen after Esc")
 
         // The Format menu.
         let format = app.menuBars.menuBarItems["Format"]

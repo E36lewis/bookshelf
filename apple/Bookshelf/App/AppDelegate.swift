@@ -17,6 +17,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(for: .milliseconds(500))
             showMainWindowIfNeeded()
         }
+        watchFullScreenKey()
+    }
+
+    /// The core's full-screen keys (⌃⌘F). Since macOS 15 the system's View ›
+    /// Enter Full Screen answers to fn-F only, so Bookshelf answers to the
+    /// keys its manual and shortcut list give, in any of its windows.
+    private func watchFullScreenKey() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            MainActor.assumeIsolated {
+                guard let combo = self?.model.keys[MenuShortcuts.fullScreen], combo.matches(event),
+                      let window = event.window ?? NSApp.keyWindow, window.canBecomeMain
+                else { return event }
+                window.toggleFullScreen(nil)
+                return nil
+            }
+        }
     }
 
     /// On macOS 15, a SwiftUI app with an app delegate can finish launching
