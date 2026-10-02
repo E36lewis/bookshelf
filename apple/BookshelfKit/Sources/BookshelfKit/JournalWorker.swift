@@ -35,6 +35,13 @@ public actor JournalWorker {
         try journal.close()
     }
 
+    /// `close` right now, from any thread, without waiting for the queue:
+    /// for `applicationWillTerminate`, which can't wait. A call still queued
+    /// behind it lands safely afterwards (the journal stays usable).
+    public nonisolated func closeNow() throws {
+        try journal.close()
+    }
+
     /// Changes whenever the journal does: skip a refresh when it's the same.
     public func changeToken() throws -> UInt64 {
         try journal.changeToken()
@@ -136,6 +143,12 @@ public actor JournalWorker {
         try journal.removeEntry(summaryId: summaryId)
     }
 
+    /// Removes an entry, with what Undo and the announcement need.
+    public func remove(_ summaryId: String) throws -> Removal {
+        let removed = try journal.removeEntry(summaryId: summaryId)
+        return Removal(entry: removed, summaryId: removed.summaryId(), title: removed.title())
+    }
+
     /// Puts a removed entry back exactly as it was (Undo).
     public func restoreEntry(_ removed: RemovedEntry) throws {
         try journal.restoreEntry(removed: removed)
@@ -197,3 +210,14 @@ public actor JournalWorker {
 }
 
 extension Profile: Identifiable {}
+
+/// An entry that was just removed: the handle to put it back, and what to
+/// call it ("Undo Remove “Dune”").
+public struct Removal: Sendable {
+    /// Pass to `restoreEntry` to undo.
+    public let entry: RemovedEntry
+    /// The removed entry's id.
+    public let summaryId: String
+    /// The book's title.
+    public let title: String
+}
