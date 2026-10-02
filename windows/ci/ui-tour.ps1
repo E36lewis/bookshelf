@@ -466,6 +466,9 @@ Step 'Ctrl+R: read' {
     Keys '^r'
     Find-Id 'ReaderText' | Out-Null
     Snap '05-reader'
+    # Both full-screen keys, from the core's table, on the button.
+    $name = (Find-Id 'FullScreenButton').Current.Name
+    if ($name -ne 'Full screen (F11 or Ctrl+Shift+Enter)') { throw "the full screen button says '$name'" }
     Check-Names 'the reading page'
 }
 Step 'F11 or Ctrl+Shift+Enter: full screen, Esc to leave' {
@@ -527,6 +530,14 @@ Step 'F1: the manual' {
     Find-Id 'getting-started' | Out-Null
     Snap '12-manual'
     Check-Names 'the manual'
+    # Windows' own manual: its Full screen section names both keys.
+    $item = List-Items 'ManualContents' | Where-Object { $_.Current.Name -eq 'Full screen' } | Select-Object -First 1
+    if (-not $item) { throw 'no Full screen in the contents' }
+    $item.SetFocus()
+    Keys '{ENTER}'
+    $section = (Find-Id 'full-screen').GetCurrentPattern([Windows.Automation.TextPattern]::Pattern).DocumentRange.GetText(-1)
+    if ($section -notlike '*F11*Ctrl+Shift+Enter*') { throw "the manual's Full screen section says '$section'" }
+    Snap '12b-manual-full-screen'
 }
 Step 'Ctrl+?: shortcuts' {
     Keys '^?'
@@ -535,6 +546,8 @@ Step 'Ctrl+?: shortcuts' {
     if (-not $script:window.FindFirst($Scope::Descendants, $condition)) { throw 'no Keyboard shortcuts dialog' }
     Snap '13-shortcuts'
     Check-Names 'the shortcuts list'
+    (Find-Id 'ShortcutsList').GetCurrentPattern([Windows.Automation.ScrollPattern]::Pattern).SetScrollPercent(-1, 100)
+    Snap '13b-shortcuts-end'
     Keys '{ESC}'
 }
 Step 'Ctrl+N: add a book' {

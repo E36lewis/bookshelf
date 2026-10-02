@@ -177,6 +177,8 @@ public sealed partial class BookPage : BookshelfPage
     {
         var empty = string.IsNullOrWhiteSpace(body);
         WriteLabel.Text = empty ? "Write" : "Edit";
+        // An icon and a label as content leave a button nameless for Narrator.
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(WriteButton, WriteLabel.Text);
         ReadButton.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         NothingYet.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         Preview.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;

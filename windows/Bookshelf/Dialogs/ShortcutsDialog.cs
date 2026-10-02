@@ -33,11 +33,18 @@ internal static class ShortcutsDialog
         var dialog = new ContentDialog
         {
             Title = "Keyboard shortcuts",
-            Content = new ScrollViewer { Content = list, MaxHeight = 520 },
+            Content = Scroller(list),
             CloseButtonText = "Close",
             DefaultButton = ContentDialogButton.Close,
         };
         await DialogHost.ShowAsync(dialog);
+    }
+
+    private static ScrollViewer Scroller(UIElement list)
+    {
+        var scroller = new ScrollViewer { Content = list, MaxHeight = 520 };
+        AutomationProperties.SetAutomationId(scroller, "ShortcutsList");
+        return scroller;
     }
 
     /// <summary>A shortcut and its keys; more than one combination ("F11 or Ctrl+Shift+Enter") with "or" between.</summary>
