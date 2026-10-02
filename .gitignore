@@ -4,3 +4,5 @@ dist/
 # Local working notes (not published)
 CLAUDE.md
 fixed/
+# Claude Code's local state (agent worktrees, settings)
+.claude/
