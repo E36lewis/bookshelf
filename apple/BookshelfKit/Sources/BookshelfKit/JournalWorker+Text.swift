@@ -12,9 +12,9 @@ extension JournalWorker {
         renderMarkdown(text: markdown)
     }
 
-    /// The user manual.
+    /// The user manual, with the Mac's own keys, folders and steps.
     public static func userManual() async -> Manual {
-        manual()
+        manualFor(platform: .mac)
     }
 
     /// The Mac's keyboard shortcuts, by title.

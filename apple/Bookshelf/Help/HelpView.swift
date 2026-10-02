@@ -74,9 +74,6 @@ struct HelpView: View {
     }
 
     private static func layOut() async -> LaidOutManual {
-        // TODO(Phase 5): switch to the Mac's own manual, `manual_for(.mac)`,
-        // once bookshelf-ffi has it (it's being added on another branch);
-        // this is the shared manual, which gives the Linux keys.
         let manual = await JournalWorker.userManual()
         let intro = await JournalWorker.blocks(for: manual.intro)
         var sections: [LaidOutManual.Part] = []
