@@ -2,7 +2,7 @@
 pub enum Error {
     #[error("database error: {0}")]
     Db(#[from] rusqlite::Error),
-    #[error("network error: {0}")]
+    #[error("{}", network_sentence(.0))]
     Http(#[from] reqwest::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
@@ -43,6 +43,55 @@ impl Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A network failure as a sentence that names the real cause. reqwest's own
+/// text ("error sending request for url (…)") hides it, and its URL can
+/// contain what the person searched for, so neither is shown.
+fn network_sentence(e: &reqwest::Error) -> String {
+    // The innermost error says what actually happened: a refused
+    // connection, an untrusted certificate, a failed name lookup…
+    let mut cause = None;
+    let mut source = std::error::Error::source(e);
+    while let Some(s) = source {
+        cause = Some(s.to_string());
+        source = s.source();
+    }
+    let detail = cause.unwrap_or_else(|| e.without_url_text());
+    let lower = detail.to_lowercase();
+
+    if e.is_timeout() {
+        "Open Library took too long to answer. Please try again in a moment".into()
+    } else if lower.contains("certificate") || lower.contains("issuer") {
+        format!(
+            "couldn't verify Open Library's secure connection ({detail}). Antivirus \
+             software or a network that inspects secure connections can cause this"
+        )
+    } else if lower.contains("dns") || lower.contains("lookup") || lower.contains("no such host") {
+        format!("couldn't find openlibrary.org ({detail}). Please check the internet connection")
+    } else if e.is_connect() {
+        format!(
+            "couldn't connect to Open Library ({detail}). Please check the internet \
+             connection, or whether a firewall is blocking Bookshelf"
+        )
+    } else {
+        format!("couldn't reach Open Library ({detail})")
+    }
+}
+
+/// reqwest's message without the URL part.
+trait WithoutUrlText {
+    fn without_url_text(&self) -> String;
+}
+
+impl WithoutUrlText for reqwest::Error {
+    fn without_url_text(&self) -> String {
+        let text = self.to_string();
+        match text.find(" for url (") {
+            Some(cut) => text[..cut].to_string(),
+            None => text,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,8 +128,29 @@ mod tests {
         let http = reqwest::Client::new().get("not a url").build().unwrap_err();
         assert_eq!(
             Error::Http(http).user_message(),
-            "Network error: builder error."
+            "Couldn't reach Open Library (relative URL without a base)."
         );
+    }
+
+    #[test]
+    fn a_refused_connection_names_the_cause_and_hides_the_url() {
+        // Port 9 on this machine: nothing listens there, so the connection is
+        // refused at once, without touching the internet.
+        let err = reqwest::blocking::Client::new()
+            .get("http://127.0.0.1:9/search.json?q=my+private+search")
+            .send()
+            .unwrap_err();
+        let msg = Error::Http(err).user_message();
+        assert!(
+            msg.starts_with("Couldn't connect to Open Library ("),
+            "{msg}"
+        );
+        assert!(msg.contains("firewall"), "{msg}");
+        assert!(
+            !msg.contains("private"),
+            "the search text must not show: {msg}"
+        );
+        assert!(!msg.contains("http"), "no URL: {msg}");
     }
 
     #[test]
