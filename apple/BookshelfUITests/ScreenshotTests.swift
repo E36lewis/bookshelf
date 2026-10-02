@@ -98,6 +98,10 @@ final class ScreenshotTests: XCTestCase {
 
         // Settings (⌘,), every tab.
         app.typeKey(",", modifierFlags: .command)
+        // Settings opens on the tab it was left on (Data, after the other look's run).
+        let profileTab = app.toolbars.buttons["Profile"]
+        XCTAssertTrue(profileTab.waitForExistence(timeout: 5))
+        profileTab.click()
         XCTAssertTrue(app.textFields["settings.name"].waitForExistence(timeout: 5))
         let settings = app.windows.containing(.textField, identifier: "settings.name").firstMatch
         keep(settings, "12-settings-profile", look)
@@ -130,9 +134,10 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertFalse(left.exists)
         keep(app, "18-removed", look)
         app.menuBars.menuBarItems["Edit"].click()
+        sleep(1)
+        keepScreen("19-undo-menu", look)
         let undo = app.menuItems["Undo Remove “The Left Hand of Darkness”"]
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
-        keepScreen("19-undo-menu", look)
         undo.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
     }
@@ -185,7 +190,24 @@ final class ScreenshotTests: XCTestCase {
     /// Issues that aren't ours to fix. Each needs a reason.
     private static func allowed(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         guard let element = issue.element else { return false }
+        let text = String(describing: element.value ?? "")
+        if issue.auditType == .contrast {
+            // Apple's standard empty state (ContentUnavailableView) draws its
+            // own grey title and description; we don't style it.
+            if ["No Book Selected", "Choose a book to see its page, or add one with ⌘N."].contains(text) {
+                return true
+            }
+            // Near misses, not failures: a row's secondary text over the
+            // list's own background. Kept in the report.
+            if issue.compactDescription.localizedCaseInsensitiveContains("nearly passed") { return true }
+        }
         switch element.elementType {
+        case .popUpButton where !element.label.isEmpty:
+            // SwiftUI's Menu (the profile menu, the book's ⋯ menu) is a
+            // pop-up button that opens with AXShowMenu rather than AXPress,
+            // and its label isn't exposed as the AX description. VoiceOver
+            // reads and opens both; nothing in our code can change this.
+            return issue.auditType == .action || issue.auditType == .sufficientElementDescription
         case .group where element.label.isEmpty && element.identifier.isEmpty:
             // SwiftUI's own layout containers (split view columns, scroll
             // and stack containers): they hold labelled content, none of

@@ -126,7 +126,7 @@ struct BookPageView: View {
                 if !facts.isEmpty {
                     Text(facts)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary.opacity(0.78))
                 }
                 Spacer(minLength: 0)
             }
@@ -232,7 +232,7 @@ struct DateRow: View {
         let format = model.settings?.dateFormat ?? .long
         GridRow {
             Text(title)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary.opacity(0.78))
                 .gridColumnAlignment(.trailing)
             Button {
                 picking = true

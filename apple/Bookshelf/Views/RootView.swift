@@ -12,8 +12,8 @@ struct RootView: View {
     var body: some View {
         content
             .tint(model.accent(for: colorScheme))
-            .onAppear { model.undoManager = undoManager }
-            .onChange(of: undoManager) { _, manager in model.undoManager = manager }
+            .onAppear { model.undoManager = model.undoManager ?? undoManager }
+            .onChange(of: undoManager) { _, manager in model.undoManager = model.undoManager ?? manager }
             .alert(
                 model.problem?.title ?? "",
                 isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } }),
@@ -24,6 +24,9 @@ struct RootView: View {
                 Text(problem.message)
             }
             .background(WindowAccessor { window in
+                // Edit › Undo asks the window for its undo manager: register
+                // removals there, so the menu names them.
+                if let windowUndo = window.undoManager { model.undoManager = windowUndo }
                 if let size = model.options.windowSize {
                     window.setContentSize(size)
                     window.center()

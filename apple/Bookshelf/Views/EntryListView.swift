@@ -26,6 +26,7 @@ struct EntryListView: View {
                     }
                 }
                 .listStyle(.inset)
+                .accessibilityLabel(model.isSearching ? "Search results" : "Books on \(model.shelf.title)")
                 .contextMenu(forSelectionType: String.self) { ids in
                     if ids.count == 1, let id = ids.first {
                         EntryContextMenu(id: id)
