@@ -66,9 +66,10 @@ final class ScreenshotTests: XCTestCase {
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
 
-        // The plain writing page (⌘↩), and back.
+        // The writing page (⌘↩), and back (WriterTests has the rest).
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
         XCTAssertTrue(app.textViews["writer.text"].waitForExistence(timeout: 5))
+        sleep(1)
         keep(app, "08-writer", look)
         app.buttons["page.back"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
@@ -184,6 +185,27 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["reader.title"].waitForExistence(timeout: 5))
         try audit("reader")
 
+        // The writing page, plain and in focus mode.
+        app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
+        let text = app.textViews["writer.text"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        try audit("writer")
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        try audit("writer, focus mode")
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        app.buttons["page.back"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
+
+        // An empty writing page, with its prompts.
+        app.typeKey("1", modifierFlags: .command)
+        let middlemarch = entry(app, "Middlemarch")
+        XCTAssertTrue(middlemarch.waitForExistence(timeout: 5))
+        middlemarch.click()
+        XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
+        app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        try audit("writer, empty")
+
         let text = (found.lines.isEmpty ? ["No issues."] : found.lines)
             + (found.allowed.isEmpty ? [] : ["", "Allowed:"] + found.allowed)
         let report = XCTAttachment(string: text.joined(separator: "\n"))
@@ -244,68 +266,5 @@ final class ScreenshotTests: XCTestCase {
     private func settingsWindow(_ app: XCUIApplication) -> XCUIElement {
         let tabs = ["Profile", "Appearance", "Writing", "Reading Log", "Data"]
         return app.windows.matching(NSPredicate(format: "title IN %@", tabs)).firstMatch
-    }
-
-    enum Look: String {
-        case light, dark
-    }
-
-    enum Journal {
-        case fresh, demo
-    }
-
-    @MainActor
-    private func launch(_ journal: Journal, _ look: Look) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = [
-            journal == .demo ? "-BookshelfDemoJournal" : "-BookshelfFreshJournal",
-            "-BookshelfAppearance", look.rawValue,
-            "-BookshelfWindowSize", "1000x700",
-        ]
-        app.launch()
-        if !app.windows.firstMatch.waitForExistence(timeout: 8) {
-            // Shouldn't happen (the app opens its own window); noted so it's seen.
-            let note = XCTAttachment(string: "No window after launch: opened it from the Window menu.")
-            note.name = "no-window-at-launch"
-            note.lifetime = .keepAlways
-            add(note)
-            app.menuBars.menuBarItems["Window"].click()
-            app.menuItems["Bookshelf"].firstMatch.click()
-        }
-        // If a test can't find what it waits for, this shows what was there.
-        sleep(1)
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = "00-launched-\(name)-\(look.rawValue)"
-        shot.lifetime = .deleteOnSuccess
-        add(shot)
-        return app
-    }
-
-    @MainActor
-    private func entry(_ app: XCUIApplication, _ title: String) -> XCUIElement {
-        app.descendants(matching: .any)["entry.\(title)"].firstMatch
-    }
-
-    /// Keeps a screenshot of the app's front window.
-    @MainActor
-    private func keep(_ app: XCUIApplication, _ name: String, _ look: Look) {
-        keep(app.windows.firstMatch, name, look)
-    }
-
-    @MainActor
-    private func keep(_ element: XCUIElement, _ name: String, _ look: Look) {
-        let shot = XCTAttachment(screenshot: element.screenshot())
-        shot.name = "\(name)-\(look.rawValue)"
-        shot.lifetime = .keepAlways
-        add(shot)
-    }
-
-    /// Keeps the whole screen: for menus, which aren't in a window.
-    @MainActor
-    private func keepScreen(_ name: String, _ look: Look) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = "\(name)-\(look.rawValue)"
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }
