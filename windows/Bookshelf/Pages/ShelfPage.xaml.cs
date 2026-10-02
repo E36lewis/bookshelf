@@ -89,7 +89,8 @@ public sealed partial class ShelfPage : BookshelfPage
         }
 
         CountLine.Text = Session.IsSearching ? ShelfText.Matches(items.Count) : view.CountLine;
-        Entries.ItemsSource = groups.Count > 0
+        // Year headings step aside while searching, as in the GTK app.
+        Entries.ItemsSource = groups.Count > 0 && !Session.IsSearching
             ? new CollectionViewSource { IsSourceGrouped = true, Source = groups }.View
             : items;
         foreach (var item in items) item.LoadCover();

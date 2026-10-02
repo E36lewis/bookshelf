@@ -177,6 +177,7 @@
                 TextWrapping="Wrap" />
             <Button
                 x:Name="EmptyAddButton"
+                AutomationProperties.AutomationId="EmptyAddBookButton"
                 Margin="0,10,0,0"
                 HorizontalAlignment="Center"
                 Click="OnAddBook"

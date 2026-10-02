@@ -87,7 +87,8 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             Prompt.Visibility = entry.Body.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
             ShowStatus();
             Editor.Document.Selection.SetRange(_writing.Text.Length, _writing.Text.Length);
-            Editor.Focus(FocusState.Programmatic);
+            // Ready to type. After layout: focus asked for during navigation can be lost.
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => Editor.Focus(FocusState.Keyboard));
         }
         catch (CoreException ex)
         {

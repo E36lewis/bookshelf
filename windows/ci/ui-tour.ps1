@@ -267,6 +267,18 @@ Step 'Type to search' {
     Snap '16-search'
     Keys '{ESC}'
 }
+Step 'Profile menu' {
+    (Find-Id 'ProfileButton').SetFocus()
+    Keys '{ENTER}'
+    # (Windows PowerShell reads this file as ANSI: keep names ASCII.)
+    $isMenuItem = New-Object Windows.Automation.PropertyCondition($A::ControlTypeProperty, [Windows.Automation.ControlType]::MenuItem)
+    Start-Sleep -Seconds 1
+    $names = @($A::RootElement.FindAll($Scope::Descendants, $isMenuItem) | ForEach-Object { $_.Current.Name })
+    Write-Host ("      menu: " + ($names -join ' | '))
+    if (-not ($names | Where-Object { $_ -like 'New profile*' })) { throw 'no profile menu' }
+    Snap '17-profile-menu'
+    Keys '{ESC}'
+}
 Stop-Bookshelf
 
 # ---- Sam: dark, teal and sans-serif ------------------------------------------
@@ -288,7 +300,7 @@ Stop-Bookshelf
 Start-Bookshelf @('--demo-journal', '--demo-profile', 'Jo')
 Step 'Empty shelf' {
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
-    Find-Id 'AddBookButton' | Out-Null
+    Find-Id 'EmptyAddBookButton' | Out-Null
     Snap '30-empty-shelf'
 }
 Stop-Bookshelf
