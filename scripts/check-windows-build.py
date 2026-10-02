@@ -25,7 +25,10 @@ import sys
 # DLLs that are part of Windows 10, version 1809 (the app's minimum) and later.
 WINDOWS = {
     "advapi32.dll", "bcp47langs.dll", "bcp47mrm.dll", "bcrypt.dll",
-    "bcryptprimitives.dll", "comctl32.dll", "coremessaging.dll",
+    # combase: COM's home since Windows 8 (ole32's CoTaskMemFree forwards
+    # to it). The Rust core links it for the known-folder lookup that finds
+    # %LOCALAPPDATA% (directories -> dirs-sys -> windows-sys).
+    "bcryptprimitives.dll", "combase.dll", "comctl32.dll", "coremessaging.dll",
     "crypt32.dll", "d2d1.dll", "d3d11.dll", "d3d12.dll", "d3dcompiler_47.dll",
     "dbghelp.dll", "dcomp.dll", "dwmapi.dll", "dwrite.dll", "dxgi.dll",
     "elscore.dll", "gdi32.dll", "imm32.dll", "iphlpapi.dll", "kernel32.dll",
