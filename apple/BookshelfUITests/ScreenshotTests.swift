@@ -205,6 +205,12 @@ final class ScreenshotTests: XCTestCase {
             "-ApplePersistenceIgnoreState", "YES",
         ]
         app.launch()
+        // If a test can't find what it waits for, this shows what was there.
+        sleep(2)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "00-launched-\(name)-\(look.rawValue)"
+        shot.lifetime = .deleteOnSuccess
+        add(shot)
         return app
     }
 

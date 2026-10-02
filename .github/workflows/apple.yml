@@ -61,7 +61,9 @@ jobs:
             cd apple/build/screenshots
             jq -r '.[].attachments[] | [.exportedFileName, .suggestedHumanReadableName] | @tsv' manifest.json |
               while IFS=$'\t' read -r file nice; do
-                clean=$(printf '%s' "$nice" | sed -E 's/_[0-9]+_[0-9A-Fa-f-]{36}(\.[A-Za-z]+)$/\1/')
+                # upload-artifact refuses " : < > | * ? in names.
+                clean=$(printf '%s' "$nice" | sed -E 's/_[0-9]+_[0-9A-Fa-f-]{36}(\.[A-Za-z]+)$/\1/' |
+                  tr '":<>|*?`/\\' '__________')
                 [ -f "$file" ] && [ "$file" != "$clean" ] && mv -n -- "$file" "$clean"
               done
             ls
