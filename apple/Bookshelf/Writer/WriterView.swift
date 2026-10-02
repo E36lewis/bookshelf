@@ -144,7 +144,7 @@ private struct FormatBar: View {
                 Label("Heading", systemImage: "textformat.size")
             }
             .tint(.primary)
-            .help("Heading")
+            .help("Make this line a heading")
             .accessibilityLabel("Heading")
             .accessibilityIdentifier("format.heading")
             ControlGroup {

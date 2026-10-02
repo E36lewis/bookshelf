@@ -177,19 +177,59 @@ final class ScreenshotTests: XCTestCase {
             }
         }
 
+        /// The audit's contrast check misreads small text (see `allowed`):
+        /// these are measured from the pixels instead, and must be 4.5:1.
+        func checkContrast(_ name: String, _ element: XCUIElement) {
+            guard element.waitForExistence(timeout: 5), let ratio = measuredContrast(element) else {
+                found.lines.append("\(name): couldn't measure its contrast")
+                return
+            }
+            let line = "\(name): \(String(format: "%.1f", ratio)):1"
+            found.measured.append(line)
+            if ratio < 4.5 { found.lines.append("\(line), under 4.5:1") }
+        }
+
+        /// Every control on the toolbar has a name VoiceOver can read.
+        func checkToolbar(_ screen: String) {
+            let toolbar = app.toolbars.firstMatch
+            let fields = toolbar.searchFields.allElementsBoundByIndex.map(\.frame)
+            let controls = toolbar.buttons.allElementsBoundByIndex + toolbar.menuButtons.allElementsBoundByIndex
+                + toolbar.popUpButtons.allElementsBoundByIndex + toolbar.checkBoxes.allElementsBoundByIndex
+            var names: [String] = []
+            for control in controls {
+                // The search field's own buttons are the system's.
+                if fields.contains(where: { $0.contains(control.frame) }) { continue }
+                let name = control.label.isEmpty ? control.title : control.label
+                if name.isEmpty {
+                    found.lines.append("\(screen): a toolbar control has no name — id “\(control.identifier)” at \(control.frame)")
+                } else {
+                    names.append(name)
+                }
+            }
+            found.toolbars.append("\(screen): \(names.joined(separator: ", "))")
+        }
+
         try audit("shelf")
+        checkToolbar("shelf")
         entry(app, "The Left Hand of Darkness").click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
         try audit("book page")
+        checkToolbar("book page")
+        checkContrast("Started", app.staticTexts["Started"].firstMatch)
+        checkContrast("Finished", app.staticTexts["Finished"].firstMatch)
+        checkContrast("Book facts", app.staticTexts.matching(NSPredicate(format: "value ENDSWITH ' pages'")).firstMatch)
         app.typeKey("r", modifierFlags: .command)
         XCTAssertTrue(app.staticTexts["reader.title"].waitForExistence(timeout: 5))
         try audit("reader")
+        checkToolbar("reader")
 
         // The writing page, plain and in focus mode.
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
         let writing = app.textViews["writer.text"]
         XCTAssertTrue(writing.waitForExistence(timeout: 5))
         try audit("writer")
+        checkToolbar("writer")
+        checkContrast("Writer status line", app.descendants(matching: .any)["writer.status"].firstMatch)
         app.typeKey("f", modifierFlags: [.command, .shift])
         try audit("writer, focus mode")
         app.typeKey("f", modifierFlags: [.command, .shift])
@@ -207,12 +247,49 @@ final class ScreenshotTests: XCTestCase {
         try audit("writer, empty")
 
         let text = (found.lines.isEmpty ? ["No issues."] : found.lines)
+            + ["", "Contrast measured from the pixels (4.5:1 needed):"] + found.measured
+            + ["", "Toolbar controls, by name:"] + found.toolbars
             + (found.allowed.isEmpty ? [] : ["", "Allowed:"] + found.allowed)
         let report = XCTAttachment(string: text.joined(separator: "\n"))
         report.name = "accessibility-audit"
         report.lifetime = .keepAlways
         add(report)
         XCTAssertTrue(found.lines.isEmpty, found.lines.joined(separator: "\n"))
+    }
+
+    /// macOS has no Dynamic Type; people pick the reading size in Settings ›
+    /// Writing › Text size, and the reader follows it at once.
+    @MainActor
+    func testTheReaderFollowsTheTextSize() throws {
+        let app = launch(.demo, .light)
+        app.typeKey("2", modifierFlags: .command)
+        let piranesi = entry(app, "Piranesi")
+        XCTAssertTrue(piranesi.waitForExistence(timeout: 30))
+        piranesi.click()
+        XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
+        app.typeKey("r", modifierFlags: .command)
+        let title = app.staticTexts["reader.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        let paragraph = app.staticTexts.matching(NSPredicate(format: "value BEGINSWITH 'The House is'")).firstMatch
+        XCTAssertTrue(paragraph.waitForExistence(timeout: 5))
+        let before = (title: title.frame.height, paragraph: paragraph.frame.height)
+
+        app.typeKey(",", modifierFlags: .command)
+        let writingTab = app.toolbars.buttons["Writing"]
+        XCTAssertTrue(writingTab.waitForExistence(timeout: 5))
+        writingTab.click()
+        let size = settingsWindow(app).steppers.firstMatch
+        XCTAssertTrue(size.waitForExistence(timeout: 5))
+        for _ in 0..<6 { size.incrementArrows.firstMatch.click() }
+        settingsWindow(app).typeKey("w", modifierFlags: .command)
+
+        // Bigger type: the title and a wrapped paragraph take more room.
+        let grew = waitFor(title) { _ in title.frame.height > before.title * 1.2 }
+        note("title \(before.title) → \(title.frame.height), paragraph \(before.paragraph) → \(paragraph.frame.height)",
+             named: "reader-text-size")
+        XCTAssertTrue(grew, "the reader's title didn't grow: \(before.title) → \(title.frame.height)")
+        XCTAssertGreaterThan(paragraph.frame.height, before.paragraph * 1.2)
+        keep(app, "31-reader-larger-text", .light)
     }
 
     /// Issues that aren't ours to fix. Each needs a reason.
@@ -228,13 +305,14 @@ final class ScreenshotTests: XCTestCase {
             if ["No Book Selected", "Choose a book to see its page, or add one with ⌘N."].contains(text) {
                 return true
             }
-            // Drawn in the system's primary label color (well over 4.5:1 on
-            // the window), yet flagged even after the page settles: the
-            // audit's sampling, not the color. Listed for a person to check.
+            // Small text the audit misreads: the reading dates' labels and
+            // the book's facts are in the system's primary label color, and
+            // the writing page's status line in a gray chosen for 4.5:1
+            // (the system's secondary label gray falls short of it). The
+            // audit judges small text by its anti-aliased edges; the test
+            // measures each from the pixels instead (`checkContrast`) and
+            // fails if it's under 4.5:1.
             if text == "Started" || text == "Finished" || text.hasSuffix(" pages") { return true }
-            // The writing page's status line: measured in the screenshots
-            // at #606060 on white (about 6:1) even before it was darkened to
-            // its current gray, yet still flagged. Listed for a person to check.
             if element.identifier == "writer.status" { return true }
             // Near misses, not failures: a row's secondary text over the
             // list's own background. Kept in the report.
@@ -266,6 +344,8 @@ final class ScreenshotTests: XCTestCase {
     private final class Found {
         var lines: [String] = []
         var allowed: [String] = []
+        var measured: [String] = []
+        var toolbars: [String] = []
     }
 
     /// The Settings window: its title is the tab that's showing.

@@ -20,6 +20,11 @@ final class WriterTests: XCTestCase {
         let app = launch(.demo, look)
         let text = openWriter(app, "The Left Hand of Darkness")
         keep(app, "20-writer-markdown", look)
+        // The status line reads clearly in both looks (measured, not guessed).
+        let status = app.descendants(matching: .any)["writer.status"].firstMatch
+        let contrast = try XCTUnwrap(measuredContrast(status), "couldn't measure the status line")
+        note("status line \(String(format: "%.1f", contrast)):1", named: "status-contrast-\(look.rawValue)")
+        XCTAssertGreaterThanOrEqual(contrast, 4.5, "the status line's contrast")
 
         // Focus mode (⇧⌘F) on the second paragraph's first sentence.
         app.typeKey(XCUIKeyboardKey.upArrow.rawValue, modifierFlags: .command)

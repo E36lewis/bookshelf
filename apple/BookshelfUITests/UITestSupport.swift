@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Light or dark, whatever the profile's settings say.
@@ -76,6 +77,50 @@ extension XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// The contrast of `element`'s text on its background, measured from a
+    /// screenshot of it: the background is its commonest color, the text
+    /// the pixel that differs most from that. Anti-aliasing only ever
+    /// lightens strokes, so this is the least the text has. `nil` if there
+    /// was nothing to measure.
+    @MainActor
+    func measuredContrast(_ element: XCUIElement) -> Double? {
+        let image = element.screenshot().image
+        guard let picture = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let sRGB = CGColorSpace(name: CGColorSpace.sRGB)
+        else { return nil }
+        let width = picture.width, height = picture.height
+        guard width > 0, height > 0 else { return nil }
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: sRGB, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+            else { return false }
+            context.draw(picture, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        var counts: [UInt32: Int] = [:]
+        for i in stride(from: 0, to: pixels.count, by: 4) {
+            let rgb = UInt32(pixels[i]) << 16 | UInt32(pixels[i + 1]) << 8 | UInt32(pixels[i + 2])
+            counts[rgb, default: 0] += 1
+        }
+        guard let background = counts.max(by: { $0.value < $1.value })?.key else { return nil }
+        // WCAG 2 relative luminance and contrast ratio.
+        func luminance(_ rgb: UInt32) -> Double {
+            func channel(_ shift: UInt32) -> Double {
+                let c = Double((rgb >> shift) & 0xFF) / 255
+                return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+        }
+        let back = luminance(background)
+        return counts.keys.map { rgb in
+            let l = luminance(rgb)
+            return (max(l, back) + 0.05) / (min(l, back) + 0.05)
+        }.max()
     }
 
     /// Waits until `element`'s value or label satisfies `test`.

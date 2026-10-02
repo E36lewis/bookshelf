@@ -91,7 +91,7 @@ struct BookPageView: View {
                 } label: {
                     Label("More", systemImage: "ellipsis.circle")
                 }
-                .help("More")
+                .help("Read it again, or remove it from your shelf")
                 .accessibilityLabel("More")
                 .accessibilityIdentifier("book.more")
             }
