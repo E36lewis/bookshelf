@@ -206,6 +206,9 @@ jobs:
             $file = Join-Path $logs $log
             if (Test-Path $file) { Write-Host "--- $log"; Get-Content $file -Tail 200 }
           }
+          # The writer's own account of how its text looked, all through the tour.
+          $startup = Join-Path $logs 'startup.log'
+          if (Test-Path $startup) { Write-Host "--- the writer's look in startup.log"; Select-String -Path $startup -Pattern 'Writer look' | ForEach-Object { $_.Line } }
           # A crash in native code (RichEdit, say) leaves no crash.log; Windows notes it here.
           Write-Host "--- Windows' application errors mentioning Bookshelf"
           Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Level = 2; StartTime = (Get-Date).AddHours(-1) } -ErrorAction SilentlyContinue |

@@ -1,7 +1,10 @@
 # Drives Bookshelf.exe through its pages on a demo journal (never real
 # data), checking the UI through UI Automation and saving a screenshot of
 # each page. Run by .github/workflows/windows.yml in Windows PowerShell,
-# for its built-in UI Automation client.
+# for its built-in UI Automation client. Keys and clicks are real input
+# (SendInput by scan code, see RealInput.cs), as a person's keyboard and
+# mouse send them; UI Automation only reads, and invokes a button where a
+# step says so.
 #
 #   ui-tour.ps1 -Exe <Bookshelf.exe> -Out <folder for PNGs>
 #
@@ -9,11 +12,13 @@
 # as it can); the script fails at the end if any step did.
 #
 # The writing page gets a tour of its own: highlighting as you type, the
-# formatting bar and its keys, one-step undo, prompts, a 10,000-word speed
-# check (written to writer-speed.txt beside the screenshots), focus mode and
-# full screen; then saving as the window closes (across a restart, with
-# --demo-journal-in) and the rescue of text that can't be saved
-# (--demo-save-fails).
+# formatting keys (Ctrl+B, I, K) and bar, one-step undo, headings bigger by
+# level, prompts, a 10,000-word speed check (written to writer-speed.txt
+# beside the screenshots), focus mode (checked against the writer's own
+# account of its formatting, and the pixels on screen) and full screen
+# (F11, Ctrl+Shift+Enter, Esc); then saving as the window closes (across a
+# restart, with --demo-journal-in) and the rescue of text that can't be
+# saved (--demo-save-fails).
 
 param(
     [Parameter(Mandatory)] [string] $Exe,
@@ -57,8 +62,35 @@ public static class Win
             using (var shot = full.Clone(crop, full.PixelFormat)) shot.Save(path, ImageFormat.Png);
         }
     }
+
+    // How many pixels of a part of the screen, as it's shown right now, are
+    // within `tolerance` of a color on every channel.
+    public static int CountNear(int x, int y, int width, int height, int r, int g, int b, int tolerance)
+    {
+        using (var shot = new Bitmap(width, height, PixelFormat.Format32bppArgb))
+        {
+            using (var g2 = Graphics.FromImage(shot)) g2.CopyFromScreen(x, y, 0, 0, new Size(width, height));
+            var data = shot.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            var bytes = new byte[data.Stride * height];
+            Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+            shot.UnlockBits(data);
+            var count = 0;
+            for (var row = 0; row < height; row++)
+            {
+                for (var col = 0; col < width; col++)
+                {
+                    var i = row * data.Stride + col * 4; // blue, green, red, alpha
+                    if (Math.Abs(bytes[i + 2] - r) <= tolerance && Math.Abs(bytes[i + 1] - g) <= tolerance && Math.Abs(bytes[i] - b) <= tolerance) count++;
+                }
+            }
+            return count;
+        }
+    }
 }
 "@
+# Keys and clicks through SendInput, by scan code, as a keyboard sends them
+# (UI Automation and SendKeys can take paths real keys don't).
+Add-Type -Path (Join-Path $PSScriptRoot 'RealInput.cs')
 
 $A = [Windows.Automation.AutomationElement]
 $Scope = [Windows.Automation.TreeScope]
@@ -115,10 +147,11 @@ function List-Items([string] $Id) {
     return @($list.FindAll($Scope::Descendants, $isItem))
 }
 
+# Real key presses (see RealInput.cs), written as for SendKeys: '^b', '{F11}'.
 function Keys([string] $Keys) {
     [Win]::SetForegroundWindow($script:hwnd) | Out-Null
     Start-Sleep -Milliseconds 150
-    [System.Windows.Forms.SendKeys]::SendWait($Keys)
+    [RealInput]::Send($Keys)
     Start-Sleep -Milliseconds 700
 }
 
@@ -145,7 +178,7 @@ function Step([string] $Name, [scriptblock] $Body) {
 function Type-Now([string] $Keys) {
     [Win]::SetForegroundWindow($script:hwnd) | Out-Null
     Start-Sleep -Milliseconds 150
-    [System.Windows.Forms.SendKeys]::SendWait($Keys)
+    [RealInput]::Send($Keys)
 }
 
 function Editor-Pattern {
@@ -273,6 +306,65 @@ function Caret-Offset {
     return ($middle - ($page.Top + $page.Height / 2)) / $page.Height
 }
 
+# The writer's own account of how its text looks (demo journals only, read
+# back from the editor's formatting), as a table: focus, caret, bright (the
+# sentence at full strength, "start-end"), dimInBright (characters of it
+# dimmed: should be 0), litOutside (characters outside it not dimmed:
+# should be 0), dimmed (all dimmed characters), and the text size of the
+# body and of each heading level (body, h1, h2, h3).
+function Look-Values {
+    $raw = (Find-Id 'WriterLook').Current.Name
+    $v = @{ raw = $raw }
+    foreach ($pair in ($raw -split ' ')) {
+        $kv = $pair -split '=', 2
+        if ($kv.Count -eq 2) { $v[$kv[0]] = $kv[1] }
+    }
+    return $v
+}
+
+# Waits until the look passes $Test (given the table); fails saying what it was.
+function Wait-Look([scriptblock] $Test, [string] $What, [int] $Seconds = 8) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        $v = Look-Values
+        if ($v.raw -and (& $Test $v)) { return $v }
+        Start-Sleep -Milliseconds 250
+    } while ($clock.Elapsed.TotalSeconds -lt $Seconds)
+    throw "$What; the writer says '$($v.raw)'"
+}
+
+function Num([string] $Text) { [double]::Parse($Text, [Globalization.CultureInfo]::InvariantCulture) }
+
+# Focus mode's look is right: a sentence at full strength, all of it, and
+# everything else dimmed.
+function Assert-FocusLook([string] $When) {
+    Start-Sleep -Milliseconds 1200 # the writer looks again twice a second
+    Wait-Look {
+        param($v)
+        $span = $v.bright -split '-'
+        $v.focus -eq 'on' -and [int]$v.dimInBright -eq 0 -and [int]$v.litOutside -eq 0 -and [int]$span[1] -gt [int]$span[0]
+    } "$When, the caret's sentence isn't the only one at full strength"
+}
+
+# A real click in the middle of the element with this id.
+function Click-Id([string] $Id) {
+    $r = (Find-Id $Id).Current.BoundingRectangle
+    [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    Start-Sleep -Milliseconds 150
+    [RealInput]::Click([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+    [RealInput]::MoveTo([int]($r.X + $r.Width / 2), [int]($r.Y + 300))
+    Start-Sleep -Milliseconds 700
+}
+
+# How many of the editor's pixels on screen are in the ink color (the text
+# at full strength), so what's checked is what's really shown.
+function Lit-Pixels([switch] $Dark) {
+    Start-Sleep -Milliseconds 800 # let the editor draw
+    $r = (Find-Id 'Editor').Current.BoundingRectangle
+    $ink = if ($Dark) { 255 } else { 26 }
+    [Win]::CountNear([int]$r.X, [int]$r.Y, [int]$r.Width, [int]$r.Height, $ink, $ink, $ink, 45)
+}
+
 # About 10,000 words of mixed Markdown, as someone's long notes might be.
 function Long-Text {
     $sb = New-Object System.Text.StringBuilder
@@ -349,11 +441,17 @@ Step 'Ctrl+R: read' {
     Find-Id 'ReaderText' | Out-Null
     Snap '05-reader'
 }
-Step 'F11: full screen' {
+Step 'F11 or Ctrl+Shift+Enter: full screen, Esc to leave' {
     Keys '{F11}'
+    Wait-Gone 'SearchBox'
     Start-Sleep -Seconds 1
     Snap '06-reader-full-screen'
     Keys '{ESC}'
+    Find-Id 'SearchBox' 5 | Out-Null
+    Keys '^+{ENTER}'
+    Wait-Gone 'SearchBox'
+    Keys '{ESC}'
+    Find-Id 'SearchBox' 5 | Out-Null
 }
 Step 'Alt+Left, then Ctrl+E: write' {
     Keys '%{LEFT}'
@@ -482,8 +580,27 @@ Step 'Writer: Markdown is highlighted as you type' {
     Write-Host "      'bold' weight $weight, 'move' $plainWeight; '**bold**' has mixed colors; all in $($fonts[0])"
     Snap '40-writer-typed-markdown'
 }
-Step 'Writer: Ctrl+B on a word, and one Ctrl+Z takes it back' {
+Step 'Writer: Ctrl+B, Ctrl+I and Ctrl+K on a word, each taken back by one Ctrl+Z' {
     Keys '{ENTER}plain'
+    $before = Wait-EditorEnd "move.`nplain"
+    foreach ($case in @(@('^b', '**plain**'), @('^i', '*plain*'), @('^k', '[plain]()'))) {
+        $key, $marked = $case
+        Keys $key
+        $after = Wait-EditorEnd "`n$marked"
+        # Only the marks: no tab (Ctrl+I) or line break (Ctrl+K) typed too.
+        if ($after.Length -ne $before.Length + $marked.Length - 'plain'.Length) {
+            throw "$key added $($after.Length - $before.Length) characters, not $($marked.Length - 'plain'.Length)"
+        }
+        Keys '^z'
+        $undone = Wait-EditorEnd "move.`nplain"
+        if ($undone -ne $before) { throw "one Ctrl+Z after $key didn't bring back the text as it was" }
+        Write-Host "      $key -> '$marked', Ctrl+Z -> 'plain'"
+    }
+    # Ctrl held down a while first (repeating, as a held key does), then B.
+    [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    [RealInput]::PressHeld([uint16[]]@([RealInput]::Control), 0x42, 900)
+    Wait-EditorEnd "`n**plain**" | Out-Null
+    Keys '^z'
     Wait-EditorEnd "move.`nplain" | Out-Null
     Keys '^b'
     Wait-EditorEnd "`n**plain**" | Out-Null
@@ -496,6 +613,106 @@ Step 'Writer: Ctrl+B on a word, and one Ctrl+Z takes it back' {
     Wait-EditorEnd "`n***plain***" | Out-Null
     Keys '^z'
     Wait-EditorEnd "`n**plain**" | Out-Null
+    Wait-Focused 'Editor'
+}
+Step 'Writer: headings are bigger by level' {
+    Keys '^{HOME}{END}{ENTER}{ENTER}## A second level{ENTER}{ENTER}### And a third'
+    $v = Wait-Look { param($v) $v.h1 -and $v.h2 -and $v.h3 -and $v.body } 'not every heading level has a size'
+    $h1, $h2, $h3, $body = (Num $v.h1), (Num $v.h2), (Num $v.h3), (Num $v.body)
+    Write-Host "      text sizes (points): h1 $h1, h2 $h2, h3 $h3, body $body"
+    if (-not ($h1 -gt $h2 -and $h2 -gt $h3 -and $h3 -gt $body)) { throw "sizes h1 $h1, h2 $h2, h3 $h3, body ${body}: not bigger by level" }
+    Keys '^{HOME}'
+    Snap '40b-writer-headings'
+}
+Step 'Writer: focus mode dims all but the caret''s sentence, and follows the caret' {
+    # Into the paragraph under the headings (lines: h1, blank, h2, blank, h3, blank).
+    Keys '^{HOME}{DOWN 6}{END}'
+    $all = Lit-Pixels
+    Keys '^+f'
+    $toggle = (Find-Id 'FocusModeButton').GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
+    if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Ctrl+Shift+F: Focus is not pressed' }
+    $first = Assert-FocusLook 'Focus mode on (Ctrl+Shift+F)'
+    $focused = Lit-Pixels
+    Write-Host "      bright $($first.bright); ink pixels: $all before, $focused in focus mode"
+    if ($focused -lt 150) { throw "only $focused pixels of text at full strength in focus mode" }
+    Snap '44a-writer-focus'
+    # Typing keeps it right.
+    Keys 'x'
+    Assert-FocusLook 'After typing a letter' | Out-Null
+    Keys '{BACKSPACE}'
+    # The caret moves into another sentence (the first heading): that one is bright now.
+    Keys '^{HOME}'
+    $moved = Assert-FocusLook 'After moving the caret to the top'
+    if ($moved.bright -eq $first.bright) { throw "the bright sentence stayed at $($first.bright) when the caret moved" }
+    Write-Host "      the caret moved up: bright $($first.bright) -> $($moved.bright)"
+    Keys '{DOWN 6}{END}'
+    Assert-FocusLook 'After moving back' | Out-Null
+    # What else people do while writing; the look must survive each.
+    Keys ' Then more words.'
+    Assert-FocusLook 'After typing words' | Out-Null
+    # A sentence finished at the end of a line, and a space typed: it stays
+    # bright until the next one starts (as in GTK and on the Mac).
+    Keys '^{DOWN}{LEFT} And one more. '
+    Assert-FocusLook 'After finishing a sentence at the end of a line' | Out-Null
+    $page = (Find-Id 'Editor').Current.BoundingRectangle
+    [RealInput]::MoveTo([int]($page.X + $page.Width / 2), [int]($page.Y + $page.Height / 2))
+    Start-Sleep -Seconds 2
+    [RealInput]::MoveTo([int]($page.X - 120), [int]($page.Y + $page.Height / 2))
+    Start-Sleep -Seconds 1
+    Assert-FocusLook 'After the pointer went over the text and away' | Out-Null
+    Keys '^f'
+    Start-Sleep -Seconds 1
+    Assert-FocusLook 'With the search box focused' | Out-Null
+    Keys '{ESC}'
+    (Find-Id 'Editor').SetFocus()
+    Wait-Focused 'Editor'
+    Assert-FocusLook 'Back in the text' | Out-Null
+    $other = Start-Process notepad.exe -PassThru
+    try {
+        Start-Sleep -Seconds 2
+        Assert-FocusLook 'With another window in front' | Out-Null
+    }
+    finally {
+        Stop-Process -Id $other.Id -Force -ErrorAction SilentlyContinue
+        [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    }
+    Start-Sleep -Seconds 1
+    Wait-Focused 'Editor'
+    Assert-FocusLook 'Back from the other window' | Out-Null
+    $focused = Lit-Pixels
+    # Off: everything at full strength again, at once.
+    Keys '^+f'
+    Wait-Look { param($v) $v.focus -eq 'off' -and [int]$v.dimmed -eq 0 } 'Focus mode off (Ctrl+Shift+F), some text is still dimmed' 3 | Out-Null
+    $after = Lit-Pixels
+    Write-Host "      ink pixels: $focused in focus mode, $after after"
+    if ($after -lt $focused * 1.5) { throw "turning focus mode off left the text dimmed on screen ($focused ink pixels in focus mode, $after after)" }
+    # The same with the button, clicked.
+    Click-Id 'FocusModeButton'
+    Assert-FocusLook 'Focus mode on (the button)' | Out-Null
+    Click-Id 'FocusModeButton'
+    Wait-Look { param($v) $v.focus -eq 'off' -and [int]$v.dimmed -eq 0 } 'Focus mode off (the button), some text is still dimmed' 3 | Out-Null
+    Wait-Focused 'Editor'
+}
+Step 'Writer: full screen with F11 or Ctrl+Shift+Enter, and Esc' {
+    # Its keys, as its tooltip and Narrator give them.
+    $keys = (Find-Id 'WriterFullScreenButton').Current.AcceleratorKey
+    $name = (Find-Id 'WriterFullScreenButton').Current.Name
+    Write-Host "      the button: '$name', keys '$keys'"
+    if ($keys -ne 'F11 or Ctrl+Shift+Enter') { throw "the full screen button's keys are '$keys'" }
+    $text = Editor-Text
+    Keys '{F11}'
+    Wait-Gone 'SearchBox'
+    Keys '{ESC}'
+    Find-Id 'SearchBox' | Out-Null
+    Keys '^+{ENTER}'
+    Wait-Gone 'SearchBox'
+    Keys '^+{ENTER}'
+    Find-Id 'SearchBox' 5 | Out-Null
+    Keys '^+{ENTER}'
+    Wait-Gone 'SearchBox'
+    Keys '{ESC}'
+    Find-Id 'SearchBox' 5 | Out-Null
+    if ((Editor-Text) -ne $text) { throw 'the full screen keys changed the text' }
     Wait-Focused 'Editor'
 }
 Step 'Writer: the formatting bar from the keyboard' {
@@ -560,7 +777,7 @@ Step 'Writer: 10,000 words, typing in the middle stays fast' {
     Keys '^{HOME}{DOWN 500}{END}'
     [Win]::SetForegroundWindow($script:hwnd) | Out-Null
     foreach ($c in ' Typed in the middle one key at a time'.ToCharArray()) {
-        [System.Windows.Forms.SendKeys]::SendWait([string]$c)
+        [RealInput]::Send([string]$c)
         Start-Sleep -Milliseconds 60
     }
     $clock = [Diagnostics.Stopwatch]::StartNew()
@@ -690,18 +907,27 @@ Step 'Dark theme' {
 }
 Step 'Dark writer: Markdown, focus mode, full screen' {
     Open-Writer '^1' 'To the Lighthouse'
+    Keys '^{HOME}{END}{ENTER}{ENTER}## Part two{ENTER}{ENTER}### Time passes'
+    $v = Wait-Look { param($v) $v.h1 -and $v.h2 -and $v.h3 } 'not every heading level has a size'
+    if (-not ((Num $v.h1) -gt (Num $v.h2) -and (Num $v.h2) -gt (Num $v.h3) -and (Num $v.h3) -gt (Num $v.body))) { throw "heading sizes: $($v.raw)" }
     Keys '^{HOME}'
     Snap '50-dark-writer'
-    Keys '{DOWN 4}^+f'
-    Start-Sleep -Seconds 1
+    # Into the paragraph's second sentence (lines: h1, blank, h2, blank, h3, blank).
+    Keys '{DOWN 7}^+f'
+    Assert-FocusLook 'Dark, focus mode on' | Out-Null
+    $focused = Lit-Pixels -Dark
     Snap '51-dark-writer-focus'
     Keys '{F11}'
     Wait-Gone 'SearchBox'
     Start-Sleep -Seconds 1
     Snap '53-dark-writer-full-screen'
     Keys '{ESC}'
-    Find-Id 'SearchBox' | Out-Null
+    Find-Id 'SearchBox' 5 | Out-Null
     Keys '^+f'
+    Wait-Look { param($v) $v.focus -eq 'off' -and [int]$v.dimmed -eq 0 } 'Dark, focus mode off, some text is still dimmed' 3 | Out-Null
+    $after = Lit-Pixels -Dark
+    Write-Host "      dark ink pixels: $focused in focus mode, $after after"
+    if ($after -lt $focused * 1.5) { throw "turning focus mode off left the text dimmed on screen ($focused ink pixels in focus mode, $after after)" }
 }
 Step 'Dark writer: prompts on an empty page' {
     Keys '%{LEFT}'
@@ -709,6 +935,36 @@ Step 'Dark writer: prompts on an empty page' {
     Open-Writer '^3' 'Piranesi'
     Wait-Name 'WriterPrompt' 'Why do you want to read this one?*' | Out-Null
     Snap '52-dark-writer-prompts'
+}
+Step 'Dark writer: starting in focus mode, and the mouse' {
+    Keys '^,'
+    Find-Id 'SettingsScroller' | Out-Null
+    $named = New-Object Windows.Automation.PropertyCondition($A::NameProperty, 'Start in focus mode')
+    $switch = @($script:window.FindAll($Scope::Descendants, $named)) |
+        Where-Object { $_.GetCurrentPropertyValue($A::IsTogglePatternAvailableProperty) } | Select-Object -First 1
+    if (-not $switch) { throw "no 'Start in focus mode' switch" }
+    $switch.GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern).Toggle()
+    Start-Sleep -Seconds 1
+    Open-Writer '^1' 'To the Lighthouse'
+    $opened = Assert-FocusLook 'Opened in focus mode'
+    $toggle = (Find-Id 'FocusModeButton').GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
+    if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::On) { throw 'Focus is not pressed' }
+    # A click in another sentence brightens that one.
+    $word = (Editor-Pattern).DocumentRange.FindText('Mrs Ramsay', $false, $false)
+    $rects = @($word.GetBoundingRectangles())
+    if ($rects.Count -eq 0) { throw "'Mrs Ramsay' isn't on the screen" }
+    [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    [RealInput]::Click([int]($rects[0].X + 20), [int]($rects[0].Y + $rects[0].Height / 2))
+    $clicked = Assert-FocusLook 'After clicking into a list item'
+    if ($clicked.bright -eq $opened.bright) { throw "the bright sentence stayed at $($opened.bright) after the click" }
+    Write-Host "      opened with $($opened.bright) bright; after the click $($clicked.bright)"
+    Snap '54-dark-writer-focus-clicked'
+    $focused = Lit-Pixels -Dark
+    Click-Id 'FocusModeButton'
+    Wait-Look { param($v) $v.focus -eq 'off' -and [int]$v.dimmed -eq 0 } 'Focus mode off (the button), some text is still dimmed' 3 | Out-Null
+    $after = Lit-Pixels -Dark
+    Write-Host "      dark ink pixels: $focused in focus mode, $after after"
+    if ($after -lt $focused * 1.5) { throw "turning focus mode off left the text dimmed on screen ($focused ink pixels in focus mode, $after after)" }
 }
 Stop-Bookshelf
 
