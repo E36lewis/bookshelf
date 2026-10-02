@@ -5,6 +5,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # Pinned to the version uniffi-bindgen-cs (the C# bindings) supports;
+      # upgrade both together, by hand, when the C# generator catches up.
+      - dependency-name: "uniffi"
   - package-ecosystem: github-actions
     directory: /
     schedule:
