@@ -43,7 +43,9 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Bookshelf.Core tests
-        run: dotnet test windows/Bookshelf.Core.Tests/Bookshelf.Core.Tests.csproj
+        # windows/global.json selects the Microsoft Testing Platform runner (.NET 10).
+        working-directory: windows
+        run: dotnet test --project Bookshelf.Core.Tests/Bookshelf.Core.Tests.csproj
 
       - name: Publish the app
         run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -o windows/build/Bookshelf

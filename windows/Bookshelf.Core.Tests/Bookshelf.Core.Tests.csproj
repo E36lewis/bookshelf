@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Tests for Bookshelf.Core's plain .NET logic (runs on any OS). -->
+  <!-- Tests for Bookshelf.Core's plain .NET logic (runs on any OS).
+       Run with: dotnet test -project Bookshelf.Core.Tests (from windows/; see global.json). -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -8,9 +9,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
