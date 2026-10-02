@@ -58,10 +58,10 @@ extension EntryDetail {
 
 extension TextEdit {
     /// The text to replace, as NSTextView counts (UTF-16).
-    public var range: NSRange { NSRange(location: Int(start), length: Int(end - start)) }
+    public var range: NSRange { NSRange(location: Int(start), length: max(0, Int(end) - Int(start))) }
     /// The selection to set after replacing it.
     public var newSelection: NSRange {
-        NSRange(location: Int(newSelStart), length: Int(newSelEnd - newSelStart))
+        NSRange(location: Int(newSelStart), length: max(0, Int(newSelEnd) - Int(newSelStart)))
     }
 }
 
