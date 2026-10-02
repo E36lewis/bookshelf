@@ -24,6 +24,9 @@ pub mod text;
 pub mod theme;
 pub mod writer;
 
+#[cfg(windows)]
+mod winacl;
+
 // The one-off import from the old Rails app. Only built with
 // `--features rails-import`, so it never ships in the app.
 #[cfg(feature = "rails-import")]

@@ -11,6 +11,7 @@
 //! `bookshelf.sqlite3-shm` from the data folder if they're there, then copy
 //! the backup over `bookshelf.sqlite3`.
 
+use std::io;
 use std::path::{Path, PathBuf};
 
 use chrono::{Local, NaiveDate};
@@ -86,6 +87,19 @@ fn daily_in(
     keep: usize,
     day: NaiveDate,
 ) -> Result<Option<PathBuf>> {
+    daily_with(conn, dir, id, keep, day, make_private)
+}
+
+/// `daily_in`, with the step that makes the copy private passed in, so
+/// tests can make it fail.
+fn daily_with(
+    conn: &Connection,
+    dir: &Path,
+    id: &str,
+    keep: usize,
+    day: NaiveDate,
+    protect: impl Fn(&Path) -> io::Result<()>,
+) -> Result<Option<PathBuf>> {
     // A chosen folder that's gone (drive unplugged) is never re-created:
     // that would quietly put the backups somewhere nobody looks.
     if !dir.is_dir() {
@@ -105,19 +119,74 @@ fn daily_in(
     let part_str = part
         .to_str()
         .ok_or_else(|| Error::Invalid("backup path isn't valid UTF-8".into()))?;
-    conn.execute("VACUUM INTO ?1", [part_str])?;
-    // Readable only by you, even in a shared or synced folder.
+    // Readable only by you, even in a shared or synced folder. The file is
+    // made empty and private first (VACUUM INTO fills an empty file), so
+    // the copy is never readable by others, even for a moment. A USB stick
+    // formatted FAT or exFAT has no permissions to set; a backup there
+    // still beats none, so that's only logged.
+    create_empty(&part)?;
+    if let Err(e) = protect(&part) {
+        log::warn!("couldn't make the backup private, the folder may not support it: {e}");
+    }
+    if let Err(e) = conn.execute("VACUUM INTO ?1", [part_str]) {
+        let _ = std::fs::remove_file(&part);
+        return Err(e.into());
+    }
+    std::fs::rename(&part, &target)?;
+    prune(dir, id, keep);
+    Ok(Some(target))
+}
+
+/// The new file is created owner-only on Unix, then `make_private` fixes
+/// up whatever the umask did.
+fn create_empty(path: &Path) -> io::Result<()> {
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(path).map(drop)
+}
+
+/// Owner-only access: mode 0600 on Unix, an access list with just you (and
+/// SYSTEM) on Windows.
+fn make_private(path: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&part, std::fs::Permissions::from_mode(0o600))?;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
     }
-    std::fs::rename(&part, &target)?;
+    #[cfg(windows)]
+    {
+        crate::winacl::restrict_to_owner(path)
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = path;
+        Ok(())
+    }
+}
 
-    for old in list(dir, id)?.into_iter().skip(keep) {
-        std::fs::remove_file(old)?;
+/// Drops all but the newest `keep` copies. Never an error: today's copy is
+/// already safe, and an old one that can't go yet (on Windows a sync client
+/// or virus scanner may have it open) is simply tried again next time.
+fn prune(dir: &Path, id: &str, keep: usize) {
+    let found = match list(dir, id) {
+        Ok(found) => found,
+        Err(e) => {
+            log::warn!("couldn't look for old backups to remove: {e}");
+            return;
+        }
+    };
+    for old in found.into_iter().skip(keep) {
+        if let Err(e) = std::fs::remove_file(&old) {
+            // Just the file's name: the full path would show the user's.
+            let name = old.file_name().unwrap_or_default().to_string_lossy();
+            log::warn!("couldn't remove the old backup {name}: {e}");
+        }
     }
-    Ok(Some(target))
 }
 
 /// This journal's backups in `dir`, newest first. Only files named exactly
@@ -205,6 +274,73 @@ mod tests {
             .join("bookshelf-0000beef-2026-09-01.sqlite3")
             .exists());
         assert_eq!(latest(&conn, &paths).unwrap(), Some(day(3)));
+    }
+
+    fn names_in(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn an_old_copy_that_wont_go_never_costs_the_new_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::in_dir(dir.path()).unwrap();
+        let conn = db::open(&paths.db_path).unwrap();
+        models::create_user(&conn, "Avery", None).unwrap();
+        let backups = &paths.backups_dir;
+        let id = journal_id(&conn).unwrap();
+
+        // Stands in for a file a sync client or virus scanner has open: a
+        // folder with a backup's name, which remove_file fails on everywhere.
+        let stuck = backups.join(format!("bookshelf-{id}-2026-09-01.sqlite3"));
+        std::fs::create_dir(&stuck).unwrap();
+        std::fs::write(stuck.join("inside"), "x").unwrap();
+
+        let made = daily_in(&conn, backups, &id, 1, day(1))
+            .unwrap()
+            .expect("today's copy is kept");
+        assert_eq!(
+            models::list_users(&db::open(&made).unwrap()).unwrap().len(),
+            1
+        );
+        assert!(stuck.exists(), "tried, failed, and left for next time");
+        // Next day: the stuck one still can't go, yesterday's copy can.
+        daily_in(&conn, backups, &id, 1, day(2)).unwrap().unwrap();
+        assert_eq!(
+            names_in(backups),
+            [
+                format!("bookshelf-{id}-2026-09-01.sqlite3"),
+                format!("bookshelf-{id}-2026-10-02.sqlite3"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_backup_is_made_where_permissions_cant_be_set() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::in_dir(dir.path()).unwrap();
+        let conn = db::open(&paths.db_path).unwrap();
+        models::create_user(&conn, "Avery", None).unwrap();
+        let id = journal_id(&conn).unwrap();
+
+        // As on a FAT or exFAT USB stick, or a network share that refuses.
+        let unsupported = |_: &Path| Err(io::Error::from(io::ErrorKind::Unsupported));
+        let made = daily_with(&conn, &paths.backups_dir, &id, KEEP, day(1), unsupported)
+            .unwrap()
+            .expect("made a copy");
+        assert_eq!(
+            models::list_users(&db::open(&made).unwrap()).unwrap().len(),
+            1
+        );
+        assert_eq!(
+            names_in(&paths.backups_dir),
+            [format!("bookshelf-{id}-2026-10-01.sqlite3")],
+            "no .part left behind"
+        );
     }
 
     #[test]

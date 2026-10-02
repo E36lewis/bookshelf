@@ -19,6 +19,16 @@ log = "0.4.34"
 # Reads a cover's size from its header. Only the formats we accept.
 imagesize = { version = "0.15", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 
+[target.'cfg(windows)'.dependencies]
+# Makes backup files private to the current user (winacl.rs).
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Threading",
+] }
+
 [features]
 # One-off import of the old Rails app's CSV export. Not part of the app.
 rails-import = ["dep:csv"]
