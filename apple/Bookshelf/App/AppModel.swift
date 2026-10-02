@@ -325,6 +325,13 @@ final class AppModel {
 
     var isSearching: Bool { searchResults != nil }
 
+    /// Whether the list shows this entry: a search that leaves the open
+    /// book out hides its page too.
+    func isListed(_ id: String) -> Bool {
+        guard let searchResults else { return true }
+        return searchResults.contains { $0.entries.contains { $0.summaryId == id } }
+    }
+
     /// Focuses the toolbar's search field (⌘F).
     func focusSearch() {
         Task {

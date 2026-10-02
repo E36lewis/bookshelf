@@ -161,6 +161,8 @@ struct EntryRow: View {
         .padding(.vertical, 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
+        // A row reads as one piece of text; the list row around it is what's selected.
+        .accessibilityAddTraits(.isStaticText)
         .accessibilityIdentifier("entry.\(entry.title)")
     }
 

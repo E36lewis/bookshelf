@@ -102,7 +102,7 @@ final class ScreenshotTests: XCTestCase {
         let settings = app.windows.containing(.textField, identifier: "settings.name").firstMatch
         keep(settings, "12-settings-profile", look)
         for (index, tab) in ["Appearance", "Writing", "Reading Log", "Data"].enumerated() {
-            settingsWindow(app).toolbars.buttons[tab].click()
+            app.toolbars.buttons[tab].click()
             sleep(1)
             let slug = tab.lowercased().replacingOccurrences(of: " ", with: "-")
             keep(settingsWindow(app), "\(13 + index)-settings-\(slug)", look)
@@ -150,7 +150,10 @@ final class ScreenshotTests: XCTestCase {
 
         func audit(_ screen: String) throws {
             try app.performAccessibilityAudit { issue in
-                let element = issue.element.map { "\($0.elementType.rawValue) “\($0.label)” \($0.identifier)" }
+                let element = issue.element.map {
+                    "type \($0.elementType.rawValue) label “\($0.label)” title “\($0.title)” "
+                        + "value “\(String(describing: $0.value ?? ""))” id “\($0.identifier)” at \($0.frame)"
+                }
                 let line = "\(screen): [\(issue.auditType.rawValue)] \(issue.compactDescription) — \(element ?? "no element")"
                 if Self.allowed(issue) {
                     found.allowed.append(line)
@@ -181,7 +184,19 @@ final class ScreenshotTests: XCTestCase {
 
     /// Issues that aren't ours to fix. Each needs a reason.
     private static func allowed(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
-        false
+        guard let element = issue.element else { return false }
+        switch element.elementType {
+        case .group where element.label.isEmpty && element.identifier.isEmpty:
+            // SwiftUI's own layout containers (split view columns, scroll
+            // and stack containers): they hold labelled content, none of
+            // their own, and our code can't name them.
+            return issue.auditType == .sufficientElementDescription || issue.auditType == .parentChild
+        case .touchBar:
+            // The system's Touch Bar placeholder for the window; empty.
+            return true
+        default:
+            return false
+        }
     }
 
     // MARK: Helpers
@@ -192,10 +207,11 @@ final class ScreenshotTests: XCTestCase {
         var allowed: [String] = []
     }
 
-    /// The Settings window: the one with the Appearance tab.
+    /// The Settings window: its title is the tab that's showing.
     @MainActor
     private func settingsWindow(_ app: XCUIApplication) -> XCUIElement {
-        app.windows.containing(NSPredicate(format: "label == %@", "Appearance")).firstMatch
+        let tabs = ["Profile", "Appearance", "Writing", "Reading Log", "Data"]
+        return app.windows.matching(NSPredicate(format: "title IN %@", tabs)).firstMatch
     }
 
     enum Look: String {

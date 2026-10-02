@@ -6,7 +6,7 @@ struct DetailView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if let entry = model.selectedEntry {
+        if let entry = model.selectedEntry, model.isListed(entry.summaryId) {
             BookPageView(entry: entry)
         } else if let removal = model.lastRemoval {
             ContentUnavailableView {
@@ -92,6 +92,7 @@ struct BookPageView: View {
                     Label("More", systemImage: "ellipsis.circle")
                 }
                 .help("More")
+                .accessibilityLabel("More")
                 .accessibilityIdentifier("book.more")
             }
         }

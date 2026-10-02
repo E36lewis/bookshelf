@@ -117,6 +117,8 @@ struct ProfileSettingsTab: View {
                 Text(Wording.emailWhy)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityHidden(true)
             }
@@ -348,8 +350,10 @@ struct WritingSettingsTab: View {
                     Text("System Sans-Serif").tag(WritingFont.sans)
                     Text("System Monospace").tag(WritingFont.mono)
                 }
-                Stepper(value: model.setting(\.writingSize, fallback: settings), in: 10...28) {
-                    LabeledContent("Text Size", value: "\(live.writingSize) pt")
+                LabeledContent("Text Size") {
+                    Stepper(value: model.setting(\.writingSize, fallback: settings), in: 10...28) {
+                        Text("\(live.writingSize) pt").monospacedDigit()
+                    }
                 }
                 Picker("Line Spacing", selection: model.setting(\.lineSpacing, fallback: settings)) {
                     Text("Tight").tag(LineSpacing.tight)

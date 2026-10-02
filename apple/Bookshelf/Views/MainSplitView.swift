@@ -45,6 +45,7 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .accessibilityLabel("Shelves")
         .safeAreaInset(edge: .top, spacing: 0) {
             ProfileMenu()
                 .padding(.horizontal, 12)
@@ -80,7 +81,8 @@ struct ProfileMenu: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .help("Switch profile")
-            .accessibilityLabel("Profile: \(model.profile?.name ?? "")")
+            .accessibilityLabel("Profile")
+            .accessibilityValue(model.profile?.name ?? "")
             .accessibilityHint("Switch profile, or make a new one")
             .accessibilityIdentifier("profile.menu")
             Spacer(minLength: 0)
