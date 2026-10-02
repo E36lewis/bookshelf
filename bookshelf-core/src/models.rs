@@ -432,6 +432,14 @@ pub fn update_book_details(conn: &Connection, id: &str, u: &BookUpdate) -> Resul
     Ok(())
 }
 
+/// Books with a cover to download: a cover_url but no local file yet.
+pub fn books_missing_covers(conn: &Connection) -> Result<Vec<Book>> {
+    let mut stmt =
+        conn.prepare("SELECT * FROM books WHERE cover_path IS NULL AND cover_url IS NOT NULL")?;
+    let rows = stmt.query_map([], Book::from_row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
 pub fn set_cover_path(conn: &Connection, id: &str, cover_path: &str) -> Result<()> {
     conn.execute(
         "UPDATE books SET cover_path = ?2, updated_at = ?3 WHERE id = ?1",
