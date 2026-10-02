@@ -31,14 +31,14 @@ private struct FullScreenToolbar: NSViewRepresentable {
             guard let window else { return }
             let center = NotificationCenter.default
             observers = [
-                center.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) { _ in
-                    MainActor.assumeIsolated { Watcher.hideToolbar() }
+                center.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) { [weak window] _ in
+                    MainActor.assumeIsolated { if let window { Watcher.hideToolbar(in: window) } }
                 },
                 center.addObserver(forName: NSWindow.willExitFullScreenNotification, object: window, queue: .main) { _ in
                     MainActor.assumeIsolated { Watcher.showToolbar() }
                 },
             ]
-            if window.styleMask.contains(.fullScreen) { Self.hideToolbar() }
+            if window.styleMask.contains(.fullScreen) { Self.hideToolbar(in: window) }
         }
 
         func stopWatching() {
@@ -49,17 +49,13 @@ private struct FullScreenToolbar: NSViewRepresentable {
         /// The options before the toolbar was hidden, to go back to.
         private static var before: NSApplication.PresentationOptions?
 
-        /// Auto-hiding the toolbar is only allowed in full screen with the
-        /// menu bar auto-hiding too, which is how the system sets full
-        /// screen up (`currentSystemPresentationOptions`, what's in effect;
-        /// `presentationOptions` is only what the app asked for).
-        static func hideToolbar() {
-            let current = NSApp.currentSystemPresentationOptions
-            guard before == nil, current.isSuperset(of: [.fullScreen, .autoHideMenuBar]),
-                  !current.contains(.autoHideToolbar)
-            else { return }
+        /// Only while `window` is in full screen: auto-hiding the toolbar is
+        /// allowed only together with full screen and an auto-hiding menu
+        /// bar, as here.
+        static func hideToolbar(in window: NSWindow) {
+            guard before == nil, window.styleMask.contains(.fullScreen) else { return }
             before = NSApp.presentationOptions
-            NSApp.presentationOptions = current.union(.autoHideToolbar)
+            NSApp.presentationOptions = [.fullScreen, .autoHideMenuBar, .autoHideToolbar]
         }
 
         static func showToolbar() {
