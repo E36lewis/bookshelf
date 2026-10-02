@@ -45,6 +45,7 @@ public sealed class WritingBox
     private (int Start, int End) _selection;
     private (int Start, int End) _bright; // focus mode: the sentence shown at full strength
     private readonly PendingLines _pending = new(); // lines of a long text still to highlight
+    private readonly Dictionary<TextStyle, ITextCharacterFormat> _formats = []; // see FormatFor
     private bool _applying; // true while we change the box ourselves
     private bool _caretUpdateQueued;
     private bool _backgroundQueued;
@@ -61,7 +62,17 @@ public sealed class WritingBox
     public bool Highlight { get; set; } = true;
 
     /// <summary>The text size in points; headings are a quarter bigger. Call <see cref="RestyleAll"/> after changing it.</summary>
-    public float TextSize { get; set; } = 14;
+    public float TextSize
+    {
+        get => _textSize;
+        set
+        {
+            _textSize = value;
+            _formats.Clear();
+        }
+    }
+
+    private float _textSize = 14;
 
     /// <summary>The text, with <c>\n</c> line ends.</summary>
     public string Text => _text;
@@ -489,6 +500,7 @@ public sealed class WritingBox
     private void Recolor()
     {
         _colors = WritingColors.For(_box);
+        _formats.Clear();
         RestyleAll(); // focus mode's dimming included
     }
 
@@ -519,26 +531,22 @@ public sealed class WritingBox
         }
     }
 
-    /// <summary>Restyles the whole lines around <c>[start, end)</c>. Returns how many lines.</summary>
+    /// <summary>
+    /// Restyles the whole lines around <c>[start, end)</c>: one formatting
+    /// call per run of text that looks one way (<see cref="StyleRuns"/>), as
+    /// each call into RichEdit is slow. Returns how many lines.
+    /// </summary>
     private int Restyle(int start, int end)
     {
         var (from, to) = TextDiff.WholeLines(_text, start, end);
         var doc = _box.Document;
-        var c = _colors;
         var clock = LogTimings ? Stopwatch.StartNew() : null;
-        double spansAt = 0, resetAt = 0, marksAt = 0, spanCount = 0;
+        double paragraphsAt = 0, spansAt = 0, runsAt = 0;
+        var runCount = 0;
         _applying = true;
         doc.BatchDisplayUpdates();
         try
         {
-            // The line break too, so a blank line left by a heading isn't heading-sized.
-            var all = doc.GetRange(from, to + 1).CharacterFormat;
-            all.Bold = FormatEffect.Off;
-            all.Italic = FormatEffect.Off;
-            all.Strikethrough = FormatEffect.Off;
-            all.Size = TextSize;
-            all.ForegroundColor = c.Ink;
-            all.BackgroundColor = Microsoft.UI.Colors.Transparent;
             // Lines that were first or last may not be now (and the other way round).
             if (from == 0 || to >= _text.Length)
             {
@@ -547,39 +555,18 @@ public sealed class WritingBox
                 paragraphs.SpaceAfter = SpaceAfter;
                 ApplyRoom();
             }
-            resetAt = clock?.Elapsed.TotalMilliseconds ?? 0;
-
-            if (Highlight && to > from)
+            paragraphsAt = clock?.Elapsed.TotalMilliseconds ?? 0;
+            StyleSpan[] spans = Highlight && to > from ? BookshelfFfiMethods.MarkdownSpans(_text.Substring(from, to - from)) : [];
+            spansAt = clock?.Elapsed.TotalMilliseconds ?? 0;
+            (int, int)? bright = IsFocusMode ? (_bright.Start - from, _bright.End - from) : null;
+            // The line break after the last line too, so a blank line left by a heading isn't heading-sized.
+            var runs = StyleRuns.For(to - from + 1, spans, bright);
+            runCount = runs.Count;
+            foreach (var run in runs)
             {
-                var spans = BookshelfFfiMethods.MarkdownSpans(_text.Substring(from, to - from));
-                spansAt = clock?.Elapsed.TotalMilliseconds ?? 0;
-                spanCount = spans.Length;
-                // Marks last, so they stay dimmed inside a quote or a heading.
-                foreach (var span in spans.Where(s => s.Kind != StyleKind.Syntax).Concat(spans.Where(s => s.Kind == StyleKind.Syntax)))
-                {
-                    var f = doc.GetRange(from + (int)span.Start, from + (int)span.End).CharacterFormat;
-                    switch (span.Kind)
-                    {
-                        case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = TextSize * 1.25f; break;
-                        case StyleKind.Bold: f.Bold = FormatEffect.On; break;
-                        case StyleKind.Italic: f.Italic = FormatEffect.On; break;
-                        case StyleKind.Quote: f.Italic = FormatEffect.On; f.ForegroundColor = c.Quote; break;
-                        case StyleKind.Code: f.BackgroundColor = c.CodeBackground; break;
-                        case StyleKind.Strike: f.Strikethrough = FormatEffect.On; break;
-                        case StyleKind.Syntax: f.ForegroundColor = c.Syntax; break;
-                    }
-                }
+                doc.GetRange(from + run.Start, from + run.End).CharacterFormat = FormatFor(run.Style);
             }
-
-            marksAt = clock?.Elapsed.TotalMilliseconds ?? 0;
-            if (IsFocusMode)
-            {
-                // Everything on these lines but the bright sentence.
-                var brightStart = Math.Clamp(_bright.Start, from, to);
-                var brightEnd = Math.Clamp(_bright.End, brightStart, to);
-                if (from < brightStart) doc.GetRange(from, brightStart).CharacterFormat.ForegroundColor = c.Dim;
-                if (brightEnd < to) doc.GetRange(brightEnd, to).CharacterFormat.ForegroundColor = c.Dim;
-            }
+            runsAt = clock?.Elapsed.TotalMilliseconds ?? 0;
         }
         finally
         {
@@ -590,10 +577,35 @@ public sealed class WritingBox
         if (clock is not null && (lineCount > LinesPerChunk || _sampling))
         {
             StartupLog.Step(
-                $"Writer: restyled {lineCount} lines ({spanCount} spans) in {clock.Elapsed.TotalMilliseconds:F0} ms: " +
-                $"reset {resetAt:F1}, spans {spansAt - resetAt:F1}, marks {marksAt - spansAt:F1}, display {clock.Elapsed.TotalMilliseconds - marksAt:F1}");
+                $"Writer: restyled {lineCount} lines ({runCount} runs) in {clock.Elapsed.TotalMilliseconds:F1} ms: " +
+                $"first and last lines {paragraphsAt:F1}, spans {spansAt - paragraphsAt:F1}, runs {runsAt - spansAt:F1}, " +
+                $"display {clock.Elapsed.TotalMilliseconds - runsAt:F1}");
         }
         return lineCount;
+    }
+
+    /// <summary>
+    /// The formatting for one look, made once from the document's own default
+    /// (its font) and kept until the colors or the size change.
+    /// </summary>
+    private ITextCharacterFormat FormatFor(TextStyle style)
+    {
+        if (_formats.TryGetValue(style, out var format)) return format;
+        var c = _colors;
+        format = _box.Document.GetDefaultCharacterFormat().GetClone();
+        format.Bold = (style & (TextStyle.Heading | TextStyle.Bold)) != 0 ? FormatEffect.On : FormatEffect.Off;
+        format.Italic = (style & (TextStyle.Italic | TextStyle.Quote)) != 0 ? FormatEffect.On : FormatEffect.Off;
+        format.Strikethrough = (style & TextStyle.Strike) != 0 ? FormatEffect.On : FormatEffect.Off;
+        format.Underline = UnderlineType.None;
+        format.Size = (style & TextStyle.Heading) != 0 ? TextSize * 1.25f : TextSize;
+        format.ForegroundColor =
+            (style & TextStyle.Dim) != 0 ? c.Dim
+            : (style & TextStyle.Syntax) != 0 ? c.Syntax // marks stay dimmed inside a quote or a heading
+            : (style & TextStyle.Quote) != 0 ? c.Quote
+            : c.Ink;
+        format.BackgroundColor = (style & TextStyle.Code) != 0 ? c.CodeBackground : c.Background;
+        _formats[style] = format;
+        return format;
     }
 
     private void Note(Stopwatch clock, int lines)

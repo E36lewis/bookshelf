@@ -13,9 +13,12 @@ namespace Bookshelf.Writing;
 /// RichEdit ignores a color's alpha, so each one is mixed with the page's
 /// background here, opaque. In High Contrast there are no colors of our
 /// own: the text is Windows' text color, marks aren't dimmed, and focus
-/// mode uses Windows' color for unavailable text.
+/// mode uses Windows' color for unavailable text. The text's background is
+/// "none" (transparent, which RichEdit reads as none) except in High
+/// Contrast, where RichEdit paints that white: there it's Windows' window
+/// color.
 /// </remarks>
-internal sealed record WritingColors(Color Ink, Color Syntax, Color Quote, Color CodeBackground, Color Dim)
+internal sealed record WritingColors(Color Ink, Color Syntax, Color Quote, Color CodeBackground, Color Dim, Color Background)
 {
     // WinUI's own: TextFillColorPrimary over SolidBackgroundFillColorBase
     // (which Mica tints only slightly).
@@ -34,12 +37,14 @@ internal sealed record WritingColors(Color Ink, Color Syntax, Color Quote, Color
         {
             var text = SystemColor("SystemColorWindowTextColor", Microsoft.UI.Colors.Black);
             var gray = SystemColor("SystemColorGrayTextColor", text);
-            return new WritingColors(text, text, text, Microsoft.UI.Colors.Transparent, gray);
+            var window = SystemColor("SystemColorWindowColor", Microsoft.UI.Colors.White);
+            return new WritingColors(text, text, text, window, gray, window);
         }
         var dark = editor.ActualTheme == ElementTheme.Dark;
         var page = dark ? DarkPage : LightPage;
         var ink = Mix(dark ? DarkInk : LightInk, page, (dark ? DarkInk : LightInk).A / 255.0);
-        return new WritingColors(ink, Mix(ink, page, 0.38), Mix(ink, page, 0.72), Mix(ink, page, 0.09), Mix(ink, page, 0.28));
+        return new WritingColors(
+            ink, Mix(ink, page, 0.38), Mix(ink, page, 0.72), Mix(ink, page, 0.09), Mix(ink, page, 0.28), Microsoft.UI.Colors.Transparent);
     }
 
     /// <summary><paramref name="share"/> of <paramref name="ink"/> over <paramref name="page"/>, opaque.</summary>

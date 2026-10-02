@@ -179,6 +179,11 @@ jobs:
             $file = Join-Path $logs $log
             if (Test-Path $file) { Write-Host "--- $log"; Get-Content $file -Tail 200 }
           }
+          # A crash in native code (RichEdit, say) leaves no crash.log; Windows notes it here.
+          Write-Host "--- Windows' application errors mentioning Bookshelf"
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Level = 2; StartTime = (Get-Date).AddHours(-1) } -ErrorAction SilentlyContinue |
+            Where-Object { $_.Message -match 'Bookshelf' } |
+            Format-List TimeCreated, ProviderName, Message
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
