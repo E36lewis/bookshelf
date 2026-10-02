@@ -115,6 +115,7 @@
                 BorderThickness="0"
                 DisabledFormattingAccelerators="All"
                 IsSpellCheckEnabled="False"
+                KeyboardAcceleratorPlacementMode="Hidden"
                 TextWrapping="Wrap">
                 <RichEditBox.Resources>
                     <!-- A page, not a form field: no box around the text. -->

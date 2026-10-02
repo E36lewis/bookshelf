@@ -68,6 +68,16 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         {
             Keys.Add(this, command.ShortcutTitle!, () => Format(command), exceptWhileTyping: true);
         }
+        // And on the editor itself, should a key reach its accelerators
+        // without passing OnEditorKeyDown (which, handling it, stops these).
+        // Accelerators on a text box come before its own keys.
+        foreach (var command in FormatCommands.All.Where(c => c.ShortcutTitle is not null))
+        {
+            Keys.Add(Editor, command.ShortcutTitle!, () => ByAccelerator(command.ShortcutTitle!, () => Format(command)));
+        }
+        Keys.Add(Editor, ShortcutKeys.Titles.FocusMode, () => ByAccelerator(ShortcutKeys.Titles.FocusMode, ToggleFocusMode));
+        Keys.Add(Editor, ShortcutKeys.Titles.FullScreen, () => ByAccelerator(ShortcutKeys.Titles.FullScreen, ToggleFullScreen));
+        Keys.Add(Editor, ShortcutKeys.Titles.Save, () => ByAccelerator(ShortcutKeys.Titles.Save, () => _ = SaveAsync()));
         DescribeButtons();
 
         Editor.PreviewKeyDown += OnEditorKeyDown;
@@ -378,16 +388,19 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         if (Keys.Is(ShortcutKeys.Titles.FullScreen, key, modifiers))
         {
             e.Handled = true;
+            NoteKey(ShortcutKeys.Titles.FullScreen, "the editor's key handler");
             ToggleFullScreen();
         }
         else if (Keys.Is(ShortcutKeys.Titles.LeaveFullScreen, key, modifiers) && Shell.IsFullScreen)
         {
             e.Handled = true;
+            NoteKey(ShortcutKeys.Titles.LeaveFullScreen, "the editor's key handler");
             Shell.SetFullScreen(false);
         }
         else if (Keys.Is(ShortcutKeys.Titles.FocusMode, key, modifiers))
         {
             e.Handled = true;
+            NoteKey(ShortcutKeys.Titles.FocusMode, "the editor's key handler");
             ToggleFocusMode();
         }
         else if (Keys.Is(ShortcutKeys.Titles.Save, key, modifiers))
@@ -398,6 +411,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         else if (FormatCommands.All.FirstOrDefault(c => c.ShortcutTitle is { } t && Keys.Is(t, key, modifiers)) is { } command)
         {
             e.Handled = true;
+            NoteKey(command.ShortcutTitle!, "the editor's key handler");
             Format(command);
         }
         else if (modifiers == VirtualKeyModifiers.Shift && key == VirtualKey.Tab)
@@ -410,6 +424,27 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>A writing key that came by the editor's own keyboard accelerators instead.</summary>
+    private static void ByAccelerator(string title, Action action)
+    {
+        NoteKey(title, "the editor's keyboard accelerator");
+        action();
+    }
+
+    private static int _keysNoted;
+
+    /// <summary>
+    /// Notes the first few writing keys of a run in startup.log, with the
+    /// way each came, so a key that does nothing on someone's PC can be
+    /// told from one that never arrived. Only the shortcut's name.
+    /// </summary>
+    private static void NoteKey(string title, string how)
+    {
+        if (_keysNoted >= 20) return;
+        _keysNoted++;
+        StartupLog.Step($"Writer: “{title}” key, by {how}");
     }
 
     /// <summary>Esc on the formatting bar goes back to the text.</summary>
