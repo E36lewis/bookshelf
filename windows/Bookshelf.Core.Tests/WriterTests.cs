@@ -286,6 +286,30 @@ public class WriterLayoutTests
         var airy = BookshelfFfiMethods.WriterLayout(settings with { LineSpacing = LineSpacing.Airy, PageWidth = PageWidth.Wide });
         Assert.Equal((900, 12, 20), (airy.ColumnWidth, airy.WrapGap, airy.LineGap));
     }
+
+    [Fact]
+    public void HeadingsAreBiggerByLevel()
+    {
+        Assert.True(HeadingSizes.Scale(1) > HeadingSizes.Scale(2));
+        Assert.True(HeadingSizes.Scale(2) > HeadingSizes.Scale(3));
+        Assert.True(HeadingSizes.Scale(3) > 1);
+        Assert.Equal(1f, HeadingSizes.Scale(4));
+        Assert.Equal(1f, HeadingSizes.Scale(0));
+    }
+
+    [Fact]
+    public void AHeadingSpansLevelIsItsHashes()
+    {
+        const string text = "# One\n\n## Two\n###### Six\n####### Seven";
+        var levels = BookshelfFfiMethods.MarkdownSpans(text)
+            .Where(s => s.Kind == StyleKind.Heading)
+            .Select(s => HeadingSizes.Level(text, (int)s.Start, (int)s.End))
+            .ToList();
+        Assert.Equal(new[] { 1, 2, 6 }, levels.Take(3));
+        Assert.Equal(3, HeadingSizes.Level("ab ### c", 2, 8)); // a span inside a longer text
+        Assert.Equal(1, HeadingSizes.Level("x", 0, 1));        // never below 1
+        Assert.Equal(6, HeadingSizes.Level("#######", 0, 7));  // never above 6
+    }
 }
 
 public class EditTimingsTests

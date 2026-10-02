@@ -60,7 +60,7 @@ public sealed class WritingBox
 
     public bool Highlight { get; set; } = true;
 
-    /// <summary>The text size in points; headings are a quarter bigger. Call <see cref="RestyleAll"/> after changing it.</summary>
+    /// <summary>The text size in points; headings are bigger by level (<see cref="HeadingSizes"/>). Call <see cref="RestyleAll"/> after changing it.</summary>
     public float TextSize { get; set; } = 14;
 
     /// <summary>The text, with <c>\n</c> line ends.</summary>
@@ -583,7 +583,11 @@ public sealed class WritingBox
                     var f = doc.GetRange(from + (int)span.Start, from + (int)span.End).CharacterFormat;
                     switch (span.Kind)
                     {
-                        case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = TextSize * 1.25f; break;
+                        case StyleKind.Heading:
+                            var level = HeadingSizes.Level(_text, from + (int)span.Start, from + (int)span.End);
+                            f.Bold = FormatEffect.On;
+                            f.Size = TextSize * HeadingSizes.Scale(level);
+                            break;
                         case StyleKind.Bold: f.Bold = FormatEffect.On; break;
                         case StyleKind.Italic: f.Italic = FormatEffect.On; break;
                         case StyleKind.Quote: f.Italic = FormatEffect.On; f.ForegroundColor = c.Quote; break;
