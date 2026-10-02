@@ -340,7 +340,7 @@ Open Settings with **Settings** at the bottom of the left pane, or **Ctrl+,** (C
 - **Theme**: **Match System**, or always **Light** or always **Dark**.
 <!-- /platform -->
 <!-- platform: windows -->
-- **Theme**: **Match Windows**, or always **Light** or always **Dark**. With a contrast theme turned on in Windows, Bookshelf uses its colors instead.
+- **Theme**: **Match Windows**, or always **Light** or always **Dark**. With a contrast theme turned on in Windows, Bookshelf uses the contrast theme's colors instead.
 <!-- /platform -->
 - **Accent color**: eight colors to choose from, or any color you like with the last button.
 - **Titles and summaries**: serif (bookish) or sans-serif (clean).
