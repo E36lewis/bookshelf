@@ -38,6 +38,7 @@
             AutomationProperties.Name="Search by title, author or ISBN"
             PlaceholderText="Search by title, author or ISBN"
             QueryIcon="Find"
+            PreviewKeyDown="OnQueryKeyDown"
             QuerySubmitted="OnQuerySubmitted"
             TextChanged="OnQueryChanged" />
 

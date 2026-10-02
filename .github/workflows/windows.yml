@@ -127,7 +127,7 @@ jobs:
           if (-not (Select-String -Path $startupLog -Pattern 'handed over to the open window' -SimpleMatch -Quiet)) { throw "The second launch didn't hand over" }
           # The bundled fonts load in this unpackaged single-file build.
           foreach ($font in 'Source Serif 4', 'iA Writer Duo S') {
-            if (-not (Select-String -Path $startupLog -Pattern "Fonts: $font loads from" -SimpleMatch -Quiet)) { Write-Warning "$font didn't load" }
+            if (-not (Select-String -Path $startupLog -Pattern "Fonts: $font loads from" -SimpleMatch -Quiet)) { throw "$font didn't load" }
           }
           Write-Host ("Bookshelf.exe opened its window after {0:N1} s and stayed open." -f $opened)
 

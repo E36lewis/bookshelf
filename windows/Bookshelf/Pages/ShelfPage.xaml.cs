@@ -96,6 +96,8 @@ public sealed partial class ShelfPage : BookshelfPage
 
         var empty = items.Count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+        // An empty shelf has its own Add a book button, in the middle.
+        AddButton.Visibility = empty && !Session.IsSearching ? Visibility.Collapsed : Visibility.Visible;
         Entries.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         if (empty && Session.IsSearching)
         {

@@ -6,7 +6,7 @@
 
     <!-- The summary on its own: one calm, centered column. -->
     <Grid>
-        <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="Reader" IsTabStop="True">
+        <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="Reader" IsTabStop="True" UseSystemFocusVisuals="False">
             <StackPanel
                 x:Name="Column"
                 Padding="32,56,32,160"

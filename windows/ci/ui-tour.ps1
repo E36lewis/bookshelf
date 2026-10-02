@@ -192,9 +192,17 @@ Step 'Alt+Left, then Ctrl+E: write' {
     Snap '07-writer'
 }
 Step 'Typing saves by itself' {
+    $before = (Find-Id 'WriterStatus').Current.Name
     Keys '^{END}{ENTER}{ENTER}Written by the UI tour.'
-    Wait-Name 'WriterStatus' '*Editing' 5 | Out-Null
-    Wait-Name 'WriterStatus' '*Saved' 10 | Out-Null
+    # Saved within a second of the last key (the core's autosave delay), with the new word count.
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        $now = (Find-Id 'WriterStatus').Current.Name
+        if ($now -like '*Saved' -and $now -ne $before) { break }
+        Start-Sleep -Milliseconds 250
+    } while ($clock.Elapsed.TotalSeconds -lt 10)
+    if ($now -eq $before -or $now -notlike '*Saved') { throw "the status went from '$before' to '$now'" }
+    Write-Host "      $before -> $now"
     Snap '08-writer-saved'
     Keys '%{LEFT}'
     Wait-Name 'BookTitle' 'Dune' | Out-Null

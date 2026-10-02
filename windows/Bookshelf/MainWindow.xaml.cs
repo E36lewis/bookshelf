@@ -191,6 +191,7 @@ public sealed partial class MainWindow : Window
     {
         Nav.IsPaneVisible = visible && !IsFullScreen;
         AppTitleBar.IsPaneToggleButtonVisible = visible;
+        AppTitleBar.IsBackButtonVisible = visible;
         SearchBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -376,12 +377,15 @@ public sealed partial class MainWindow : Window
     /// <summary>Highlights where the page belongs: its shelf, Settings, or nothing.</summary>
     private void SelectNavItem()
     {
-        Nav.SelectedItem = ContentFrame.Content switch
+        var item = ContentFrame.Content switch
         {
             SettingsPage => Nav.SettingsItem,
             ShelfPage or BookPage or ReaderPage or WriterPage when _session?.Profile is not null => ItemFor(Session.CurrentShelf),
             _ => null,
         };
+        Nav.SelectedItem = item;
+        // A null selection leaves the Settings item highlighted, so unselect it by hand.
+        if (item is null && Nav.SettingsItem is NavigationViewItem settings) settings.IsSelected = false;
     }
 
     private NavigationViewItem ItemFor(Shelf shelf) => shelf switch

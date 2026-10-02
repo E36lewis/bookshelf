@@ -64,6 +64,14 @@ public sealed partial class AddBookDialog : ContentDialog
         _debounce.Start();
     }
 
+    /// <summary>Esc cancels the dialog (the search box would otherwise keep it).</summary>
+    private void OnQueryKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.Escape) return;
+        e.Handled = true;
+        Hide();
+    }
+
     private void OnQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         _debounce.Stop();
