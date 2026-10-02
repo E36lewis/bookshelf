@@ -718,6 +718,48 @@ Step 'Empty shelf' {
 }
 Stop-Bookshelf
 
+# ---- High Contrast (best effort: shows the writer in Windows' own colors) ---
+# Switched on for the runner's session only, and always back off. A runner
+# that can't switch just skips these screenshots; nothing fails.
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class Contrast
+{
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct HIGHCONTRAST { public int cbSize; public int dwFlags; public IntPtr lpszDefaultScheme; }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern bool SystemParametersInfo(uint action, uint param, ref HIGHCONTRAST value, uint flags);
+
+    // SPI_SETHIGHCONTRAST with HCF_HIGHCONTRASTON, telling running apps.
+    public static bool Set(bool on)
+    {
+        var hc = new HIGHCONTRAST { cbSize = Marshal.SizeOf(typeof(HIGHCONTRAST)), dwFlags = on ? 1 : 0 };
+        return SystemParametersInfo(0x0043, (uint)hc.cbSize, ref hc, 0x2);
+    }
+}
+"@
+try {
+    if (-not [Contrast]::Set($true)) { throw 'SystemParametersInfo refused' }
+    Start-Sleep -Seconds 3
+    Start-Bookshelf @('--demo-journal')
+    Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    Open-Writer '^2' 'Dune'
+    Keys '^{HOME}'
+    Snap '60-high-contrast-writer'
+    Keys '{DOWN 4}^+f'
+    Start-Sleep -Seconds 1
+    Snap '61-high-contrast-focus'
+    Write-Host 'ok    High Contrast screenshots'
+}
+catch { Write-Host "skip  High Contrast screenshots: $_" }
+finally {
+    Stop-Bookshelf
+    [Contrast]::Set($false) | Out-Null
+}
+
 if ($failures.Count) {
     Write-Host ''
     Write-Host "$($failures.Count) step(s) failed:"

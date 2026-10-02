@@ -83,6 +83,8 @@ public sealed class WritingBox
     }
 
     private bool _logTimings;
+    private int _editCount;
+    private bool _sampling; // this edit's restyle is noted in full (every tenth, when logging)
 
     /// <summary>Raised when the person changed the text (typing, pasting, formatting, undo or redo); not by <see cref="SetText"/>.</summary>
     public event Action? Edited;
@@ -269,13 +271,21 @@ public sealed class WritingBox
         if (now == _text) return; // only formatting changed (our highlighting)
 
         var change = TextDiff.Between(_text, now);
+        var compared = clock.Elapsed.TotalMilliseconds;
         var inserted = now.Substring(change.Start, change.NewEnd - change.Start);
         _history.Record(new EditorState(_text, _selection.Start, _selection.End), inserted, DateTime.UtcNow);
         _text = now;
         _pending.Shift(change, _text.Length);
         var oldBright = _bright;
         _selection = CurrentSelection();
+        _sampling = LogTimings && ++_editCount % 10 == 0;
         var lines = RestyleEdit(change, oldBright);
+        if (_sampling)
+        {
+            StartupLog.Step($"Writer: an edit in {_text.Length:N0} characters took {clock.Elapsed.TotalMilliseconds:F1} ms, " +
+                $"{compared:F1} of them reading the text and finding the change");
+            _sampling = false;
+        }
         Note(clock, lines);
         Edited?.Invoke();
         QueueCaretUpdate();
@@ -577,7 +587,7 @@ public sealed class WritingBox
             _applying = false;
         }
         var lineCount = PendingLines.LineCount(_text, from, to);
-        if (clock is not null && lineCount > LinesPerChunk)
+        if (clock is not null && (lineCount > LinesPerChunk || _sampling))
         {
             StartupLog.Step(
                 $"Writer: restyled {lineCount} lines ({spanCount} spans) in {clock.Elapsed.TotalMilliseconds:F0} ms: " +
