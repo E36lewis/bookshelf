@@ -136,8 +136,10 @@ final class ScreenshotTests: XCTestCase {
         app.menuBars.menuBarItems["Edit"].click()
         sleep(1)
         keepScreen("19-undo-menu", look)
-        let undo = app.menuItems["Undo Remove “The Left Hand of Darkness”"]
+        let undo = app.menuBars.menuBarItems["Edit"].menuItems
+            .matching(NSPredicate(format: "title BEGINSWITH %@", "Undo Remove")).firstMatch
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        XCTAssertTrue(undo.title.contains("The Left Hand of Darkness"), undo.title)
         undo.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
     }

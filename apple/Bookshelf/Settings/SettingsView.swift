@@ -257,7 +257,7 @@ struct AppearanceSettingsTab: View {
                     Text("Dark").tag(Theme.dark)
                 }
                 .pickerStyle(.segmented)
-                LabeledContent("Accent Color") {
+                LabeledContent("Accent color") {
                     AccentPicker(settings: settings)
                 }
                 Picker(selection: model.setting(\.headingFont, fallback: settings)) {
@@ -350,17 +350,17 @@ struct WritingSettingsTab: View {
                     Text("System Sans-Serif").tag(WritingFont.sans)
                     Text("System Monospace").tag(WritingFont.mono)
                 }
-                LabeledContent("Text Size") {
+                LabeledContent("Text size") {
                     Stepper(value: model.setting(\.writingSize, fallback: settings), in: 10...28) {
                         Text("\(live.writingSize) pt").monospacedDigit()
                     }
                 }
-                Picker("Line Spacing", selection: model.setting(\.lineSpacing, fallback: settings)) {
+                Picker("Line spacing", selection: model.setting(\.lineSpacing, fallback: settings)) {
                     Text("Tight").tag(LineSpacing.tight)
                     Text("Comfortable").tag(LineSpacing.normal)
                     Text("Airy").tag(LineSpacing.airy)
                 }
-                Picker("Page Width", selection: model.setting(\.pageWidth, fallback: settings)) {
+                Picker("Page width", selection: model.setting(\.pageWidth, fallback: settings)) {
                     Text("Narrow").tag(PageWidth.narrow)
                     Text("Medium").tag(PageWidth.medium)
                     Text("Wide").tag(PageWidth.wide)
@@ -392,7 +392,7 @@ struct ReadingLogSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Picker("Date Format", selection: model.setting(\.dateFormat, fallback: settings)) {
+                Picker("Date format", selection: model.setting(\.dateFormat, fallback: settings)) {
                     ForEach([DateFormat.long, .monthDayYear, .dayMonthYear, .yearMonthDay], id: \.self) { format in
                         Text(JournalDate.display(Self.sample, format: format)).tag(format)
                     }
@@ -403,7 +403,7 @@ struct ReadingLogSettingsTab: View {
                 } label: {
                     SettingLabel("Week starts on", detail: "For the calendar when you pick a date.")
                 }
-                Picker("Open To", selection: model.setting(\.startShelf, fallback: settings)) {
+                Picker("Open to", selection: model.setting(\.startShelf, fallback: settings)) {
                     ForEach(Shelf.inOrder, id: \.self) { shelf in
                         Text(shelf.title).tag(shelf)
                     }
