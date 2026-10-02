@@ -46,7 +46,7 @@ final class SpikeModel {
             newName = ""
             problem = nil
         } catch {
-            problem = error.localizedDescription
+            problem = (error as? CoreError)?.userMessage ?? error.localizedDescription
         }
     }
 
