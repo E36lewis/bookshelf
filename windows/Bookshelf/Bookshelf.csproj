@@ -17,6 +17,14 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
+    <!-- Publish one Bookshelf.exe that works wherever it's put. A folder
+         build only runs next to its ~520 other files: moved on its own, the
+         exe can't find Bookshelf.dll and exits without any message. The
+         single exe unpacks everything to %TEMP%\.net\Bookshelf on its first
+         start (slower once, then quick). Supported for unpackaged,
+         self-contained WinUI apps; the installer can go back to a folder. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>

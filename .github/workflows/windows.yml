@@ -1,5 +1,6 @@
 # Builds the Windows app and uploads a test build (download the
-# "Bookshelf-windows-preview-x64" artifact, unzip, run Bookshelf.exe).
+# "Bookshelf-windows-preview-x64" artifact, unzip, run Bookshelf.exe; the
+# exe is self-sufficient and can be moved anywhere).
 name: Windows app
 
 on:
@@ -44,28 +45,69 @@ jobs:
       - name: Publish the app
         run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -o windows/build/Bookshelf
 
-      - name: Check the build has everything the app needs
+      - name: Check the build is one self-sufficient Bookshelf.exe
         shell: pwsh
         run: |
-          foreach ($f in 'Bookshelf.exe', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
-            if (-not (Test-Path "windows/build/Bookshelf/$f")) { throw "$f is missing from the build" }
-          }
+          # People move the exe out of the folder (to the desktop, say), so
+          # nothing else may be needed next to it. Debug symbols don't count.
+          $extra = Get-ChildItem windows/build/Bookshelf -Recurse -File |
+            Where-Object { $_.Name -ne 'Bookshelf.exe' -and $_.Extension -ne '.pdb' }
+          if (-not (Test-Path windows/build/Bookshelf/Bookshelf.exe)) { throw "Bookshelf.exe is missing from the build" }
+          if ($extra) { $extra.FullName; throw "Bookshelf.exe needs files next to it" }
 
-      - name: Smoke test (the app starts and stays open)
+      - name: Smoke test (the exe opens its window on its own)
         shell: pwsh
         run: |
-          $app = Start-Process windows/build/Bookshelf/Bookshelf.exe -PassThru
-          Start-Sleep -Seconds 15
+          # Run a copy that's alone in a new folder, as on someone's desktop,
+          # and unpack into a fresh folder so nothing from the build helps.
+          $alone = New-Item -ItemType Directory "$env:RUNNER_TEMP/Desktop copy"
+          Copy-Item windows/build/Bookshelf/Bookshelf.exe $alone
+          $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
           $crashLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/crash.log'
+          $clock = [Diagnostics.Stopwatch]::StartNew()
+          $app = Start-Process "$alone/Bookshelf.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          # Wait for the main window (first start unpacks ~230 MB), then a
+          # little longer in case something fails just after it appears.
+          while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited) {
+            $app.Refresh()
+            if ($app.MainWindowTitle -eq 'Bookshelf (preview)') { break }
+            Start-Sleep -Milliseconds 500
+          }
+          $opened = $clock.Elapsed.TotalSeconds
+          Start-Sleep -Seconds 10
           if ($app.HasExited) {
             if (Test-Path $crashLog) { Get-Content $crashLog }
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Level = 2; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue |
+              Format-List TimeCreated, ProviderName, Message
             throw "Bookshelf.exe exited on its own (exit code $($app.ExitCode))"
           }
           if (Test-Path $crashLog) { Get-Content $crashLog; throw "crash.log was written" }
+          if ($app.MainWindowTitle -ne 'Bookshelf (preview)') { throw "No Bookshelf window after 90 seconds" }
           Stop-Process -Id $app.Id
-          Write-Host "Bookshelf.exe started and stayed open."
+          Write-Host ("Bookshelf.exe opened its window after {0:N1} s and stayed open." -f $opened)
+
+      - name: Check the app only needs DLLs every Windows PC has
+        shell: pwsh
+        run: |
+          # The runner has extras a normal PC may lack (the Visual C++
+          # runtime, for one), so the smoke test alone can't catch these.
+          # Checks what the exe unpacked: exactly what a user's PC loads.
+          $unpacked = Get-ChildItem "$env:RUNNER_TEMP/unpacked/Bookshelf" -Directory | Select-Object -First 1
+          if (-not $unpacked) { throw "Bookshelf.exe didn't unpack anything" }
+          foreach ($f in 'Bookshelf.dll', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
+            if (-not (Test-Path (Join-Path $unpacked.FullName $f))) { throw "$f is missing from Bookshelf.exe" }
+          }
+          python scripts/check-windows-imports.py $unpacked.FullName
+          if ($LASTEXITCODE) { throw "check-windows-imports.py failed" }
+
+      - name: Add the read-me for testers
+        shell: pwsh
+        run: Copy-Item windows/PREVIEW-README.txt windows/build/Bookshelf/README.txt
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: Bookshelf-windows-preview-x64
-          path: windows/build/Bookshelf
+          path: |
+            windows/build/Bookshelf/Bookshelf.exe
+            windows/build/Bookshelf/README.txt
+          if-no-files-found: error
