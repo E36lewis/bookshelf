@@ -23,7 +23,27 @@ targets:
   Bookshelf:
     type: application
     platform: macOS
-    sources: [Bookshelf]
+    sources:
+      - path: Bookshelf
+      # The bundled typefaces (SIL Open Font License), copied flat into
+      # Resources/Fonts, where ATSApplicationFontsPath registers them for
+      # this app only. Each license goes beside them.
+      - path: ../packaging/fonts
+        includes: ["**/*.ttf"]
+        buildPhase:
+          copyFiles:
+            destination: resources
+            subpath: Fonts
+      - path: ../packaging/fonts/ia-writer-duo/LICENSE.md
+        buildPhase:
+          copyFiles:
+            destination: resources
+            subpath: Fonts/iA Writer Duo
+      - path: ../packaging/fonts/source-serif-4/LICENSE.md
+        buildPhase:
+          copyFiles:
+            destination: resources
+            subpath: Fonts/Source Serif 4
     dependencies:
       - package: BookshelfKit
     info:
@@ -32,12 +52,15 @@ targets:
         CFBundleDisplayName: Bookshelf
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "Copyright © 2026 e36lewis. Free software under the GPL 3.0 or later."
+        ATSApplicationFontsPath: Fonts
     entitlements:
       path: Bookshelf/Bookshelf.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-write: true
+        # Remembers the backup folder someone picks, across launches.
+        com.apple.security.files.bookmarks.app-scope: true
     settings:
       base:
         # Previews get their own ID, so they never touch a real journal.
