@@ -137,6 +137,45 @@ final class WritingTests: XCTestCase {
         XCTAssertEqual(page.style(at: edited.range(of: "Line 4").location), [])
     }
 
+    /// A blank line is the gap between paragraphs: one line high, with no
+    /// spacing below it or below the line before it. Lines of text that
+    /// follow each other (a list) keep their spacing. Typing on a blank
+    /// line, or emptying one, respaces the line before it.
+    func testOnlyLinesFollowedByTextGetSpaceBelow() throws {
+        let page = Page("# Title\n\nFirst paragraph.\n  \n- one\n- two", styler: styler())
+        func spacing(at location: Int) -> CGFloat? {
+            let style = page.textView.textStorage?.attribute(.paragraphStyle, at: location, effectiveRange: nil)
+            return (style as? NSParagraphStyle)?.paragraphSpacing
+        }
+        func spacing(_ text: String) -> CGFloat? {
+            spacing(at: (page.textView.string as NSString).range(of: text).location)
+        }
+        XCTAssertEqual(spacing("Title"), 0, "before a blank line")
+        XCTAssertEqual(spacing(at: 8), 0, "a blank line")
+        XCTAssertEqual(spacing("First"), 0, "before a line of spaces")
+        XCTAssertEqual(spacing("  \n"), 0, "a line of spaces is blank")
+        XCTAssertEqual(spacing("- one"), 9, "between list items")
+        XCTAssertEqual(spacing("- two"), 9, "the last line")
+
+        // Writing on the blank line gives the title its space back.
+        page.textView.setSelectedRange(NSRange(location: 8, length: 0))
+        page.type("Sub")
+        XCTAssertEqual(page.textView.string, "# Title\nSub\nFirst paragraph.\n  \n- one\n- two")
+        XCTAssertEqual(spacing("Title"), 9)
+        XCTAssertEqual(spacing("Sub"), 9)
+        // Undoing it makes the line blank again.
+        page.undo.undo()
+        XCTAssertEqual(spacing("Title"), 0)
+        XCTAssertEqual(spacing(at: 8), 0)
+
+        // Joining the blank line onto the paragraph before it.
+        let text = page.textView.string as NSString
+        page.textView.setSelectedRange(NSRange(location: text.range(of: "  \n").location - 1, length: 4))
+        page.type(" ")
+        XCTAssertEqual(page.textView.string, "# Title\n\nFirst paragraph. - one\n- two")
+        XCTAssertEqual(spacing("First"), 9)
+    }
+
     func testStylingNeverEntersTheUndoStack() {
         let styler = self.styler()
         let page = Page("Plain words", styler: styler)

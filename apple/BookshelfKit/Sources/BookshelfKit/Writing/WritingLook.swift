@@ -55,7 +55,7 @@ public struct WritingLook: Equatable {
     public var fonts: WritingFonts
     /// Space between the wrapped rows of one line, in points.
     public var lineSpacing: CGFloat
-    /// Space below each line, in points.
+    /// Space below a line when another line of text follows it, in points.
     public var paragraphSpacing: CGFloat
 
     public init(fonts: WritingFonts, lineSpacing: CGFloat, paragraphSpacing: CGFloat) {
@@ -64,11 +64,24 @@ public struct WritingLook: Equatable {
         self.paragraphSpacing = paragraphSpacing
     }
 
-    /// The paragraph style every line shares.
+    /// The paragraph style of a line with another line of text after it:
+    /// `paragraphSpacing` below it.
     public var paragraphStyle: NSParagraphStyle {
+        style(spacingBelow: paragraphSpacing)
+    }
+
+    /// The paragraph style of a blank line, and of the line before one: no
+    /// space below. A blank line is the gap between paragraphs, so it takes
+    /// one line's height, as in iA Writer, rather than a line plus spacing
+    /// below it and below the line before.
+    public var blankLineStyle: NSParagraphStyle {
+        style(spacingBelow: 0)
+    }
+
+    private func style(spacingBelow: CGFloat) -> NSParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.lineSpacing = lineSpacing
-        style.paragraphSpacing = paragraphSpacing
+        style.paragraphSpacing = spacingBelow
         style.lineBreakMode = .byWordWrapping
         return style
     }

@@ -61,6 +61,8 @@ public final class MarkdownStyler {
     public let look: WritingLook
     public let palette: WritingPalette
     public let paragraphStyle: NSParagraphStyle
+    /// For blank lines and the lines just before them (`WritingLook`).
+    public let blankLineStyle: NSParagraphStyle
     /// Attributes by style, made once each.
     private var cache: [MarkdownStyle: [NSAttributedString.Key: Any]] = [:]
 
@@ -68,6 +70,7 @@ public final class MarkdownStyler {
         self.look = look
         self.palette = palette
         paragraphStyle = look.paragraphStyle
+        blankLineStyle = look.blankLineStyle
     }
 
     /// Plain text's attributes: the text view's typing attributes too.
@@ -82,7 +85,8 @@ public final class MarkdownStyler {
 
     /// Restyles the whole lines `range` touches, and returns them. Call
     /// inside a batch of edits (or from the storage's delegate while it
-    /// processes one), so the changes are laid out once.
+    /// processes one), so the changes are laid out once. The line before
+    /// them gets its spacing redone too (`spaceLines`).
     @discardableResult
     public func restyle(_ storage: NSTextStorage, around range: NSRange) -> NSRange {
         let all = storage.string as NSString
@@ -100,7 +104,40 @@ public final class MarkdownStyler {
                                   range: NSRange(location: lines.location + start, length: end - start))
             start = end
         }
+        spaceLines(storage, lines, in: all)
         return lines
+    }
+
+    /// Sets each line's spacing: space below a line only when a line of
+    /// text follows it, none below a blank line or the line before one.
+    /// The line before `lines` is redone as well, since whether a blank
+    /// line follows it may just have changed.
+    private func spaceLines(_ storage: NSTextStorage, _ lines: NSRange, in text: NSString) {
+        var location = lines.location
+        if location > 0 {
+            location = text.paragraphRange(for: NSRange(location: location - 1, length: 0)).location
+        }
+        let end = NSMaxRange(lines)
+        while location < end {
+            let line = text.paragraphRange(for: NSRange(location: location, length: 0))
+            let next = NSMaxRange(line)
+            let close = Self.isBlank(line, in: text)
+                || (next < text.length && Self.isBlank(text.paragraphRange(for: NSRange(location: next, length: 0)), in: text))
+            storage.addAttribute(.paragraphStyle, value: close ? blankLineStyle : paragraphStyle, range: line)
+            guard next > location else { break }
+            location = next
+        }
+    }
+
+    /// Whether `line` has nothing but spaces before its line break.
+    static func isBlank(_ line: NSRange, in text: NSString) -> Bool {
+        for i in line.location..<NSMaxRange(line) {
+            switch text.character(at: i) {
+            case 0x20, 0x09, 0x0A, 0x0D, 0x2028, 0x2029: continue
+            default: return false
+            }
+        }
+        return true
     }
 
     /// Each UTF-16 unit's styles in `text` (whole lines, `length` units).
