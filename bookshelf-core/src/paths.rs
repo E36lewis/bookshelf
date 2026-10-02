@@ -82,6 +82,41 @@ mod tests {
         );
     }
 
+    /// The journal's folder must not move when `directories` is updated, or
+    /// Bookshelf would open an empty journal. Same names as
+    /// `default_location`, which isn't called here: it creates the folder.
+    #[test]
+    fn the_default_folder_stays_put() {
+        let dirs = directories::ProjectDirs::from("com", "bookshelf", "Bookshelf").unwrap();
+        #[cfg(target_os = "linux")]
+        {
+            // ~/.local/share/bookshelf, or $XDG_DATA_HOME/bookshelf if set.
+            let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+            let share = std::env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .filter(|p| p.is_absolute())
+                .unwrap_or_else(|| home.join(".local/share"));
+            assert_eq!(dirs.data_dir(), share.join("bookshelf"));
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let base = directories::BaseDirs::new().unwrap();
+            assert_eq!(
+                dirs.data_dir(),
+                base.home_dir()
+                    .join("Library/Application Support/com.bookshelf.Bookshelf")
+            );
+        }
+        #[cfg(windows)]
+        {
+            let base = directories::BaseDirs::new().unwrap();
+            assert_eq!(
+                dirs.data_dir(),
+                base.data_dir().join(r"bookshelf\Bookshelf\data")
+            );
+        }
+    }
+
     #[cfg(unix)]
     #[test]
     fn home_is_shown_as_a_tilde() {
