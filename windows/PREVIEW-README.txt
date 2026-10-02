@@ -7,12 +7,17 @@ Bookshelf preview for Windows 10 (version 1809 or later) and Windows 11, x64
 3. The first start can take up to a minute while Bookshelf unpacks its
    files. Later starts are quick.
 
-The preview keeps its own test data in %LOCALAPPDATA%\Bookshelf.Preview.
+The preview keeps its own test journal, apart from any real one, in
+%LOCALAPPDATA%\Bookshelf Preview (its logs are in the "logs" folder there).
+
+To look around with made-up books instead, open a Command Prompt in the
+folder with Bookshelf.exe and run:  Bookshelf.exe --demo-journal
+That journal lives in a temporary folder and never touches yours.
 
 If no window opens after a minute:
-- Paste %LOCALAPPDATA%\Bookshelf.Preview into the File Explorer address
-  bar and send startup.log (its last line shows how far Bookshelf got)
-  and crash.log, if there is one. If startup.log isn't there, look in
+- Paste %LOCALAPPDATA%\Bookshelf Preview\logs into the File Explorer
+  address bar and send startup.log (its last line shows how far Bookshelf
+  got) and crash.log, if there is one. If startup.log isn't there, look in
   %TEMP% instead.
 - Open Event Viewer > Windows Logs > Application and send any recent
   Error entries from ".NET Runtime" or "Application Error" that mention

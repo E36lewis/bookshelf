@@ -60,7 +60,7 @@ jobs:
           if (-not (Test-Path windows/build/Bookshelf/Bookshelf.exe)) { throw "Bookshelf.exe is missing from the build" }
           if ($extra) { $extra.FullName; throw "Bookshelf.exe needs files next to it" }
 
-      - name: Smoke test (the exe opens its window on its own)
+      - name: Smoke test (the exe opens its window on its own, once)
         # Windows PowerShell, for its built-in UI Automation client.
         shell: powershell
         run: |
@@ -69,35 +69,41 @@ jobs:
           $alone = New-Item -ItemType Directory "$env:RUNNER_TEMP/Desktop copy"
           Copy-Item windows/build/Bookshelf/Bookshelf.exe $alone
           $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
-          $crashLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/crash.log'
-          $startupLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/startup.log'
+          $logs = Join-Path $env:LOCALAPPDATA 'Bookshelf Preview/logs'
+          $crashLog = Join-Path $logs 'crash.log'
+          $startupLog = Join-Path $logs 'startup.log'
+          $title = 'Bookshelf Preview'
           $clock = [Diagnostics.Stopwatch]::StartNew()
           $app = Start-Process "$alone/Bookshelf.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
           # Wait for the main window (first start unpacks ~230 MB), then a
           # little longer in case something fails just after it appears.
           while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited) {
             $app.Refresh()
-            if ($app.MainWindowTitle -eq 'Bookshelf (preview)') { break }
+            if ($app.MainWindowTitle -eq $title) { break }
             Start-Sleep -Milliseconds 500
           }
           $opened = $clock.Elapsed.TotalSeconds
-          # Read the status line, which says whether the Rust core loaded
-          # (a failure there is shown in the window, not reported as a crash).
-          $status = $null
-          if ($app.MainWindowTitle -eq 'Bookshelf (preview)') {
+          # A first run (this PC has no journal yet) asks for a profile. A
+          # journal that can't be opened shows "Bookshelf couldn't start".
+          $heading = $null
+          if ($app.MainWindowTitle -eq $title) {
             Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
             $window = [Windows.Automation.AutomationElement]::FromHandle($app.MainWindowHandle)
-            $isText = New-Object Windows.Automation.PropertyCondition(
-              [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Text)
-            while ($clock.Elapsed.TotalSeconds -lt $opened + 30 -and -not $status) {
-              $status = $window.FindAll([Windows.Automation.TreeScope]::Descendants, $isText) |
-                ForEach-Object { $_.Current.Name } |
-                Where-Object { $_ -like 'Rust core *' -or $_ -like "Couldn't open the journal*" } |
-                Select-Object -First 1
-              if (-not $status) { Start-Sleep -Milliseconds 500 }
+            $ids = 'WelcomeHeading', 'ProblemTitle' | ForEach-Object {
+              New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::AutomationIdProperty, $_)
+            }
+            $either = New-Object Windows.Automation.OrCondition($ids)
+            while ($clock.Elapsed.TotalSeconds -lt $opened + 30 -and -not $heading) {
+              $found = $window.FindFirst([Windows.Automation.TreeScope]::Descendants, $either)
+              if ($found) { $heading = $found.Current.Name } else { Start-Sleep -Milliseconds 500 }
             }
           }
-          Start-Sleep -Seconds 10
+          Start-Sleep -Seconds 5
+          # A second launch hands over to the open window and exits.
+          $second = Start-Process "$alone/Bookshelf.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
+          $handedOver = $second.WaitForExit(30000)
+          if (-not $handedOver) { Stop-Process -Id $second.Id -Force }
+          Start-Sleep -Seconds 5
           if (Test-Path $startupLog) { Get-Content $startupLog }
           if ($app.HasExited) {
             if (Test-Path $crashLog) { Get-Content $crashLog }
@@ -106,11 +112,17 @@ jobs:
             throw "Bookshelf.exe exited on its own (exit code $($app.ExitCode))"
           }
           if (Test-Path $crashLog) { Get-Content $crashLog; throw "crash.log was written" }
-          if ($app.MainWindowTitle -ne 'Bookshelf (preview)') { throw "No Bookshelf window after 90 seconds" }
+          if ($app.MainWindowTitle -ne $title) { throw "No Bookshelf window after 90 seconds" }
           Stop-Process -Id $app.Id
-          Write-Host "Status line: $status"
-          if ($status -notlike 'Rust core *') { throw "The window didn't show the Rust core's version" }
-          if (-not (Select-String -Path $startupLog -Pattern 'Ready: Rust core' -Quiet)) { throw "startup.log doesn't reach 'Ready'" }
+          Write-Host "The window shows: $heading"
+          if ($heading -ne 'Welcome') { throw "The first run didn't ask for a profile" }
+          if (-not (Select-String -Path $startupLog -Pattern 'Ready: Rust core .* first run' -Quiet)) { throw "startup.log doesn't reach 'Ready'" }
+          if (-not $handedOver -or $second.ExitCode -ne 0) { throw "A second Bookshelf.exe didn't hand over to the first and exit" }
+          if (-not (Select-String -Path $startupLog -Pattern 'handed over to the open window' -SimpleMatch -Quiet)) { throw "The second launch didn't hand over" }
+          # The bundled fonts load in this unpackaged single-file build.
+          foreach ($font in 'Source Serif 4', 'iA Writer Duo S') {
+            if (-not (Select-String -Path $startupLog -Pattern "Fonts: $font loads from" -SimpleMatch -Quiet)) { Write-Warning "$font didn't load" }
+          }
           Write-Host ("Bookshelf.exe opened its window after {0:N1} s and stayed open." -f $opened)
 
       - name: Check the app can start on every Windows 10/11 PC
@@ -142,3 +154,29 @@ jobs:
             windows/build/Bookshelf/Bookshelf.exe
             windows/build/Bookshelf/README.txt
           if-no-files-found: error
+
+      - name: UI tour on demo journals, with screenshots
+        # Never real data: each run makes a demo journal in a temporary
+        # folder. Checks the pages through UI Automation and the keyboard,
+        # and saves a screenshot of each (the next step uploads them).
+        shell: powershell
+        run: |
+          $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
+          windows/ci/ui-tour.ps1 -Exe "$env:RUNNER_TEMP/Desktop copy/Bookshelf.exe" -Out "$env:RUNNER_TEMP/screenshots"
+
+      - name: Show the app's logs
+        if: always()
+        shell: pwsh
+        run: |
+          $logs = Join-Path $env:LOCALAPPDATA 'Bookshelf Preview/logs'
+          foreach ($log in 'startup.log', 'crash.log', 'core.log') {
+            $file = Join-Path $logs $log
+            if (Test-Path $file) { Write-Host "--- $log"; Get-Content $file -Tail 200 }
+          }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: Bookshelf-windows-screenshots
+          path: ${{ runner.temp }}/screenshots
+          if-no-files-found: warn
