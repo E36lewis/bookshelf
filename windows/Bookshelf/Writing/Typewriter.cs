@@ -1,11 +1,8 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Windows.Foundation;
 using Windows.UI.ViewManagement;
-using WinRT.Interop;
 
 namespace Bookshelf.Writing;
 
@@ -15,10 +12,9 @@ namespace Bookshelf.Writing;
 /// Without Windows' animation effects, it jumps instead of gliding.
 /// </summary>
 /// <remarks>
-/// RichEdit scrolls its text itself, and where its "client coordinates"
-/// start isn't documented. Its screen coordinates are what UI Automation
-/// (and so Narrator) uses, so the caret is found on screen and then placed
-/// in the ScrollViewer's view.
+/// RichEdit gives the caret's place measured from the top of the whole text,
+/// in the same pixels as the ScrollViewer's offset (seen in CI: unchanged as
+/// the view scrolls), so the target offset is that less half a page.
 /// </remarks>
 internal sealed class Typewriter(RichEditBox box)
 {
@@ -32,11 +28,11 @@ internal sealed class Typewriter(RichEditBox box)
     /// <summary>Scrolls so the caret's line sits mid-page (if it isn't already).</summary>
     public void CenterCaret()
     {
-        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretInView(scroller) is not { } y) return;
-        var target = Math.Clamp(scroller.VerticalOffset + y - scroller.ViewportHeight / 2, 0, scroller.ScrollableHeight);
+        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretY() is not { } y) return;
+        var target = Math.Clamp(y - scroller.ViewportHeight / 2, 0, scroller.ScrollableHeight);
         if (Math.Abs(target - scroller.VerticalOffset) < 4) return;
-        Note($"caret {y:F0} px down a {scroller.ViewportHeight:F0} px page at offset {scroller.VerticalOffset:F0} " +
-            $"(of {scroller.ScrollableHeight:F0}); scrolling to {target:F0}");
+        Note($"caret {y:F0} px into the text, the page shows {scroller.VerticalOffset:F0} to " +
+            $"{scroller.VerticalOffset + scroller.ViewportHeight:F0} (of {scroller.ScrollableHeight + scroller.ViewportHeight:F0}); scrolling to {target:F0}");
         scroller.ChangeView(null, target, null, disableAnimation: !_ui.AnimationsEnabled);
     }
 
@@ -50,20 +46,14 @@ internal sealed class Typewriter(RichEditBox box)
     private void OnViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         if (e.IsIntermediate || !LogScrolls || _logged >= 12 || _scroller is not { } scroller) return;
-        Note($"settled at offset {scroller.VerticalOffset:F0}; caret now {CaretInView(scroller):F0} px down");
+        Note($"settled at {scroller.VerticalOffset:F0}; caret {CaretY():F0} px into the text");
     }
 
-    /// <summary>The middle of the caret's line, in pixels from the top of the visible page; null if it can't be told.</summary>
-    private double? CaretInView(ScrollViewer scroller)
+    /// <summary>The middle of the caret's line, in pixels from the top of the text; null if it can't be told.</summary>
+    private double? CaretY()
     {
-        if (box.XamlRoot is not { } root) return null;
-        box.Document.Selection.GetRect(PointOptions.None, out var rect, out _);
-        if (rect.Height <= 0) return null;
-        var origin = new Win32Point();
-        if (!ClientToScreen(WindowNative.GetWindowHandle(MainWindow.Instance), ref origin)) return null;
-        var scale = root.RasterizationScale > 0 ? root.RasterizationScale : 1;
-        var viewTop = scroller.TransformToVisual(null).TransformPoint(new Point(0, 0)).Y;
-        return (rect.Y + rect.Height / 2 - origin.Y) / scale - viewTop;
+        box.Document.Selection.GetRect(PointOptions.ClientCoordinates, out var rect, out _);
+        return rect.Height > 0 ? rect.Y + rect.Height / 2 : null;
     }
 
     private ScrollViewer? Scroller
@@ -87,15 +77,4 @@ internal sealed class Typewriter(RichEditBox box)
         }
         return null;
     }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Win32Point
-    {
-        public int X;
-        public int Y;
-    }
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ClientToScreen(IntPtr window, ref Win32Point point);
 }
