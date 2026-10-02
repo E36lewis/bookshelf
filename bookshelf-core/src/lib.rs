@@ -16,6 +16,7 @@ pub mod models;
 pub mod openlibrary;
 pub mod paths;
 pub mod present;
+pub mod render;
 pub mod service;
 pub mod shortcuts;
 pub mod text;
