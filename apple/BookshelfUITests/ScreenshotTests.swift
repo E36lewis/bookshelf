@@ -187,8 +187,8 @@ final class ScreenshotTests: XCTestCase {
 
         // The writing page, plain and in focus mode.
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
-        let text = app.textViews["writer.text"]
-        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        let writing = app.textViews["writer.text"]
+        XCTAssertTrue(writing.waitForExistence(timeout: 5))
         try audit("writer")
         app.typeKey("f", modifierFlags: [.command, .shift])
         try audit("writer, focus mode")
@@ -203,7 +203,7 @@ final class ScreenshotTests: XCTestCase {
         middlemarch.click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
-        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        XCTAssertTrue(writing.waitForExistence(timeout: 5))
         try audit("writer, empty")
 
         let text = (found.lines.isEmpty ? ["No issues."] : found.lines)
