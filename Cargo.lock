@@ -148,7 +148,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
  "uuid",
 ]
 
@@ -158,7 +158,7 @@ version = "0.1.0"
 dependencies = [
  "bookshelf-core",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
  "uniffi",
 ]
 

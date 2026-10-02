@@ -16,7 +16,7 @@ bookshelf-core = { path = "../bookshelf-core" }
 # Pinned to the version uniffi-bindgen-cs (C#) supports; the Swift bindings
 # come from tools/uniffi-bindgen at the same version.
 uniffi = "=0.31.0"
-thiserror = "1"
+thiserror = "2"
 
 [dev-dependencies]
 tempfile = "3"
