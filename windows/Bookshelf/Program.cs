@@ -8,12 +8,12 @@ namespace Bookshelf;
 /// <summary>
 /// The app's entry point, used instead of the one XAML generates
 /// (DISABLE_XAML_GENERATED_MAIN) so that every startup step is logged
-/// first. It does what the generated one does, plus the logging.
+/// first, and a second launch hands over to the open window.
 /// </summary>
 public static class Program
 {
     [STAThread]
-    private static void Main()
+    private static int Main(string[] args)
     {
         AppDomain.CurrentDomain.UnhandledException += (_, e) => App.ReportCrash(e.ExceptionObject);
 
@@ -22,6 +22,9 @@ public static class Program
         StartupLog.Step($"Files in {AppContext.BaseDirectory}");
         StartupLog.Step($"Windows {Environment.OSVersion.Version} {RuntimeInformation.OSArchitecture}, " +
             $"app {RuntimeInformation.ProcessArchitecture}, .NET {Environment.Version}");
+        var options = LaunchOptions.Parse(args);
+        App.Options = options;
+        if (options.DemoJournal) StartupLog.Step("Demo journal requested");
 
         StartupLog.Step("Loading the Rust core (bookshelf_ffi.dll)");
         try
@@ -30,12 +33,21 @@ public static class Program
         }
         catch (Exception e)
         {
-            // The window still opens and shows the problem in its status line.
+            // The window still opens and says what went wrong.
             StartupLog.Step($"Rust core failed to load: {e.GetType().Name}: {e.Message}");
         }
 
         StartupLog.Step("Starting the Windows App SDK (COM wrappers)");
         WinRT.ComWrappersSupport.InitializeComWrappers();
+
+        // One window per journal: a second launch brings the first forward.
+        // A demo journal is a new one each time, so it gets its own window.
+        if (!options.DemoJournal && SingleInstance.HandOverToRunningApp())
+        {
+            StartupLog.Step("Closed (handed over to the open window)");
+            return 0;
+        }
+
         StartupLog.Step("Starting XAML");
         Application.Start(p =>
         {
@@ -45,6 +57,7 @@ public static class Program
             new App();
         });
         StartupLog.Step("Closed");
+        return 0;
     }
 
     private static bool IsUnderOneDrive(string path) =>

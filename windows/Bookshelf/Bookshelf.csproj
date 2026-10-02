@@ -44,6 +44,19 @@
   <ItemGroup>
     <ProjectReference Include="..\Bookshelf.Core\Bookshelf.Core.csproj" />
   </ItemGroup>
+  <!-- The bundled fonts (SIL OFL), with their licenses, from packaging/fonts
+       so there's one copy in the repo. Unpacked next to Bookshelf.dll and
+       loaded from there (see Look.cs). -->
+  <ItemGroup>
+    <Content Include="..\..\packaging\fonts\ia-writer-duo\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\packaging\fonts\source-serif-4\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\packaging\fonts\ia-writer-duo\LICENSE.md" Link="Assets\Fonts\iA-Writer-Duo-LICENSE.md"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\packaging\fonts\source-serif-4\LICENSE.md" Link="Assets\Fonts\Source-Serif-4-LICENSE.md"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
   <!-- The Rust core, from `cargo build -release -p bookshelf-ffi`. -->
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\target\release\bookshelf_ffi.dll')">
     <None Include="$(MSBuildThisFileDirectory)..\..\target\release\bookshelf_ffi.dll"

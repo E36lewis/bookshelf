@@ -34,8 +34,17 @@ public sealed class WritingBox
 
     public bool Highlight { get; set; } = true;
 
+    /// <summary>The text size in pixels; headings are a quarter bigger. Call <see cref="RestyleAll"/> after changing it.</summary>
+    public float TextSize { get; set; } = 15;
+
+    /// <summary>The text, with <c>\n</c> line ends.</summary>
+    public string Text => _text;
+
     /// <summary>Raised after each restyle, with a short description of the work done.</summary>
     public event Action<string>? Restyled;
+
+    /// <summary>Raised when the person changed the text (typing, pasting, undo or redo); not by <see cref="SetText"/>.</summary>
+    public event Action? Edited;
 
     public WritingBox(RichEditBox box)
     {
@@ -89,6 +98,7 @@ public sealed class WritingBox
         _text = now;
         Restyle(change.Start, change.NewEnd);
         _selection = CurrentSelection();
+        Edited?.Invoke();
     }
 
     private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
@@ -143,6 +153,7 @@ public sealed class WritingBox
         Restyle(change.Start, change.NewEnd);
         _box.Document.Selection.SetRange(target.SelectionStart, target.SelectionEnd);
         _selection = (target.SelectionStart, target.SelectionEnd);
+        Edited?.Invoke();
     }
 
     private async void OnPaste(object sender, TextControlPasteEventArgs e)
@@ -170,7 +181,7 @@ public sealed class WritingBox
             all.Bold = FormatEffect.Off;
             all.Italic = FormatEffect.Off;
             all.Strikethrough = FormatEffect.Off;
-            all.Size = 15;
+            all.Size = TextSize;
             all.ForegroundColor = _ink;
             all.BackgroundColor = Microsoft.UI.Colors.Transparent;
 
@@ -183,7 +194,7 @@ public sealed class WritingBox
                     var f = doc.GetRange(from + (int)span.Start, from + (int)span.End).CharacterFormat;
                     switch (span.Kind)
                     {
-                        case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = 19; break;
+                        case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = TextSize * 1.25f; break;
                         case StyleKind.Bold: f.Bold = FormatEffect.On; break;
                         case StyleKind.Italic:
                         case StyleKind.Quote: f.Italic = FormatEffect.On; break;

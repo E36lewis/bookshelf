@@ -6,43 +6,44 @@ namespace Bookshelf;
 /// Preview diagnostics: writes a line to startup.log before each startup
 /// step. Each line is on disk before the step runs, so if the app dies
 /// without a crash.log or a message box, the last line says where.
-/// Kept in %LOCALAPPDATA%\Bookshelf.Preview (not synced by OneDrive), or
-/// in %TEMP% if that can't be written.
+/// Kept in the logs folder (<see cref="AppFolders.Logs"/>, not synced by
+/// OneDrive), or in %TEMP% if that can't be written. Later problems that
+/// don't stop the app (a backup that failed, say) are noted here too.
+/// Nothing anyone wrote is ever logged.
 /// </summary>
 internal static class StartupLog
 {
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
+    private static readonly object Lock = new();
     private static string? _file;
     private static bool _opened;
 
     public static void Step(string what)
     {
-        try
+        lock (Lock)
         {
-            if (!_opened)
+            try
             {
-                _opened = true;
-                _file = Open();
+                if (!_opened)
+                {
+                    _opened = true;
+                    _file = Open();
+                }
+                if (_file is not null)
+                {
+                    File.AppendAllText(_file, $"{Clock.ElapsedMilliseconds,6} ms  {what}\r\n");
+                }
             }
-            if (_file is not null)
+            catch
             {
-                File.AppendAllText(_file, $"{Clock.ElapsedMilliseconds,6} ms  {what}\r\n");
+                // Logging must never be what stops the app.
             }
-        }
-        catch
-        {
-            // Logging must never be what stops the app.
         }
     }
 
     private static string? Open()
     {
-        var folders = new[]
-        {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Bookshelf.Preview"),
-            Path.GetTempPath(),
-        };
-        foreach (var folder in folders)
+        foreach (var folder in new[] { AppFolders.Logs, Path.GetTempPath() })
         {
             try
             {

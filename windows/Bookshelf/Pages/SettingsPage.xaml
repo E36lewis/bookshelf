@@ -1,0 +1,253 @@
+<pages:BookshelfPage
+    x:Class="Bookshelf.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Bookshelf.Controls"
+    xmlns:pages="using:Bookshelf.Pages">
+
+    <!-- Every change is saved and applied right away, for this profile. -->
+    <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="SettingsScroller">
+        <StackPanel
+            MaxWidth="1000"
+            Padding="40,28,40,48"
+            HorizontalAlignment="Stretch"
+            Spacing="4">
+            <TextBlock
+                Margin="0,0,0,4"
+                AutomationProperties.HeadingLevel="Level1"
+                Style="{StaticResource PageTitleStyle}"
+                Text="Settings" />
+            <InfoBar x:Name="Problem" IsOpen="False" Severity="Error" />
+
+            <!-- Profile -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Profile" />
+            <controls:SettingsCard Glyph="&#xE77B;" Header="Name">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox
+                        x:Name="NameBox"
+                        Width="220"
+                        AutomationProperties.Name="Name"
+                        KeyDown="OnNameKeyDown"
+                        TextChanged="OnNameChanged" />
+                    <Button x:Name="SaveName" Click="OnSaveName" Content="Save" IsEnabled="False" />
+                </StackPanel>
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                x:Name="EmailCard"
+                Description="Sent only to Open Library, with your book searches and cover downloads."
+                Glyph="&#xE715;"
+                Header="Email (optional)">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox
+                        x:Name="EmailBox"
+                        Width="220"
+                        AutomationProperties.Name="Email (optional)"
+                        InputScope="EmailSmtpAddress"
+                        KeyDown="OnEmailKeyDown"
+                        PlaceholderText="you@example.com"
+                        TextChanged="OnEmailChanged" />
+                    <Button x:Name="SaveEmail" Click="OnSaveEmail" Content="Save" IsEnabled="False" />
+                    <Button
+                        x:Name="EmailInfo"
+                        AutomationProperties.Name="Why an email?"
+                        Style="{StaticResource SubtleButtonStyle}">
+                        <FontIcon FontSize="16" Glyph="&#xE946;" />
+                        <Button.Flyout>
+                            <Flyout>
+                                <TextBlock
+                                    x:Name="EmailWhy"
+                                    MaxWidth="320"
+                                    TextWrapping="Wrap" />
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </controls:SettingsCard>
+            <TextBlock
+                x:Name="ProfileError"
+                Margin="4,4,0,0"
+                AutomationProperties.LiveSetting="Assertive"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+
+            <!-- Appearance -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Appearance" />
+            <controls:SettingsCard Glyph="&#xE790;" Header="Theme">
+                <ComboBox x:Name="ThemeBox" MinWidth="200" AutomationProperties.Name="Theme" SelectionChanged="OnThemeChanged">
+                    <ComboBoxItem Content="Match Windows" />
+                    <ComboBoxItem Content="Light" />
+                    <ComboBoxItem Content="Dark" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="Buttons, links and highlights" Glyph="&#xE771;" Header="Accent color">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <StackPanel x:Name="Swatches" Orientation="Horizontal" Spacing="2" />
+                    <Button
+                        x:Name="CustomAccent"
+                        AutomationProperties.Name="Custom color"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        ToolTipService.ToolTip="Custom color">
+                        <FontIcon FontSize="16" Glyph="&#xE790;" />
+                        <Button.Flyout>
+                            <Flyout x:Name="CustomFlyout">
+                                <StackPanel Spacing="12">
+                                    <ColorPicker
+                                        x:Name="AccentPicker"
+                                        IsAlphaEnabled="False"
+                                        IsColorChannelTextInputVisible="False"
+                                        IsHexInputVisible="True"
+                                        IsMoreButtonVisible="False" />
+                                    <Button
+                                        HorizontalAlignment="Right"
+                                        Click="OnUseCustomAccent"
+                                        Content="Use this color"
+                                        Style="{StaticResource AccentButtonStyle}" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="Serif is bookish, sans-serif is clean" Glyph="&#xE8D2;" Header="Titles and summaries">
+                <ComboBox x:Name="HeadingFontBox" MinWidth="200" AutomationProperties.Name="Titles and summaries" SelectionChanged="OnHeadingFontChanged">
+                    <ComboBoxItem Content="Serif" />
+                    <ComboBoxItem Content="Sans-serif" />
+                </ComboBox>
+            </controls:SettingsCard>
+
+            <!-- Writing -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Writing" />
+            <controls:SettingsCard Glyph="&#xE8D2;" Header="Font">
+                <ComboBox x:Name="WritingFontBox" MinWidth="240" AutomationProperties.Name="Writing font" SelectionChanged="OnWritingFontChanged">
+                    <ComboBoxItem Content="iA Writer Duo (monospace)" />
+                    <ComboBoxItem Content="Source Serif" />
+                    <ComboBoxItem Content="System sans-serif" />
+                    <ComboBoxItem Content="System monospace" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="Points" Glyph="&#xE8E9;" Header="Text size">
+                <NumberBox
+                    x:Name="SizeBox"
+                    MinWidth="120"
+                    AutomationProperties.Name="Text size in points"
+                    LargeChange="2"
+                    Maximum="28"
+                    Minimum="10"
+                    SmallChange="1"
+                    SpinButtonPlacementMode="Inline"
+                    ValueChanged="OnSizeChanged" />
+            </controls:SettingsCard>
+            <controls:SettingsCard Glyph="&#xE7FC;" Header="Line spacing">
+                <ComboBox x:Name="SpacingBox" MinWidth="200" AutomationProperties.Name="Line spacing" SelectionChanged="OnSpacingChanged">
+                    <ComboBoxItem Content="Tight" />
+                    <ComboBoxItem Content="Comfortable" />
+                    <ComboBoxItem Content="Airy" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Glyph="&#xE9A6;" Header="Page width">
+                <ComboBox x:Name="WidthBox" MinWidth="200" AutomationProperties.Name="Page width" SelectionChanged="OnWidthChanged">
+                    <ComboBoxItem Content="Narrow" />
+                    <ComboBoxItem Content="Medium" />
+                    <ComboBoxItem Content="Wide" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="Dim everything except the sentence you're writing" Glyph="&#xE7B3;" Header="Start in focus mode">
+                <ToggleSwitch x:Name="FocusSwitch" AutomationProperties.Name="Start in focus mode" Toggled="OnFocusToggled" />
+            </controls:SettingsCard>
+            <Border Margin="0,4,0,0" Style="{StaticResource CardStyle}" Padding="24,20,24,20">
+                <StackPanel Spacing="6">
+                    <TextBlock Style="{StaticResource CaptionSecondaryStyle}" Text="Preview" />
+                    <TextBlock
+                        x:Name="WritingPreview"
+                        Text="The quiet hours between chapters are where the best thoughts arrive."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Reading log -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Reading log" />
+            <controls:SettingsCard Glyph="&#xE787;" Header="Date format">
+                <ComboBox x:Name="DateFormatBox" MinWidth="200" AutomationProperties.Name="Date format" SelectionChanged="OnDateFormatChanged">
+                    <ComboBoxItem Content="Sep 20, 2026" />
+                    <ComboBoxItem Content="09/20/2026" />
+                    <ComboBoxItem Content="20/09/2026" />
+                    <ComboBoxItem Content="2026-09-20" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="For the calendar" Glyph="&#xE8BF;" Header="Week starts on">
+                <ComboBox x:Name="WeekBox" MinWidth="200" AutomationProperties.Name="Week starts on" SelectionChanged="OnWeekChanged">
+                    <ComboBoxItem Content="Sunday" />
+                    <ComboBoxItem Content="Monday" />
+                </ComboBox>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="The shelf you see first" Glyph="&#xE8F1;" Header="Open to">
+                <ComboBox x:Name="StartShelfBox" MinWidth="200" AutomationProperties.Name="Open to" SelectionChanged="OnStartShelfChanged">
+                    <ComboBoxItem Content="Reading" />
+                    <ComboBoxItem Content="Finished" />
+                    <ComboBoxItem Content="Eventually" />
+                </ComboBox>
+            </controls:SettingsCard>
+
+            <!-- Your data -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Your data" />
+            <controls:SettingsCard
+                Description="Each summary becomes a Markdown file, in a “Bookshelf summaries” folder inside the folder you choose"
+                Glyph="&#xEDE1;"
+                Header="Export my summaries">
+                <Button x:Name="ExportButton" Click="OnExport" Content="Export…" />
+            </controls:SettingsCard>
+            <controls:SettingsCard
+                x:Name="BackupsCard"
+                Description="Checking…"
+                Glyph="&#xE777;"
+                Header="Daily backups">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button
+                        x:Name="ResetBackups"
+                        AutomationProperties.Name="Use the default folder again"
+                        Click="OnResetBackups"
+                        Content="Use default"
+                        Visibility="Collapsed" />
+                    <Button
+                        x:Name="OpenBackups"
+                        AutomationProperties.Name="Open the backup folder"
+                        Click="OnOpenBackups"
+                        Content="Open folder" />
+                    <Button
+                        x:Name="ChangeBackups"
+                        Click="OnChangeBackups"
+                        Content="Change…"
+                        ToolTipService.ToolTip="Keep backups somewhere else, like a USB drive or a synced folder, so they survive if this computer's disk fails" />
+                </StackPanel>
+            </controls:SettingsCard>
+
+            <!-- Help -->
+            <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Help" />
+            <controls:SettingsCard Description="Every key, on one page" Glyph="&#xE765;" Header="Keyboard shortcuts">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" Text="Ctrl+?" />
+                    <Button Click="OnShortcuts" Content="Show" AutomationProperties.Name="Show the keyboard shortcuts" />
+                </StackPanel>
+            </controls:SettingsCard>
+            <controls:SettingsCard Description="How everything works" Glyph="&#xE897;" Header="User manual">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" Text="F1" />
+                    <Button Click="OnManual" Content="Open" AutomationProperties.Name="Open the user manual" />
+                </StackPanel>
+            </controls:SettingsCard>
+            <controls:SettingsCard x:Name="AboutCard" Glyph="&#xE946;" Header="Bookshelf Preview">
+                <Button Click="OnOpenDataFolder" Content="Open data folder" />
+            </controls:SettingsCard>
+
+            <!-- Danger zone -->
+            <Button
+                x:Name="DeleteButton"
+                Margin="0,28,0,0"
+                AutomationProperties.AutomationId="DeleteProfileButton"
+                Click="OnDeleteProfile"
+                Content="Delete this profile…"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+        </StackPanel>
+    </ScrollViewer>
+</pages:BookshelfPage>

@@ -1,0 +1,82 @@
+<pages:BookshelfPage
+    x:Class="Bookshelf.Pages.WelcomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:pages="using:Bookshelf.Pages">
+
+    <!-- First run ("Welcome"), and New profile from the profile menu. -->
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="480"
+            Padding="32,56,32,48"
+            HorizontalAlignment="Stretch"
+            Spacing="20">
+            <FontIcon
+                HorizontalAlignment="Left"
+                FontSize="44"
+                Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                Glyph="&#xE736;" />
+            <StackPanel Spacing="6">
+                <TextBlock
+                    x:Name="Heading"
+                    AutomationProperties.AutomationId="WelcomeHeading"
+                    AutomationProperties.HeadingLevel="Level1"
+                    FontSize="36"
+                    Style="{StaticResource PageTitleStyle}"
+                    Text="Welcome" />
+                <TextBlock
+                    x:Name="Lede"
+                    Style="{StaticResource SecondaryTextStyle}"
+                    Text="Make a profile to start your reading journal."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border Style="{StaticResource CardStyle}" Padding="24">
+                <StackPanel Spacing="20">
+                    <TextBox
+                        x:Name="NameBox"
+                        AutomationProperties.AutomationId="NewProfileName"
+                        Header="Name"
+                        KeyDown="OnKeyDown"
+                        TextChanged="OnNameChanged" />
+                    <StackPanel Spacing="8">
+                        <TextBox
+                            x:Name="EmailBox"
+                            AutomationProperties.AutomationId="NewProfileEmail"
+                            Header="Email (optional)"
+                            InputScope="EmailSmtpAddress"
+                            KeyDown="OnKeyDown"
+                            PlaceholderText="you@example.com"
+                            TextChanged="OnEmailChanged" />
+                        <TextBlock
+                            x:Name="EmailWhy"
+                            Style="{StaticResource CaptionSecondaryStyle}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock
+                x:Name="Error"
+                AutomationProperties.LiveSetting="Assertive"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button
+                    x:Name="CreateButton"
+                    AutomationProperties.AutomationId="CreateProfileButton"
+                    Click="OnCreate"
+                    Content="Create profile"
+                    IsEnabled="False"
+                    Style="{StaticResource AccentButtonStyle}" />
+                <Button
+                    x:Name="CancelButton"
+                    Click="OnCancel"
+                    Content="Cancel"
+                    Visibility="Collapsed" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</pages:BookshelfPage>

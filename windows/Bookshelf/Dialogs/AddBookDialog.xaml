@@ -1,0 +1,87 @@
+<ContentDialog
+    x:Class="Bookshelf.Dialogs.AddBookDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dialogs="using:Bookshelf.Dialogs"
+    Title="Add a book"
+    CloseButtonText="Cancel"
+    DefaultButton="None"
+    Style="{StaticResource DefaultContentDialogStyle}">
+
+    <ContentDialog.Resources>
+        <x:Double x:Key="ContentDialogMaxWidth">720</x:Double>
+        <DataTemplate x:Key="ResultTemplate" x:DataType="dialogs:ResultItem">
+            <StackPanel Padding="0,8,0,8" Spacing="2" AutomationProperties.Name="{x:Bind AutomationName}">
+                <TextBlock
+                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                    Text="{x:Bind Title}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    Style="{StaticResource CaptionSecondaryStyle}"
+                    Text="{x:Bind Byline}"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="{x:Bind BylineVisibility}" />
+            </StackPanel>
+        </DataTemplate>
+    </ContentDialog.Resources>
+
+    <Grid Width="560" Height="420" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <AutoSuggestBox
+            x:Name="Query"
+            AutomationProperties.AutomationId="BookSearch"
+            AutomationProperties.Name="Search by title, author or ISBN"
+            PlaceholderText="Search by title, author or ISBN"
+            QueryIcon="Find"
+            QuerySubmitted="OnQuerySubmitted"
+            TextChanged="OnQueryChanged" />
+
+        <StackPanel Grid.Row="1" Spacing="8">
+            <ProgressBar x:Name="Busy" IsIndeterminate="True" Visibility="Collapsed" />
+            <InfoBar x:Name="Problem" IsOpen="False" Severity="Error" />
+        </StackPanel>
+
+        <ListView
+            x:Name="Results"
+            Grid.Row="2"
+            AutomationProperties.AutomationId="SearchResults"
+            AutomationProperties.Name="Books found"
+            IsItemClickEnabled="True"
+            ItemClick="OnResultClick"
+            ItemTemplate="{StaticResource ResultTemplate}"
+            SelectionMode="None"
+            Visibility="Collapsed" />
+
+        <StackPanel
+            x:Name="Hint"
+            Grid.Row="2"
+            MaxWidth="320"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="8">
+            <FontIcon
+                x:Name="HintGlyph"
+                FontSize="40"
+                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                Glyph="&#xE721;" />
+            <TextBlock
+                x:Name="HintTitle"
+                HorizontalAlignment="Center"
+                AutomationProperties.LiveSetting="Polite"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Text="Find a book" />
+            <TextBlock
+                x:Name="HintText"
+                HorizontalAlignment="Center"
+                Style="{StaticResource SecondaryTextStyle}"
+                Text="Results come from Open Library."
+                TextAlignment="Center"
+                TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+</ContentDialog>

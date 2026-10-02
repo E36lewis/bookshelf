@@ -5,7 +5,10 @@ namespace Bookshelf;
 
 public partial class App : Application
 {
-    private Window? _window;
+    /// <summary>What the app was started with; set by Main before XAML starts.</summary>
+    internal static LaunchOptions Options { get; set; } = new();
+
+    private MainWindow? _window;
 
     public App()
     {
@@ -20,15 +23,17 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         StartupLog.Step("Creating the main window");
-        _window = new MainWindow();
+        _window = new MainWindow(Options);
+        var window = _window;
+        SingleInstance.Activated += () => window.DispatcherQueue.TryEnqueue(window.BringToFront);
         StartupLog.Step("Showing the main window");
         _window.Activate();
         StartupLog.Step("Main window shown");
     }
 
     /// <summary>
-    /// Writes crash.log next to the preview journal and shows a plain Windows
-    /// message box (which works even when XAML itself is what failed).
+    /// Writes crash.log in the logs folder and shows a plain Windows message
+    /// box (which works even when XAML itself is what failed).
     /// </summary>
     internal static void ReportCrash(object? error)
     {
@@ -36,9 +41,7 @@ public partial class App : Application
         var where = "";
         try
         {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Bookshelf.Preview");
+            var dir = AppFolders.Logs;
             Directory.CreateDirectory(dir);
             var log = Path.Combine(dir, "crash.log");
             File.AppendAllText(log, $"--- {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{details}\n\n");

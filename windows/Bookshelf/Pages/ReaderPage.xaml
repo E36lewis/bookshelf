@@ -1,0 +1,66 @@
+<pages:BookshelfPage
+    x:Class="Bookshelf.Pages.ReaderPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:pages="using:Bookshelf.Pages">
+
+    <!-- The summary on its own: one calm, centered column. -->
+    <Grid>
+        <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="Reader" IsTabStop="True">
+            <StackPanel
+                x:Name="Column"
+                Padding="32,56,32,160"
+                HorizontalAlignment="Stretch"
+                Spacing="6">
+                <TextBlock
+                    x:Name="BookTitle"
+                    AutomationProperties.HeadingLevel="Level1"
+                    FontSize="34"
+                    FontWeight="SemiBold"
+                    IsTextSelectionEnabled="True"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    x:Name="Author"
+                    IsTextSelectionEnabled="True"
+                    Style="{StaticResource SecondaryTextStyle}"
+                    FontSize="17" />
+                <RichTextBlock
+                    x:Name="Body"
+                    Margin="0,28,0,0"
+                    AutomationProperties.AutomationId="ReaderText"
+                    IsTextSelectionEnabled="True" />
+                <TextBlock
+                    x:Name="NothingYet"
+                    Margin="0,28,0,0"
+                    FontStyle="Italic"
+                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Text="Nothing written yet."
+                    Visibility="Collapsed" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel
+            Margin="16"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Orientation="Horizontal"
+            Spacing="4">
+            <Button
+                x:Name="EditButton"
+                AutomationProperties.Name="Edit this summary"
+                Click="OnEdit"
+                Style="{StaticResource SubtleButtonStyle}"
+                ToolTipService.ToolTip="Edit this summary">
+                <FontIcon FontSize="16" Glyph="&#xE70F;" />
+            </Button>
+            <Button
+                x:Name="FullScreenButton"
+                AutomationProperties.AutomationId="FullScreenButton"
+                AutomationProperties.Name="Full screen"
+                Click="OnFullScreen"
+                Style="{StaticResource SubtleButtonStyle}">
+                <FontIcon x:Name="FullScreenIcon" FontSize="16" Glyph="&#xE740;" />
+            </Button>
+        </StackPanel>
+    </Grid>
+</pages:BookshelfPage>
