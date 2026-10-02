@@ -25,7 +25,9 @@ struct LaunchOptions: Sendable {
     /// `-BookshelfFailRescue`.
     var failSaves = false
     var failRescue = false
-    /// The writing page reports what it styled (`-BookshelfStyleProbe`).
+    /// Debug builds: the writing page reports what it styled
+    /// (`-BookshelfStyleProbe`). UI tests run Debug builds, so Release
+    /// never needs it.
     var styleProbe = false
 
     static let current = LaunchOptions(arguments: CommandLine.arguments)
@@ -38,8 +40,8 @@ struct LaunchOptions: Sendable {
         }
         // The look, size and test switches are only for test journals.
         guard journal != .preview else { return }
-        styleProbe = arguments.contains("-BookshelfStyleProbe")
         #if DEBUG
+        styleProbe = arguments.contains("-BookshelfStyleProbe")
         failSaves = arguments.contains("-BookshelfFailSaves")
         failRescue = failSaves && arguments.contains("-BookshelfFailRescue")
         #endif
