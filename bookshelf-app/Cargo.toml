@@ -17,4 +17,4 @@ adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }
 [dev-dependencies]
 # Only for the frozen copy of the old Markdown renderer the golden test
 # compares against; the app itself renders via bookshelf-core.
-pulldown-cmark = { version = "0.12", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
