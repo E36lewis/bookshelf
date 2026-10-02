@@ -433,6 +433,11 @@ public sealed class WritingBox
     /// </summary>
     private int RestyleEdit(TextChange change, (int Start, int End) oldBright)
     {
+        // From the line before too when the change starts a line: a line
+        // break typed at the end of a line shows up as one at the start of
+        // the next when the lines around it are alike ("\n\n" + "\n"), and
+        // the line it split off took on that line's look and spacing.
+        if (change.Start > 0 && _text[change.Start - 1] == '\n') change = change with { Start = change.Start - 1 };
         if (!IsFocusMode) return RestyleSoon(change.Start, change.NewEnd);
         _bright = SentenceBounds.Around(_text, _selection.Start);
         var edited = (Math.Min(change.Start, _bright.Start), Math.Max(change.NewEnd, _bright.End));
@@ -457,6 +462,22 @@ public sealed class WritingBox
     {
         var (from, to) = TextDiff.WholeLines(_text, start, end);
         if (PendingLines.LineCount(_text, from, to) <= 3 * LinesNow) return Restyle(from, to);
+        // The spacing of all the lines at once, in one go: pasted into an
+        // empty page, every line took on its room above and below, and
+        // putting that right a few lines at a time lays the text out again
+        // each time (seen in CI: four times as long).
+        _applying = true;
+        try
+        {
+            var paragraphs = _box.Document.GetRange(from, to + 1).ParagraphFormat;
+            paragraphs.SpaceBefore = 0;
+            paragraphs.SpaceAfter = SpaceAfter;
+            if (from == 0 || to >= _text.Length) ApplyRoom();
+        }
+        finally
+        {
+            _applying = false;
+        }
         var caret = Math.Clamp(_selection.Start, from, to);
         var (nearFrom, nearTo) = PendingLines.Around(_text, caret, LinesNow);
         nearFrom = Math.Max(nearFrom, from);
@@ -562,14 +583,13 @@ public sealed class WritingBox
             all.Size = TextSize;
             all.ForegroundColor = c.Ink;
             all.BackgroundColor = c.Background;
-            // Lines that were first or last may not be now (and the other way round).
-            if (from == 0 || to >= _text.Length)
-            {
-                var paragraphs = doc.GetRange(from, to + 1).ParagraphFormat;
-                paragraphs.SpaceBefore = 0;
-                paragraphs.SpaceAfter = SpaceAfter;
-                ApplyRoom();
-            }
+            // A line split off the first or last one by Enter takes its room
+            // above or below with it, and lines that were first or last may
+            // not be now (and the other way round).
+            var paragraphs = doc.GetRange(from, to + 1).ParagraphFormat;
+            paragraphs.SpaceBefore = 0;
+            paragraphs.SpaceAfter = SpaceAfter;
+            if (from == 0 || to >= _text.Length) ApplyRoom();
             resetAt = clock?.Elapsed.TotalMilliseconds ?? 0;
 
             if (Highlight && to > from)
