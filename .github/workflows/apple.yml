@@ -116,6 +116,10 @@ jobs:
           contents=apple/build/dd/Build/Products/Release/Bookshelf.app/Contents
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$contents/Info.plist")" = AppIcon
           test -s "$contents/Resources/AppIcon.icns"
+          # The version is project.yml's MARKETING_VERSION, not XcodeGen's 1.0.
+          want=$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' apple/project.yml)
+          test -n "$want"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$contents/Info.plist")" = "$want"
           ditto -c -k --keepParent \
             apple/build/dd/Build/Products/Release/Bookshelf.app apple/build/Bookshelf-mac-preview.zip
 

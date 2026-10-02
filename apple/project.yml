@@ -50,6 +50,9 @@ targets:
       path: Bookshelf/Info.plist
       properties:
         CFBundleDisplayName: Bookshelf
+        # From the build settings above, so About Bookshelf shows the real version.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "Copyright © 2026 e36lewis. Free software under the GPL 3.0 or later."
         ATSApplicationFontsPath: Fonts
