@@ -49,6 +49,7 @@ public sealed class WritingBox
     private bool _caretUpdateQueued;
     private bool _backgroundQueued;
     private bool _endsWithOwnBreak; // RichEdit's GetText gives its final paragraph mark too
+    private (float Above, float Below) _room; // points, before the first line and after the last
 
     /// <summary>A long text's lines around the caret are highlighted at once, this many each way; the rest when idle.</summary>
     private const int LinesNow = 60;
@@ -130,8 +131,40 @@ public sealed class WritingBox
     /// </summary>
     public void CatchUp() => OnTextChanged();
 
-    /// <summary>Room above the first line and below the last, inside the scrolling area (see <see cref="Typewriter.SetRoom"/>).</summary>
-    public void SetRoom(double above, double below) => _typewriter.SetRoom(above, below);
+    /// <summary>
+    /// Room above the first line and below the last, in pixels, so the last
+    /// line can come up to the middle of the page. It's paragraph spacing on
+    /// those two lines: RichEdit scrolls its text itself, and the box's own
+    /// Padding sits outside that, where text would be cut off.
+    /// </summary>
+    public void SetRoom(double above, double below)
+    {
+        var room = ((float)(above * PointsPerPixel), (float)(below * PointsPerPixel));
+        if (room == _room) return;
+        _room = room;
+        _applying = true;
+        try
+        {
+            ApplyRoom();
+        }
+        finally
+        {
+            _applying = false;
+        }
+    }
+
+    private const double PointsPerPixel = 72.0 / 96.0;
+
+    /// <summary>The room on the first and last lines (call with <see cref="_applying"/> set).</summary>
+    private void ApplyRoom()
+    {
+        var doc = _box.Document;
+        doc.GetRange(0, 0).ParagraphFormat.SpaceBefore = _room.Above;
+        doc.GetRange(_text.Length, _text.Length).ParagraphFormat.SpaceAfter = Math.Max(SpaceAfter, _room.Below);
+    }
+
+    /// <summary>The space after each line but the last, in points.</summary>
+    private float SpaceAfter => (float)(_spacing?.SpaceAfterPoints ?? 0);
 
     /// <summary>The page's line spacing (see <see cref="WriterSpacing"/>), for the text there is and all that's typed later.</summary>
     public void SetSpacing(WriterSpacing spacing)
@@ -462,6 +495,7 @@ public sealed class WritingBox
             all.SetLineSpacing(LineSpacingRule.AtLeast, lineSpacing);
             all.SpaceBefore = 0;
             all.SpaceAfter = after;
+            ApplyRoom();
         }
         finally
         {
@@ -489,6 +523,14 @@ public sealed class WritingBox
             all.Size = TextSize;
             all.ForegroundColor = c.Ink;
             all.BackgroundColor = Microsoft.UI.Colors.Transparent;
+            // Lines that were first or last may not be now (and the other way round).
+            if (from == 0 || to >= _text.Length)
+            {
+                var paragraphs = doc.GetRange(from, to + 1).ParagraphFormat;
+                paragraphs.SpaceBefore = 0;
+                paragraphs.SpaceAfter = SpaceAfter;
+                ApplyRoom();
+            }
             resetAt = clock?.Elapsed.TotalMilliseconds ?? 0;
 
             if (Highlight && to > from)
