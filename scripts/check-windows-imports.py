@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Checks that a Windows build only needs DLLs that every PC has.
 
-Usage: check-windows-imports.py <folder>
+Usage: check-windows-imports.py <folder or file>...
 
 Reads the import tables (normal and delay-loaded) of every native .exe and
-.dll in <folder> and fails if any of them needs a DLL that is neither in
-the folder nor part of Windows 10 version 1809 and later. That catches the
+.dll given (folders are searched) and fails if any of them needs a DLL
+that is neither among them nor part of Windows 10 version 1809 and later. That catches the
 "works in CI, not on a clean PC" kind of problem: GitHub's Windows runners
 have extras installed (the Visual C++ runtime, for one) that a normal PC
 may not have.
@@ -101,16 +101,18 @@ def imports(path):
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         sys.exit(__doc__)
-    root = sys.argv[1]
-    shipped = set()
-    binaries = []
-    for folder, _, files in os.walk(root):
-        for file in files:
-            shipped.add(file.lower())
-            if file.lower().endswith((".dll", ".exe")):
-                binaries.append(os.path.join(folder, file))
+    paths = []
+    for arg in sys.argv[1:]:
+        if os.path.isdir(arg):
+            paths += [os.path.join(d, f) for d, _, files in os.walk(arg) for f in files]
+        elif os.path.isfile(arg):
+            paths.append(arg)
+        else:
+            sys.exit(f"{arg} doesn't exist")
+    shipped = {os.path.basename(p).lower() for p in paths}
+    binaries = [p for p in paths if p.lower().endswith((".dll", ".exe"))]
 
     problems = []
     checked = 0
@@ -129,10 +131,10 @@ def main():
                 continue
             if importer in ONLY_FOR.get(dll, ()):
                 continue
-            problems.append(f"{os.path.relpath(path, root)} needs {dll}")
+            problems.append(f"{os.path.basename(path)} needs {dll}")
 
     if checked == 0:
-        sys.exit(f"No native DLLs found in {root}")
+        sys.exit("No native files found")
     if problems:
         print("These DLLs aren't in the build and aren't part of Windows,")
         print("so the app may not start on a PC that lacks them:")

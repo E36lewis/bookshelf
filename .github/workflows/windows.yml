@@ -56,7 +56,8 @@ jobs:
           if ($extra) { $extra.FullName; throw "Bookshelf.exe needs files next to it" }
 
       - name: Smoke test (the exe opens its window on its own)
-        shell: pwsh
+        # Windows PowerShell, for its built-in UI Automation client.
+        shell: powershell
         run: |
           # Run a copy that's alone in a new folder, as on someone's desktop,
           # and unpack into a fresh folder so nothing from the build helps.
@@ -74,6 +75,22 @@ jobs:
             Start-Sleep -Milliseconds 500
           }
           $opened = $clock.Elapsed.TotalSeconds
+          # Read the status line, which says whether the Rust core loaded
+          # (a failure there is shown in the window, not reported as a crash).
+          $status = $null
+          if ($app.MainWindowTitle -eq 'Bookshelf (preview)') {
+            Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+            $window = [Windows.Automation.AutomationElement]::FromHandle($app.MainWindowHandle)
+            $isText = New-Object Windows.Automation.PropertyCondition(
+              [Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Text)
+            while ($clock.Elapsed.TotalSeconds -lt $opened + 30 -and -not $status) {
+              $status = $window.FindAll([Windows.Automation.TreeScope]::Descendants, $isText) |
+                ForEach-Object { $_.Current.Name } |
+                Where-Object { $_ -like 'Rust core *' -or $_ -like "Couldn't open the journal*" } |
+                Select-Object -First 1
+              if (-not $status) { Start-Sleep -Milliseconds 500 }
+            }
+          }
           Start-Sleep -Seconds 10
           if ($app.HasExited) {
             if (Test-Path $crashLog) { Get-Content $crashLog }
@@ -84,6 +101,8 @@ jobs:
           if (Test-Path $crashLog) { Get-Content $crashLog; throw "crash.log was written" }
           if ($app.MainWindowTitle -ne 'Bookshelf (preview)') { throw "No Bookshelf window after 90 seconds" }
           Stop-Process -Id $app.Id
+          Write-Host "Status line: $status"
+          if ($status -notlike 'Rust core *') { throw "The window didn't show the Rust core's version" }
           Write-Host ("Bookshelf.exe opened its window after {0:N1} s and stayed open." -f $opened)
 
       - name: Check the app only needs DLLs every Windows PC has
@@ -91,13 +110,14 @@ jobs:
         run: |
           # The runner has extras a normal PC may lack (the Visual C++
           # runtime, for one), so the smoke test alone can't catch these.
-          # Checks what the exe unpacked: exactly what a user's PC loads.
+          # Checks the exe and what it unpacked: exactly what a PC loads.
           $unpacked = Get-ChildItem "$env:RUNNER_TEMP/unpacked/Bookshelf" -Directory | Select-Object -First 1
           if (-not $unpacked) { throw "Bookshelf.exe didn't unpack anything" }
           foreach ($f in 'Bookshelf.dll', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
             if (-not (Test-Path (Join-Path $unpacked.FullName $f))) { throw "$f is missing from Bookshelf.exe" }
           }
-          python scripts/check-windows-imports.py $unpacked.FullName
+          # Bookshelf.exe itself holds the .NET runtime, so check it too.
+          python scripts/check-windows-imports.py windows/build/Bookshelf/Bookshelf.exe $unpacked.FullName
           if ($LASTEXITCODE) { throw "check-windows-imports.py failed" }
 
       - name: Add the read-me for testers
