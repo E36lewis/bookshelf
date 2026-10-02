@@ -226,13 +226,13 @@
             <TextBlock AutomationProperties.HeadingLevel="Level2" Style="{StaticResource SectionTitleStyle}" Text="Help" />
             <controls:SettingsCard Description="Every key, on one page" Glyph="&#xE765;" Header="Keyboard shortcuts">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" Text="Ctrl+?" />
+                    <TextBlock x:Name="ShortcutsKey" VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" />
                     <Button Click="OnShortcuts" Content="Show" AutomationProperties.Name="Show the keyboard shortcuts" />
                 </StackPanel>
             </controls:SettingsCard>
             <controls:SettingsCard Description="How everything works" Glyph="&#xE897;" Header="User manual">
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" Text="F1" />
+                    <TextBlock x:Name="ManualKey" VerticalAlignment="Center" Style="{StaticResource CaptionSecondaryStyle}" />
                     <Button Click="OnManual" Content="Open" AutomationProperties.Name="Open the user manual" />
                 </StackPanel>
             </controls:SettingsCard>

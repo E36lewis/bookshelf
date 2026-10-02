@@ -186,7 +186,11 @@ public sealed class JournalServiceTests : IDisposable
         var para = Assert.IsType<Block.Paragraph>(blocks[1]);
         Assert.Equal(new[] { RunStyle.Bold }, para.Runs[0].Styles);
 
-        Assert.StartsWith("# Bookshelf", BookshelfFfiMethods.Manual().Intro);
+        var manual = BookshelfFfiMethods.ManualFor(Platform.Windows);
+        Assert.StartsWith("# Bookshelf", manual.Intro);
+        var text = string.Concat(manual.Sections.Select(s => s.Markdown));
+        Assert.Contains("**F11** or **Ctrl+Shift+Enter**: Full screen", text);
+        Assert.DoesNotContain("⌘", text);
         var bold = BookshelfFfiMethods.Shortcuts(Platform.Windows).SelectMany(g => g.Items).First(s => s.Title == "Bold");
         var combo = Assert.IsType<Accel.Keys>(bold.Accel).Combo;
         Assert.Equal(new ShortcutKey.Character("b"), combo.Key);

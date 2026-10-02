@@ -33,6 +33,9 @@ public sealed partial class SettingsPage : BookshelfPage
         InitializeComponent();
         EmailWhy.Text = WhyEmail;
         AutomationProperties.SetHelpText(EmailBox, WhyEmail);
+        // The keys from the core's Windows table, as the shortcuts list and the manual show them.
+        ShortcutsKey.Text = ShortcutKeys.Labels(ShortcutKeys.Titles.Shortcuts) ?? "";
+        ManualKey.Text = ShortcutKeys.Labels(ShortcutKeys.Titles.Manual) ?? "";
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)

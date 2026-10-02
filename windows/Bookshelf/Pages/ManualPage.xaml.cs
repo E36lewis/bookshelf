@@ -36,7 +36,7 @@ public sealed partial class ManualPage : BookshelfPage
         _loaded = true;
         var (manual, intro, sections) = await Task.Run(() =>
         {
-            var m = BookshelfFfiMethods.Manual();
+            var m = BookshelfFfiMethods.ManualFor(Platform.Windows); // Windows' keys, menus and folders
             var laidOut = m.Sections.Select(s => (s.Anchor, Blocks: BookshelfFfiMethods.RenderMarkdown(s.Markdown))).ToList();
             return (m, BookshelfFfiMethods.RenderMarkdown(m.Intro), laidOut);
         });
