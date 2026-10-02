@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using System.Text;
 using Bookshelf.Core;
 using Bookshelf.Ffi;
-using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -12,9 +10,7 @@ namespace Bookshelf;
 public sealed partial class MainWindow : Window
 {
     private JournalService? _journal;
-    private string _lastText = "";
-    private bool _restyling;
-    private Windows.UI.Color _ink;
+    private readonly WritingBox _writing;
 
     public MainWindow()
     {
@@ -26,10 +22,10 @@ public sealed partial class MainWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 760));
 
         StartupLog.Step("Filling the writing box");
-        _ink = Editor.Document.GetDefaultCharacterFormat().ForegroundColor;
-        Editor.Document.SetText(TextSetOptions.None, ShortSample);
+        _writing = new WritingBox(Editor);
+        _writing.Restyled += report => Timing.Text = report;
         StartupLog.Step("First Markdown highlighting");
-        Restyle(force: true);
+        _writing.SetText(ShortSample);
         _ = LoadAsync();
     }
 
@@ -86,71 +82,13 @@ public sealed partial class MainWindow : Window
 
     // ---- writing box test ---------------------------------------------------
 
-    private void OnEditorTextChanged(object sender, RoutedEventArgs e) => Restyle(force: false);
-
-    private void OnHighlightToggled(object sender, RoutedEventArgs e) => Restyle(force: true);
-
-    private void OnLoadLongSample(object sender, RoutedEventArgs e)
+    private void OnHighlightToggled(object sender, RoutedEventArgs e)
     {
-        Editor.Document.SetText(TextSetOptions.None, LongSample());
-        Restyle(force: true);
+        _writing.Highlight = HighlightToggle.IsChecked == true;
+        _writing.RestyleAll();
     }
 
-    /// <summary>
-    /// Re-applies the shared core's highlighting to the whole text and shows
-    /// how long it took. The real writer will only restyle edited lines.
-    /// </summary>
-    private void Restyle(bool force)
-    {
-        if (_restyling) return;
-        Editor.Document.GetText(TextGetOptions.None, out var raw);
-        // RichEditBox separates paragraphs with \r; the core splits lines on \n.
-        // One character for one, so offsets stay the same.
-        var text = raw.Replace('\r', '\n');
-        if (!force && text == _lastText) return; // only formatting changed
-        _lastText = text;
-
-        var clock = Stopwatch.StartNew();
-        _restyling = true;
-        var doc = Editor.Document;
-        doc.BatchDisplayUpdates();
-        try
-        {
-            var all = doc.GetRange(0, text.Length).CharacterFormat;
-            all.Bold = FormatEffect.Off;
-            all.Italic = FormatEffect.Off;
-            all.Strikethrough = FormatEffect.Off;
-            all.Size = 15;
-            all.ForegroundColor = _ink;
-            all.BackgroundColor = Microsoft.UI.Colors.Transparent;
-
-            if (HighlightToggle.IsChecked == true)
-            {
-                var dim = Windows.UI.Color.FromArgb(110, _ink.R, _ink.G, _ink.B);
-                var codeBack = Windows.UI.Color.FromArgb(28, _ink.R, _ink.G, _ink.B);
-                foreach (var span in BookshelfFfiMethods.MarkdownSpans(text))
-                {
-                    var f = doc.GetRange((int)span.Start, (int)span.End).CharacterFormat;
-                    switch (span.Kind)
-                    {
-                        case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = 19; break;
-                        case StyleKind.Bold: f.Bold = FormatEffect.On; break;
-                        case StyleKind.Italic:
-                        case StyleKind.Quote: f.Italic = FormatEffect.On; break;
-                        case StyleKind.Code: f.BackgroundColor = codeBack; break;
-                        case StyleKind.Strike: f.Strikethrough = FormatEffect.On; break;
-                        case StyleKind.Syntax: f.ForegroundColor = dim; break;
-                    }
-                }
-            }
-        }
-        finally
-        {
-            doc.ApplyDisplayUpdates();
-            _restyling = false;
-        }
-        Timing.Text = $"{text.Length:N0} characters · restyled in {clock.Elapsed.TotalMilliseconds:F1} ms";
-    }
+    private void OnLoadLongSample(object sender, RoutedEventArgs e) => _writing.SetText(LongSample());
 
     private const string ShortSample =
         "# What stayed with me\r" +

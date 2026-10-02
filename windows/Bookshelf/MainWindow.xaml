@@ -32,7 +32,7 @@
             </Grid.RowDefinitions>
             <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Writing box test" />
             <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="Please try: 1) type a few words, then press Ctrl+Z. Does it undo only your typing, or does the coloring flicker or get undone too? 2) Load the long sample and type: does it keep up? 3) Paste some text from another app." />
+                Text="Round 2 — please try: 1) Type a few words with **bold**, wait a second, type more, then press Ctrl+Z: each press should undo one burst of typing, and Ctrl+Y redo it. 2) Load the 5,000-word sample and type in the middle: does it keep up now? 3) Paste text from a web page or Word: it should take this box's look." />
             <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
                 <Button Content="Load a 5,000-word sample" Click="OnLoadLongSample" />
                 <CheckBox x:Name="HighlightToggle" Content="Highlight Markdown" IsChecked="True" Click="OnHighlightToggled" />
@@ -42,8 +42,7 @@
                 FontFamily="Cascadia Mono, Consolas"
                 FontSize="15"
                 TextWrapping="Wrap"
-                IsSpellCheckEnabled="False"
-                TextChanged="OnEditorTextChanged" />
+                IsSpellCheckEnabled="False" />
         </Grid>
 
         <TextBlock x:Name="Status" Grid.Row="1" Grid.ColumnSpan="2"
