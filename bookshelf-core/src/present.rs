@@ -179,8 +179,29 @@ fn local_date<Tz: TimeZone>(at: DateTime<Utc>, tz: &Tz) -> NaiveDate {
 
 /// A plain-text taste of the summary for the list: markdown marks removed,
 /// whitespace flattened, trimmed to about two sentences' worth.
+///
+/// Heading lines are skipped, so a summary that opens with "# What stayed
+/// with me" shows what stayed, not the heading. Only when there's nothing
+/// but headings do they stand in, so the entry doesn't look unwritten.
 pub fn excerpt(body: &str) -> String {
-    let cleaned: String = body
+    let mut text = String::new();
+    let mut headings = String::new();
+    for line in body.lines() {
+        let line = line.trim();
+        if let Some(title) = heading_text(line) {
+            headings.push_str(title);
+            headings.push(' ');
+        } else if !is_rule(line) {
+            text.push_str(without_block_marks(line));
+            text.push(' ');
+        }
+    }
+    let source = if text.trim().is_empty() {
+        &headings
+    } else {
+        &text
+    };
+    let cleaned: String = source
         .chars()
         .filter(|c| !matches!(c, '*' | '#' | '>' | '`' | '\\'))
         .collect();
@@ -190,6 +211,50 @@ pub fn excerpt(body: &str) -> String {
         format!("{}…", cut.trim_end())
     } else {
         flat
+    }
+}
+
+/// The text of an ATX heading line ("## Notes"), or `None` if it isn't
+/// one. As in Markdown, "#hashtag" is not a heading.
+fn heading_text(line: &str) -> Option<&str> {
+    let level = line.bytes().take_while(|&b| b == b'#').count();
+    let rest = &line[level..];
+    ((1..=6).contains(&level) && (rest.is_empty() || rest.starts_with([' ', '\t'])))
+        .then(|| rest.trim())
+}
+
+/// A line that's only a rule or a heading underline: "---", "* * *", "===".
+fn is_rule(line: &str) -> bool {
+    let mut marks = line.chars().filter(|c| !c.is_whitespace());
+    let Some(first) = marks.next() else {
+        return false;
+    };
+    matches!(first, '-' | '*' | '_' | '=')
+        && marks.clone().all(|c| c == first)
+        && marks.count() >= 2
+}
+
+/// The line without its quote and list markers ("> - ", "1. "), which
+/// would otherwise show up as stray dashes and numbers in the list.
+fn without_block_marks(mut line: &str) -> &str {
+    loop {
+        let digits = line.bytes().take_while(u8::is_ascii_digit).count();
+        let rest = if let Some(rest) = line.strip_prefix('>') {
+            rest
+        } else if let Some(rest) = line
+            .strip_prefix(['-', '*', '+'])
+            .filter(|r| r.starts_with([' ', '\t']))
+        {
+            rest
+        } else if let Some(rest) = line[digits..]
+            .strip_prefix(['.', ')'])
+            .filter(|r| (1..=9).contains(&digits) && r.starts_with([' ', '\t']))
+        {
+            rest
+        } else {
+            return line;
+        };
+        line = rest.trim_start();
     }
 }
 
@@ -357,13 +422,48 @@ mod tests {
         assert_eq!(excerpt(""), "");
         assert_eq!(excerpt("  \n\t "), "");
         assert_eq!(
-            excerpt("# Title\n\n**Bold** and `code` > quote\\"),
-            "Title Bold and code quote"
+            excerpt("**Bold** and `code` > quote\\"),
+            "Bold and code quote"
         );
         // Only those five marks go; the rest of markdown stays as typed.
         assert_eq!(
             excerpt("_under_ [link](url) C# a>b"),
             "_under_ [link](url) C ab"
+        );
+    }
+
+    #[test]
+    fn excerpt_skips_headings() {
+        assert_eq!(
+            excerpt("# What stayed with me\n\nThe desert is the real main character."),
+            "The desert is the real main character."
+        );
+        assert_eq!(
+            excerpt("Before\n## Middle\n  ###### Deep\nAfter"),
+            "Before After"
+        );
+        // "#hashtag" and "####### seven" aren't headings in Markdown.
+        assert_eq!(excerpt("#hashtag"), "hashtag");
+        assert_eq!(excerpt("####### seven"), "seven");
+        // Nothing but headings: they stand in, so it isn't "Nothing written".
+        assert_eq!(excerpt("# Dune\n\n## Notes\n"), "Dune Notes");
+        assert_eq!(excerpt("#\n##   \n"), "");
+    }
+
+    #[test]
+    fn excerpt_drops_list_quote_and_rule_marks() {
+        assert_eq!(
+            excerpt("- one\n* two\n+ three\n1. four\n12) five\n> - six\n>> seven"),
+            "one two three four five six seven"
+        );
+        assert_eq!(
+            excerpt("Title\n=====\nText\n\n---\n* * *\nMore"),
+            "Title Text More"
+        );
+        // Not markers: no space after them, or not at the start.
+        assert_eq!(
+            excerpt("-5 degrees\n2.5 stars\n1984 - a classic\n**bold** start"),
+            "-5 degrees 2.5 stars 1984 - a classic bold start"
         );
     }
 
