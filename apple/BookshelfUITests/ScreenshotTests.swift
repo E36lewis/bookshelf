@@ -201,8 +201,7 @@ final class ScreenshotTests: XCTestCase {
         app.launchArguments = [
             journal == .demo ? "-BookshelfDemoJournal" : "-BookshelfFreshJournal",
             "-BookshelfAppearance", look.rawValue,
-            "-BookshelfWindowSize", "1200x760",
-            "-ApplePersistenceIgnoreState", "YES",
+            "-BookshelfWindowSize", "1000x700",
         ]
         app.launch()
         // If a test can't find what it waits for, this shows what was there.
