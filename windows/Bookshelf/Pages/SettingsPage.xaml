@@ -138,7 +138,7 @@
                     SpinButtonPlacementMode="Inline"
                     ValueChanged="OnSizeChanged" />
             </controls:SettingsCard>
-            <controls:SettingsCard Glyph="&#xE7FC;" Header="Line spacing">
+            <controls:SettingsCard Glyph="&#xE8E4;" Header="Line spacing">
                 <ComboBox x:Name="SpacingBox" MinWidth="200" AutomationProperties.Name="Line spacing" SelectionChanged="OnSpacingChanged">
                     <ComboBoxItem Content="Tight" />
                     <ComboBoxItem Content="Comfortable" />

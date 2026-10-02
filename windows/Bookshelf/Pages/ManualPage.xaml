@@ -37,6 +37,11 @@
             IsItemClickEnabled="True"
             ItemClick="OnContentsClick"
             SelectionMode="None">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                    <Setter Property="MinHeight" Value="34" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="pages:ContentsItem">
                     <TextBlock
