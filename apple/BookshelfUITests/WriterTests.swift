@@ -56,6 +56,8 @@ final class WriterTests: XCTestCase {
              + "toolbar \(app.toolbars.firstMatch.exists ? "\(app.toolbars.firstMatch.frame)" : "gone")",
              named: "full-screen-\(look.rawValue)")
         XCTAssertEqual(full.width, screen.width, "not full screen")
+        let toolbar = app.toolbars.firstMatch
+        XCTAssertTrue(!toolbar.exists || toolbar.frame.maxY <= 0, "the toolbar didn't slide away: \(toolbar.frame)")
         keepScreen("22-writer-full-screen", look)
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         sleep(3)

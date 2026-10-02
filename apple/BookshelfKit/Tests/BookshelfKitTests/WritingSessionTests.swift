@@ -121,7 +121,9 @@ final class WritingSessionTests: XCTestCase {
         let outcome = await page.finish(pasteboard: pasteboard)
         XCTAssertEqual(outcome, .copied(problem: "The disk is full.", rescueProblem: "The recovery folder is read-only."))
         XCTAssertEqual(pasteboard.string(forType: .string), "Last resort")
-        XCTAssertTrue(Wording.rescue(outcome, shownFile: nil).contains("clipboard"))
+        let message = Wording.rescue(outcome, shownFile: nil)
+        XCTAssertTrue(message.contains("(The recovery folder is read-only), so your text was copied to the clipboard"),
+                      message)
     }
 
     func testSavingWorksAgainAfterAFailure() async {

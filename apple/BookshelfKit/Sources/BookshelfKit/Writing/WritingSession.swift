@@ -150,7 +150,8 @@ extension Wording {
         case let .rescued(problem, file):
             return "\(problem)\n\nBookshelf kept a copy of your text in \(shownFile ?? file.path). Nothing was lost."
         case let .copied(problem, rescueProblem):
-            return "\(problem)\n\nA recovery copy couldn't be written either (\(rescueProblem)), so your text was "
+            let why = rescueProblem.hasSuffix(".") ? String(rescueProblem.dropLast()) : rescueProblem
+            return "\(problem)\n\nA recovery copy couldn't be written either (\(why)), so your text was "
                 + "copied to the clipboard. Paste it somewhere safe before closing Bookshelf."
         }
     }
