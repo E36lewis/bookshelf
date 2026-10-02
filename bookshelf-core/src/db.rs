@@ -118,7 +118,11 @@ pub fn checkpoint(conn: &Connection) -> Result<()> {
 }
 
 fn migrate(conn: &mut Connection) -> Result<()> {
-    let current: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    // Read as i64 (rusqlite has no FromSql for usize by default); a
+    // negative version is refused with the error reading a usize gave.
+    let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let current = usize::try_from(version)
+        .map_err(|_| rusqlite::Error::IntegralValueOutOfRange(0, version))?;
     // A newer Bookshelf made this journal; running on a schema we don't
     // know could lose whatever the newer version stores.
     if current > MIGRATIONS.len() {
