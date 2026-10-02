@@ -10,6 +10,7 @@ use std::time::Duration;
 use adw::prelude::*;
 use bookshelf_core::export;
 use bookshelf_core::models::*;
+use bookshelf_core::text::edit::FormatAction;
 use bookshelf_core::text::highlight::{self, StyleKind};
 use gtk::glib;
 
@@ -407,14 +408,14 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     add_shortcut(&shortcuts, gtk::gdk::Key::b, ctrl, {
         let buffer = buffer.clone();
         move || {
-            format::toggle_inline(&buffer, "**");
+            format::apply(&buffer, FormatAction::Bold);
             true
         }
     });
     add_shortcut(&shortcuts, gtk::gdk::Key::i, ctrl, {
         let buffer = buffer.clone();
         move || {
-            format::toggle_inline(&buffer, "*");
+            format::apply(&buffer, FormatAction::Italic);
             true
         }
     });
