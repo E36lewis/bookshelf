@@ -221,30 +221,12 @@ pub(crate) fn plain_toast(message: &str) -> adw::Toast {
 
 /// An error as a sentence for people: "That name is already taken."
 pub(crate) fn friendly(e: &bookshelf_core::Error) -> String {
-    let text = match e {
-        bookshelf_core::Error::Invalid(msg) => msg.clone(),
-        other => other.to_string(),
-    };
-    let mut chars = text.chars();
-    let mut out: String = chars
-        .next()
-        .map(|c| c.to_uppercase().collect())
-        .unwrap_or_default();
-    out.push_str(chars.as_str());
-    if !out.ends_with(['.', '!', '?']) {
-        out.push('.');
-    }
-    out
+    e.user_message()
 }
 
 /// A path for people: the home folder shown as `~`.
 pub(crate) fn display_path(path: &Path) -> String {
-    let home = glib::home_dir();
-    match path.strip_prefix(&home) {
-        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => path.display().to_string(),
-    }
+    bookshelf_core::paths::display_path(path, Some(&glib::home_dir()))
 }
 
 /// Keyboard shortcuts that belong to one page. They act only while that page

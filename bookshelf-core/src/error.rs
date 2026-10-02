@@ -12,4 +12,67 @@ pub enum Error {
     Invalid(String),
 }
 
+impl Error {
+    /// The error as a sentence for people: "That name is already taken."
+    /// `Invalid` messages are written for people already, so they're shown
+    /// without the "invalid:" prefix.
+    pub fn user_message(&self) -> String {
+        let text = match self {
+            Error::Invalid(msg) => msg.clone(),
+            other => other.to_string(),
+        };
+        let mut chars = text.chars();
+        let mut out: String = chars
+            .next()
+            .map(|c| c.to_uppercase().collect())
+            .unwrap_or_default();
+        out.push_str(chars.as_str());
+        if !out.ends_with(['.', '!', '?']) {
+            out.push('.');
+        }
+        out
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_shows_its_own_message() {
+        let msg = |m: &str| Error::Invalid(m.into()).user_message();
+        assert_eq!(
+            msg("that name is already taken"),
+            "That name is already taken."
+        );
+        assert_eq!(msg("Done!"), "Done!");
+        assert_eq!(msg("is it?"), "Is it?");
+        assert_eq!(msg("already a sentence."), "Already a sentence.");
+        assert_eq!(msg("über"), "Über.");
+        // Some capitals are two letters.
+        assert_eq!(msg("ßtraße"), "SStraße.");
+        // Nothing to say still ends a sentence.
+        assert_eq!(msg(""), ".");
+    }
+
+    #[test]
+    fn other_errors_show_their_kind() {
+        assert_eq!(Error::NotFound.user_message(), "Not found.");
+        assert_eq!(
+            Error::Io(std::io::Error::other("disk full")).user_message(),
+            "Io error: disk full."
+        );
+        assert_eq!(
+            Error::Db(rusqlite::Error::QueryReturnedNoRows).user_message(),
+            "Database error: Query returned no rows."
+        );
+        // Building a request with a bad URL fails before any network use.
+        let http = reqwest::Client::new().get("not a url").build().unwrap_err();
+        assert_eq!(
+            Error::Http(http).user_message(),
+            "Network error: builder error."
+        );
+    }
+}

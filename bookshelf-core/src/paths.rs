@@ -54,6 +54,16 @@ impl AppPaths {
     }
 }
 
+/// A path for people: the home folder shown as `~`. The app passes its home
+/// folder in, so this doesn't read the environment and tests can pick one.
+pub fn display_path(path: &Path, home: Option<&Path>) -> String {
+    match home.map(|home| path.strip_prefix(home)) {
+        Some(Ok(rest)) if rest.as_os_str().is_empty() => "~".to_string(),
+        Some(Ok(rest)) => format!("~/{}", rest.display()),
+        _ => path.display().to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -69,6 +79,28 @@ mod tests {
         assert_eq!(
             paths.cover_file("../../etc/passwd"),
             paths.covers_dir.join("passwd")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn home_is_shown_as_a_tilde() {
+        let home = Some(Path::new("/home/ann"));
+        let shown = |p: &str| display_path(Path::new(p), home);
+        assert_eq!(shown("/home/ann"), "~");
+        assert_eq!(shown("/home/ann/"), "~");
+        assert_eq!(shown("/home/ann/Documents"), "~/Documents");
+        assert_eq!(
+            shown("/home/ann/.local/share/bookshelf"),
+            "~/.local/share/bookshelf"
+        );
+        assert_eq!(shown("/tmp/bookshelf"), "/tmp/bookshelf");
+        // Whole folder names only: Annabel's home isn't inside Ann's.
+        assert_eq!(shown("/home/annabel/notes"), "/home/annabel/notes");
+        assert_eq!(shown("/home"), "/home");
+        assert_eq!(
+            display_path(Path::new("/home/ann/notes"), None),
+            "/home/ann/notes"
         );
     }
 
