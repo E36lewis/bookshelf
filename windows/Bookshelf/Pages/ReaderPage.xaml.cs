@@ -11,8 +11,8 @@ namespace Bookshelf.Pages;
 
 /// <summary>
 /// Distraction-free reading of a summary, in the reading font and size, as
-/// wide as the writing page. F11 (or the button) for full screen, Esc to
-/// leave it.
+/// wide as the writing page. F11 or Ctrl+Shift+Enter (or the button) for
+/// full screen, Esc to leave it.
 /// </summary>
 public sealed partial class ReaderPage : BookshelfPage
 {
@@ -69,7 +69,10 @@ public sealed partial class ReaderPage : BookshelfPage
     {
         var on = Shell.IsFullScreen;
         FullScreenIcon.Glyph = on ? "\uE73F" : "\uE740";
-        var label = on ? "Leave full screen (Esc)" : "Full screen (F11)";
+        var keys = on
+            ? ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen)
+            : ShortcutKeys.Labels(ShortcutKeys.Titles.FullScreen);
+        var label = on ? $"Leave full screen ({keys})" : $"Full screen ({keys})";
         ToolTipService.SetToolTip(FullScreenButton, label);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(FullScreenButton, label);
         EditButton.Visibility = on ? Visibility.Collapsed : Visibility.Visible;

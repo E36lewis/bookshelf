@@ -16,12 +16,15 @@ internal static class Keys
     /// <summary>
     /// Adds the shortcut titled <paramref name="title"/> (see
     /// <see cref="ShortcutKeys.Titles"/>) to <paramref name="owner"/> as a
-    /// keyboard accelerator, which also shows in its tooltip. With
-    /// <paramref name="exceptWhileTyping"/>, the key goes to a text box that
-    /// has the focus instead (Delete deletes text, Ctrl+Z undoes typing).
+    /// keyboard accelerator for each of its keys, which also show in its
+    /// tooltip. With <paramref name="exceptWhileTyping"/>, the key goes to a
+    /// text box that has the focus instead (Delete deletes text, Ctrl+Z
+    /// undoes typing).
     /// </summary>
-    public static KeyboardAccelerator? Add(UIElement owner, string title, Action action, bool exceptWhileTyping = false) =>
-        Combo(title) is { } c ? Add(owner, c.Key, c.Modifiers, action, exceptWhileTyping) : null;
+    public static void Add(UIElement owner, string title, Action action, bool exceptWhileTyping = false)
+    {
+        foreach (var (key, modifiers) in Combos(title)) Add(owner, key, modifiers, action, exceptWhileTyping);
+    }
 
     /// <summary>Adds a shortcut that isn't in the core's table (Delete, Ctrl+Z).</summary>
     public static KeyboardAccelerator Add(
@@ -46,7 +49,7 @@ internal static class Keys
     /// </summary>
     public static void AddGlobal(string title, Action action)
     {
-        if (Combo(title) is { } c) Global.Add((c.Key, c.Modifiers, action));
+        foreach (var (key, modifiers) in Combos(title)) Global.Add((key, modifiers, action));
     }
 
     /// <summary>Adds a window-wide shortcut that isn't in the core's table (Alt+Left).</summary>
@@ -87,27 +90,27 @@ internal static class Keys
     /// </summary>
     public static bool Is(string title, VirtualKey key, VirtualKeyModifiers modifiers)
     {
-        if (!Looked.TryGetValue(title, out var combo)) Looked[title] = combo = Combo(title);
-        return combo is { } c && c.Key == key && c.Modifiers == modifiers;
+        if (!Looked.TryGetValue(title, out var combos)) Looked[title] = combos = Combos(title);
+        return combos.Contains((key, modifiers));
     }
 
     // UI thread only, like everything here.
-    private static readonly Dictionary<string, (VirtualKey Key, VirtualKeyModifiers Modifiers)?> Looked = [];
+    private static readonly Dictionary<string, List<(VirtualKey Key, VirtualKeyModifiers Modifiers)>> Looked = [];
 
-    /// <summary>The key and modifiers for a title in the core's Windows table.</summary>
-    private static (VirtualKey Key, VirtualKeyModifiers Modifiers)? Combo(string title)
+    /// <summary>The keys and modifiers for a title: the core's Windows table's, and any the app takes as well.</summary>
+    private static List<(VirtualKey Key, VirtualKeyModifiers Modifiers)> Combos(string title)
     {
-        var combo = ShortcutKeys.Find(title);
-        var key = combo is null ? null : ShortcutKeys.VirtualKey(combo.Key);
-        if (combo is null || key is null)
+        var combos = new List<(VirtualKey Key, VirtualKeyModifiers Modifiers)>();
+        foreach (var combo in ShortcutKeys.FindAll(title))
         {
-            StartupLog.Step($"No Windows shortcut for “{title}” in the core's table");
-            return null;
+            if (ShortcutKeys.VirtualKey(combo.Key) is not { } key) continue;
+            var modifiers = VirtualKeyModifiers.None;
+            if (combo.Control) modifiers |= VirtualKeyModifiers.Control;
+            if (combo.Shift || key.ImpliedShift) modifiers |= VirtualKeyModifiers.Shift;
+            combos.Add(((VirtualKey)key.Code, modifiers));
         }
-        var modifiers = VirtualKeyModifiers.None;
-        if (combo.Control) modifiers |= VirtualKeyModifiers.Control;
-        if (combo.Shift || key.Value.ImpliedShift) modifiers |= VirtualKeyModifiers.Shift;
-        return ((VirtualKey)key.Value.Code, modifiers);
+        if (combos.Count == 0) StartupLog.Step($"No Windows shortcut for “{title}” in the core's table");
+        return combos;
     }
 
     /// <summary>Whether a text box has the keyboard focus.</summary>

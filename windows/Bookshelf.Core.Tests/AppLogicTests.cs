@@ -157,4 +157,23 @@ public sealed class AppLogicTests : IDisposable
         Assert.Null(ShortcutKeys.VirtualKey(new ShortcutKey.Character("é")));
         Assert.Null(ShortcutKeys.VirtualKey(new ShortcutKey.Character("ab")));
     }
+
+    [Fact]
+    public void FullScreenAlsoHasAKeyOutsideTheFunctionRow()
+    {
+        var keys = ShortcutKeys.FindAll(ShortcutKeys.Titles.FullScreen);
+        Assert.Equal(new[] { "F11", "Ctrl+Shift+Enter" }, keys.Select(ShortcutKeys.Label));
+        Assert.Equal<(int, bool)?>((0x0D, false), ShortcutKeys.VirtualKey(keys[1].Key));
+        Assert.Equal("F11 or Ctrl+Shift+Enter", ShortcutKeys.Labels(ShortcutKeys.Titles.FullScreen));
+        Assert.Equal("Esc, F11 or Ctrl+Shift+Enter",
+            ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen));
+        Assert.Null(ShortcutKeys.Labels("No such thing"));
+
+        // No other shortcut has it.
+        var others = BookshelfFfiMethods.Shortcuts(Platform.Windows)
+            .SelectMany(g => g.Items)
+            .Where(s => s.Title != ShortcutKeys.Titles.FullScreen)
+            .SelectMany(s => ShortcutKeys.FindAll(s.Title));
+        Assert.DoesNotContain(keys[1], others);
+    }
 }

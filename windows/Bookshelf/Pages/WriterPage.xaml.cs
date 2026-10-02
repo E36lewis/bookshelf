@@ -244,7 +244,10 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
     {
         var on = Shell.IsFullScreen;
         FullScreenIcon.Glyph = on ? "" : "";
-        var key = FormatCommands.KeyLabel(on ? ShortcutKeys.Titles.LeaveFullScreen : ShortcutKeys.Titles.FullScreen);
+        // Every key: F11 is a hardware key on many laptops, so Ctrl+Shift+Enter too.
+        var key = on
+            ? ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen)
+            : ShortcutKeys.Labels(ShortcutKeys.Titles.FullScreen);
         var label = on ? "Leave full screen" : "Full screen";
         FullScreenButton.Label = label;
         ToolTipService.SetToolTip(FullScreenButton, key is null ? label : $"{label} ({key})");
@@ -361,11 +364,12 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
     /// The RichEditBox keeps keys from keyboard accelerators, so the writing
     /// page's own keys are handled here, from the core's shortcuts table:
     /// Ctrl+S saves, Ctrl+B, I and K format, Ctrl+Shift+F is focus mode, F11
-    /// and Esc go in and out of full screen. Shift+Tab goes to the formatting
-    /// bar (Tab types a tab, for nested lists). The box also has Ctrl
-    /// shortcuts for alignment and line spacing (Ctrl+E, R, L, J, 1, 2, 5)
-    /// that would format the text behind the Markdown's back; those do
-    /// nothing. (Ctrl+1/2/3 switch shelves, as everywhere: see MainWindow.)
+    /// or Ctrl+Shift+Enter and Esc go in and out of full screen. Shift+Tab
+    /// goes to the formatting bar (Tab types a tab, for nested lists). The
+    /// box also has Ctrl shortcuts for alignment and line spacing (Ctrl+E,
+    /// R, L, J, 1, 2, 5) that would format the text behind the Markdown's
+    /// back; those do nothing. (Ctrl+1/2/3 switch shelves, as everywhere:
+    /// see MainWindow.)
     /// </summary>
     private void OnEditorKeyDown(object sender, KeyRoutedEventArgs e)
     {

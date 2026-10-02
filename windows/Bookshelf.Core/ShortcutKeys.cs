@@ -39,15 +39,48 @@ public static class ShortcutKeys
         ];
     }
 
+    /// <summary>
+    /// Keys the Windows app takes as well as the table's, until the table
+    /// lists them. Full screen: Ctrl+Shift+Enter besides F11, because many
+    /// laptops keep F11 for a hardware key unless Fn is held (on HP's, it
+    /// opens Windows' network settings).
+    /// </summary>
+    private static readonly (string Title, KeyCombo Combo)[] Also =
+    [
+        (Titles.FullScreen, new KeyCombo(new ShortcutKey.Return(), Command: false, Control: true, Shift: true)),
+    ];
+
     /// <summary>The Windows shortcut titled <paramref name="title"/>, if the table has one.</summary>
-    public static KeyCombo? Find(string title) =>
-        BookshelfFfiMethods.Shortcuts(Platform.Windows)
+    public static KeyCombo? Find(string title) => FindAll(title).FirstOrDefault();
+
+    /// <summary>Every Windows key for <paramref name="title"/>: the table's first, then any the app takes as well.</summary>
+    public static IReadOnlyList<KeyCombo> FindAll(string title)
+    {
+        var all = BookshelfFfiMethods.Shortcuts(Platform.Windows)
             .SelectMany(g => g.Items)
             .Where(s => s.Title == title)
             .Select(s => s.Accel)
             .OfType<Accel.Keys>()
             .Select(k => k.Combo)
-            .FirstOrDefault();
+            .ToList();
+        all.AddRange(Also.Where(a => a.Title == title && !all.Contains(a.Combo)).Select(a => a.Combo));
+        return all;
+    }
+
+    /// <summary>
+    /// All the keys for these shortcuts as one label, for a tooltip:
+    /// "F11 or Ctrl+Shift+Enter", "Esc, F11 or Ctrl+Shift+Enter". Null if none.
+    /// </summary>
+    public static string? Labels(params string[] titles)
+    {
+        var labels = titles.SelectMany(FindAll).Select(Label).Distinct().ToList();
+        return labels.Count switch
+        {
+            0 => null,
+            1 => labels[0],
+            _ => $"{string.Join(", ", labels.Take(labels.Count - 1))} or {labels[^1]}",
+        };
+    }
 
     /// <summary>The keys one at a time, for key caps: ["Ctrl", "N"].</summary>
     public static IReadOnlyList<string> Keys(KeyCombo combo)

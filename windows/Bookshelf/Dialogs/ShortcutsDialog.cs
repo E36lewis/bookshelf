@@ -25,8 +25,8 @@ internal static class ShortcutsDialog
             list.Children.Add(heading);
             foreach (var shortcut in group.Items)
             {
-                if (shortcut.Accel is not Accel.Keys { Combo: var combo }) continue;
-                list.Children.Add(Row(shortcut.Title, combo));
+                if (shortcut.Accel is not Accel.Keys) continue;
+                list.Children.Add(Row(shortcut.Title, ShortcutKeys.FindAll(shortcut.Title)));
             }
         }
 
@@ -40,7 +40,8 @@ internal static class ShortcutsDialog
         await DialogHost.ShowAsync(dialog);
     }
 
-    private static Grid Row(string title, KeyCombo combo)
+    /// <summary>A shortcut and its keys; more than one combination ("F11 or Ctrl+Shift+Enter") with "or" between.</summary>
+    private static Grid Row(string title, IReadOnlyList<KeyCombo> combos)
     {
         var row = new Grid { ColumnSpacing = 24, MinHeight = 32 };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -48,6 +49,28 @@ internal static class ShortcutsDialog
         row.Children.Add(new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
 
         var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        foreach (var combo in combos)
+        {
+            if (keys.Children.Count > 0)
+            {
+                keys.Children.Add(new TextBlock
+                {
+                    Text = "or",
+                    Style = Resource<Style>("CaptionTextBlockStyle"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(4, 0, 4, 0),
+                });
+            }
+            AddKeyCaps(keys, combo);
+        }
+        Grid.SetColumn(keys, 1);
+        row.Children.Add(keys);
+        AutomationProperties.SetName(row, $"{title}: {string.Join(" or ", combos.Select(ShortcutKeys.Label))}");
+        return row;
+    }
+
+    private static void AddKeyCaps(StackPanel keys, KeyCombo combo)
+    {
         foreach (var key in ShortcutKeys.Keys(combo))
         {
             keys.Children.Add(new Border
@@ -61,10 +84,6 @@ internal static class ShortcutsDialog
                 },
             });
         }
-        Grid.SetColumn(keys, 1);
-        row.Children.Add(keys);
-        AutomationProperties.SetName(row, $"{title}: {ShortcutKeys.Label(combo)}");
-        return row;
     }
 
     private static T Resource<T>(string key) => (T)Application.Current.Resources[key];
