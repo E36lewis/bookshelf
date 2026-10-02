@@ -119,7 +119,7 @@ private struct WriterStatusLine: View {
             Spacer()
         }
         .font(.callout)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Color.quietText)
         .padding(.horizontal, 20)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
@@ -143,7 +143,9 @@ private struct FormatBar: View {
             } label: {
                 Label("Heading", systemImage: "textformat.size")
             }
+            .tint(.primary)
             .help("Heading")
+            .accessibilityLabel("Heading")
             .accessibilityIdentifier("format.heading")
             ControlGroup {
                 ForEach(FormatCommand.groups[2], id: \.self) { button($0) }
@@ -166,6 +168,14 @@ private struct FormatBar: View {
 }
 
 extension Color {
+    /// Quiet gray text that still reads clearly: system secondary label
+    /// gray falls just short of 4.5:1 on the writing page.
+    static let quietText = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            ? NSColor(white: 0.66, alpha: 1)
+            : NSColor(white: 0.4, alpha: 1)
+    })
+
     /// Red text that reads clearly on the window: darker than system red
     /// in light windows, lighter in dark ones (4.5:1 or better on both).
     static let errorText = Color(nsColor: NSColor(name: nil) { appearance in

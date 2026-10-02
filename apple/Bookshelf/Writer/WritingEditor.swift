@@ -211,6 +211,10 @@ final class WritingPageView: NSView {
     private func updateMargins() {
         let size = scrollView.contentSize
         guard size.width > 0, size.height > 0 else { return }
+        // Exactly as wide as the scroll view: never scrolls sideways.
+        if textView.frame.width != size.width {
+            textView.setFrameSize(NSSize(width: size.width, height: textView.frame.height))
+        }
         let side = max(28, floor((size.width - column) / 2))
         let below = max(120, floor(size.height / 2))
         let inset = NSSize(width: side, height: ceil((below + textView.topMargin) / 2))

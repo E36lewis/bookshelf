@@ -30,13 +30,29 @@ final class WriterTests: XCTestCase {
         sleep(1)
         // Dimming is only drawn: VoiceOver still has every word.
         let all = text.value as? String ?? ""
-        XCTAssertTrue(all.hasPrefix("## Where I am") && all.hasSuffix("Savour the ice."), all)
+        XCTAssertTrue(all.hasPrefix("## Where I am") && all.hasSuffix("Read the ice slowly."), all)
         keep(app, "21-writer-focus", look)
         app.typeKey("f", modifierFlags: [.command, .shift])
 
-        // Full screen (⌃⌘F): the toolbar slides away. Esc comes back.
-        app.typeKey("f", modifierFlags: [.command, .control])
-        sleep(3)
+        // View › Enter Full Screen: the toolbar slides away. Esc comes back.
+        let view = app.menuBars.menuBarItems["View"]
+        view.click()
+        let focusItem = view.menuItems["Focus Mode"]
+        XCTAssertTrue(focusItem.waitForExistence(timeout: 2))
+        XCTAssertTrue(focusItem.isEnabled)
+        keepScreen("30-view-menu", look)
+        let enter = view.menuItems.matching(NSPredicate(format: "title CONTAINS 'Full Screen'")).firstMatch
+        if enter.exists {
+            enter.click()
+        } else {
+            app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+            app.typeKey("f", modifierFlags: [.command, .control])
+        }
+        sleep(4)
+        let window = app.windows.firstMatch.frame
+        let screen = XCUIScreen.main.screenshot().image.size
+        note("window \(window), screen \(screen), menu item: \(enter.exists ? enter.title : "none")",
+             named: "full-screen-\(look.rawValue)")
         keepScreen("22-writer-full-screen", look)
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         sleep(3)
@@ -175,7 +191,7 @@ final class WriterTests: XCTestCase {
 
         // Leaving: Keep Open stays on the page, with the text.
         app.buttons["page.back"].firstMatch.click()
-        let keepOpen = app.buttons["Keep Open"].firstMatch
+        let keepOpen = alertButton(app, "Keep Open")
         XCTAssertTrue(keepOpen.waitForExistence(timeout: 5), "no rescue alert")
         let said = app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'kept a copy' OR label CONTAINS 'kept a copy'"))
         XCTAssertGreaterThan(said.count, 0, "the alert doesn't say where the copy is")
@@ -192,7 +208,7 @@ final class WriterTests: XCTestCase {
 
         // Close Anyway leaves the page.
         app.buttons["page.back"].firstMatch.click()
-        let closeAnyway = app.buttons["Close Anyway"].firstMatch
+        let closeAnyway = alertButton(app, "Close Anyway")
         XCTAssertTrue(closeAnyway.waitForExistence(timeout: 5))
         closeAnyway.click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
@@ -206,7 +222,7 @@ final class WriterTests: XCTestCase {
         _ = openWriter(app, "Middlemarch")
         app.typeText("Clipboard words.")
         app.buttons["page.back"].firstMatch.click()
-        let closeAnyway = app.buttons["Close Anyway"].firstMatch
+        let closeAnyway = alertButton(app, "Close Anyway")
         XCTAssertTrue(closeAnyway.waitForExistence(timeout: 5), "no rescue alert")
         let said = app.staticTexts.matching(NSPredicate(format: "value CONTAINS 'clipboard' OR label CONTAINS 'clipboard'"))
         XCTAssertGreaterThan(said.count, 0, "the alert doesn't mention the clipboard")
@@ -217,6 +233,13 @@ final class WriterTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// A button on the rescue alert (a sheet on the window). The Touch Bar
+    /// has copies of alert buttons, which can't be clicked.
+    @MainActor
+    private func alertButton(_ app: XCUIApplication, _ title: String) -> XCUIElement {
+        app.sheets.buttons[title].firstMatch
+    }
 
     /// Opens `title`'s writing page from the Reading shelf.
     @MainActor
