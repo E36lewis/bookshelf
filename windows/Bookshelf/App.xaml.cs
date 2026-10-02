@@ -10,16 +10,20 @@ public partial class App : Application
     public App()
     {
         // Registered first, so even a failure while loading the app's own
-        // XAML is reported instead of the app silently closing.
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => ReportCrash(e.ExceptionObject);
+        // XAML is reported instead of the app silently closing. (Main
+        // registers the one for crashes outside XAML.)
         UnhandledException += (_, e) => ReportCrash(e.Exception);
+        StartupLog.Step("Loading App.xaml");
         InitializeComponent();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        StartupLog.Step("Creating the main window");
         _window = new MainWindow();
+        StartupLog.Step("Showing the main window");
         _window.Activate();
+        StartupLog.Step("Main window shown");
     }
 
     /// <summary>
@@ -45,6 +49,7 @@ public partial class App : Application
             // Nowhere to write; the message box below still says what happened.
         }
         var first = details.Split('\n')[0].Trim();
+        StartupLog.Step($"Crashed: {first}");
         MessageBox(IntPtr.Zero, $"Bookshelf hit a problem and has to close.\n\n{first}{where}", "Bookshelf", 0x10);
     }
 

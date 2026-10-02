@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Checks that a Windows build only needs DLLs that every PC has.
+"""Checks that a Windows build can start on every Windows 10/11 PC.
 
-Usage: check-windows-imports.py <folder or file>...
+Usage: check-windows-build.py <folder or file>...
 
-Reads the import tables (normal and delay-loaded) of every native .exe and
-.dll given (folders are searched) and fails if any of them needs a DLL
-that is neither among them nor part of Windows 10 version 1809 and later. That catches the
-"works in CI, not on a clean PC" kind of problem: GitHub's Windows runners
-have extras installed (the Visual C++ runtime, for one) that a normal PC
-may not have.
+Looks at every native .exe and .dll given (folders are searched) for two
+"works in CI, not on a normal PC" problems the CI runner can't show:
+
+- A DLL that is neither in the build nor part of Windows 10 version 1809
+  and later (import tables, normal and delay-loaded). GitHub's runners
+  have extras installed, such as the Visual C++ runtime.
+- A .NET app host .exe marked CET-compatible. On Windows 10 PCs with a
+  recent CPU but without Windows updates from 2023 on, .NET then stops
+  at startup ("Your Windows doesn't fully support CET", exit code
+  0x80131506) before any app code runs. The runner's newer Windows
+  doesn't.
 
 Standard library only, so it runs on the CI runner and on Linux/macOS.
 """
@@ -41,8 +46,13 @@ ONLY_FOR = {
 }
 
 
-def imports(path):
-    """Returns (is_managed, [imported DLL names]) for a PE file, or None."""
+# Only .NET's app hosts (apphost, singlefilehost) contain this setting name.
+DOTNET_HOST = "DOTNET_DISABLE_GUI_ERRORS".encode("utf-16-le")
+
+
+def inspect(path):
+    """Returns (is_managed, [imported DLL names], is_cet_dotnet_host) for a
+    PE file, or None if it isn't one."""
     with open(path, "rb") as f:
         data = f.read()
     if data[:2] != b"MZ":
@@ -76,7 +86,17 @@ def imports(path):
     # .NET assemblies (IL or ReadyToRun) are loaded by the runtime, not by
     # Windows, so their stub import of mscoree.dll is never used.
     if directory(14)[0]:
-        return True, []
+        return True, [], False
+
+    # Extended DLL characteristics live in a debug directory entry
+    # (type 20); bit 0 is IMAGE_DLLCHARACTERISTICS_EX_CET_COMPAT.
+    cet = False
+    rva, size = directory(6)  # debug directory: 28-byte entries
+    for entry in range(offset(rva), offset(rva) + size, 28) if rva and DOTNET_HOST in data else ():
+        kind = struct.unpack_from("<I", data, entry + 12)[0]
+        raw = struct.unpack_from("<I", data, entry + 24)[0]
+        if kind == 20 and struct.unpack_from("<I", data, raw)[0] & 1:
+            cet = True
 
     names = []
     rva, _ = directory(1)  # import table: 20-byte entries, name at +12
@@ -97,7 +117,7 @@ def imports(path):
         # Old-style entries (attribute bit 0 clear) hold addresses, not RVAs.
         names.append(name(dll if attributes & 1 else dll - image_base))
         rva += 32
-    return False, names
+    return False, names, cet
 
 
 def main():
@@ -117,11 +137,13 @@ def main():
     problems = []
     checked = 0
     for path in sorted(binaries):
-        result = imports(path)
+        result = inspect(path)
         if result is None or result[0]:
             continue
         checked += 1
         importer = os.path.basename(path).lower()
+        if result[2]:
+            problems.append(f"{os.path.basename(path)} is marked CET-compatible (set CETCompat to false)")
         for dll in result[1]:
             if dll in shipped or dll in WINDOWS:
                 continue
@@ -136,12 +158,12 @@ def main():
     if checked == 0:
         sys.exit("No native files found")
     if problems:
-        print("These DLLs aren't in the build and aren't part of Windows,")
-        print("so the app may not start on a PC that lacks them:")
+        print("The app may not start on some Windows 10/11 PCs:")
         for problem in problems:
             print("  " + problem)
         sys.exit(1)
-    print(f"OK: the {checked} native files only need each other and Windows.")
+    print(f"OK: the {checked} native files only need each other and Windows,")
+    print("and the .NET app host isn't marked CET-compatible.")
 
 
 if __name__ == "__main__":

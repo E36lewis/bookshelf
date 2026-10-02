@@ -65,6 +65,7 @@ jobs:
           Copy-Item windows/build/Bookshelf/Bookshelf.exe $alone
           $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
           $crashLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/crash.log'
+          $startupLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/startup.log'
           $clock = [Diagnostics.Stopwatch]::StartNew()
           $app = Start-Process "$alone/Bookshelf.exe" -WorkingDirectory $env:RUNNER_TEMP -PassThru
           # Wait for the main window (first start unpacks ~230 MB), then a
@@ -92,6 +93,7 @@ jobs:
             }
           }
           Start-Sleep -Seconds 10
+          if (Test-Path $startupLog) { Get-Content $startupLog }
           if ($app.HasExited) {
             if (Test-Path $crashLog) { Get-Content $crashLog }
             Get-WinEvent -FilterHashtable @{ LogName = 'Application'; Level = 2; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue |
@@ -103,22 +105,26 @@ jobs:
           Stop-Process -Id $app.Id
           Write-Host "Status line: $status"
           if ($status -notlike 'Rust core *') { throw "The window didn't show the Rust core's version" }
+          if (-not (Select-String -Path $startupLog -Pattern 'Ready: Rust core' -Quiet)) { throw "startup.log doesn't reach 'Ready'" }
           Write-Host ("Bookshelf.exe opened its window after {0:N1} s and stayed open." -f $opened)
 
-      - name: Check the app only needs DLLs every Windows PC has
+      - name: Check the app can start on every Windows 10/11 PC
         shell: pwsh
         run: |
           # The runner has extras a normal PC may lack (the Visual C++
-          # runtime, for one), so the smoke test alone can't catch these.
-          # Checks the exe and what it unpacked: exactly what a PC loads.
+          # runtime, for one) and a newer Windows, so the smoke test alone
+          # can't catch every problem. This checks the exe and what it
+          # unpacked (exactly what a PC loads) for DLLs that aren't part of
+          # Windows, and for the CET marking that stops .NET on older
+          # Windows 10 (see scripts/check-windows-build.py).
           $unpacked = Get-ChildItem "$env:RUNNER_TEMP/unpacked/Bookshelf" -Directory | Select-Object -First 1
           if (-not $unpacked) { throw "Bookshelf.exe didn't unpack anything" }
           foreach ($f in 'Bookshelf.dll', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
             if (-not (Test-Path (Join-Path $unpacked.FullName $f))) { throw "$f is missing from Bookshelf.exe" }
           }
           # Bookshelf.exe itself holds the .NET runtime, so check it too.
-          python scripts/check-windows-imports.py windows/build/Bookshelf/Bookshelf.exe $unpacked.FullName
-          if ($LASTEXITCODE) { throw "check-windows-imports.py failed" }
+          python scripts/check-windows-build.py windows/build/Bookshelf/Bookshelf.exe $unpacked.FullName
+          if ($LASTEXITCODE) { throw "check-windows-build.py failed" }
 
       - name: Add the read-me for testers
         shell: pwsh

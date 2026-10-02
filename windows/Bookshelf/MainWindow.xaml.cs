@@ -18,13 +18,17 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        StartupLog.Step("Loading MainWindow.xaml");
         InitializeComponent();
         Title = "Bookshelf (preview)";
+        StartupLog.Step("Setting the Mica backdrop");
         SystemBackdrop = new MicaBackdrop(); // Windows 11; Windows 10 keeps a plain background
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 760));
 
+        StartupLog.Step("Filling the writing box");
         _ink = Editor.Document.GetDefaultCharacterFormat().ForegroundColor;
         Editor.Document.SetText(TextSetOptions.None, ShortSample);
+        StartupLog.Step("First Markdown highlighting");
         Restyle(force: true);
         _ = LoadAsync();
     }
@@ -37,6 +41,7 @@ public sealed partial class MainWindow : Window
             "Bookshelf.Preview");
         try
         {
+            StartupLog.Step("Opening the journal");
             _journal = await JournalService.OpenAsync(dir);
             await ShowProfilesAsync();
             Status.Text = $"Rust core {BookshelfFfiMethods.CoreVersion()} · {dir}";
@@ -45,6 +50,7 @@ public sealed partial class MainWindow : Window
         {
             Status.Text = $"Couldn't open the journal: {e.Message}";
         }
+        StartupLog.Step($"Ready: {Status.Text}");
     }
 
     private async Task ShowProfilesAsync()

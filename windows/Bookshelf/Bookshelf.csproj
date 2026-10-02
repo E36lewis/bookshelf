@@ -25,6 +25,15 @@
          self-contained WinUI apps; the installer can go back to a folder. -->
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <!-- Don't mark Bookshelf.exe as CET-compatible (.NET 9+ does by
+         default). On Windows 10 PCs with a recent CPU but without Windows
+         updates from 2023 on, .NET otherwise stops at startup with
+         "Your Windows doesn't fully support CET" (0x80131506), before any
+         of our code runs. Microsoft's documented opt-out:
+         https://learn.microsoft.com/dotnet/core/compatibility/interop/9.0/cet-support -->
+    <CETCompat>false</CETCompat>
+    <!-- Our own Main (Program.cs) logs each startup step to startup.log. -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
