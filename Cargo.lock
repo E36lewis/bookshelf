@@ -130,6 +130,7 @@ dependencies = [
  "chrono",
  "csv",
  "directories",
+ "log",
  "pulldown-cmark",
  "reqwest",
  "rusqlite",

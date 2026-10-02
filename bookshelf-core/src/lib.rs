@@ -10,6 +10,7 @@ pub mod covers;
 pub mod db;
 pub mod error;
 pub mod export;
+pub mod logging;
 pub mod manual;
 pub mod mdedit;
 pub mod models;

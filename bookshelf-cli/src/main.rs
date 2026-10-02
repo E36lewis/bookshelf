@@ -30,6 +30,7 @@ usage:
   bookshelf fetch-covers                  download any missing cover images";
 
 fn main() {
+    bookshelf_core::logging::log_to_stderr();
     if let Err(e) = run() {
         eprintln!("error: {e}");
         std::process::exit(1);

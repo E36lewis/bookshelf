@@ -57,6 +57,7 @@ impl Ctx {
 }
 
 fn main() -> glib::ExitCode {
+    bookshelf_core::logging::log_to_stderr();
     let app = adw::Application::builder().application_id(APP_ID).build();
     app.connect_startup(|_| {
         theme::install();
