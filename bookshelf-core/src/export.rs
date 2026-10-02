@@ -62,6 +62,9 @@ fn yaml(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+/// A title as a file name: lowercase letters and digits joined by dashes.
+/// Never one of the names Windows reserves for devices, which can't be
+/// used as a file name there whatever the extension ("con.md").
 pub fn slug(title: &str) -> String {
     let mut out = String::new();
     let mut last_dash = true;
@@ -77,9 +80,29 @@ pub fn slug(title: &str) -> String {
     let trimmed: String = out.trim_matches('-').chars().take(80).collect();
     if trimmed.is_empty() {
         "untitled".to_string()
+    } else if is_windows_device_name(&trimmed) {
+        format!("{trimmed}-book")
     } else {
         trimmed
     }
+}
+
+/// CON, PRN, AUX, NUL, COM0-9 and LPT0-9, including the superscript digits
+/// Windows also treats as port numbers. `name` is already lowercase.
+fn is_windows_device_name(name: &str) -> bool {
+    if matches!(name, "con" | "prn" | "aux" | "nul") {
+        return true;
+    }
+    let port = name
+        .strip_prefix("com")
+        .or_else(|| name.strip_prefix("lpt"));
+    port.is_some_and(|n| {
+        let mut chars = n.chars();
+        matches!(
+            (chars.next(), chars.next()),
+            (Some('0'..='9' | '¹' | '²' | '³'), None)
+        )
+    })
 }
 
 /// Writes `<stem>.md`, or `<stem>-2.md`, ... if taken. `create_new` makes
@@ -121,6 +144,28 @@ mod tests {
             "the-hobbit-or-there-back"
         );
         assert_eq!(slug("???"), "untitled");
+    }
+
+    #[test]
+    fn slugs_are_never_windows_device_names() {
+        assert_eq!(slug("Con"), "con-book");
+        assert_eq!(slug("PRN"), "prn-book");
+        assert_eq!(slug("Aux!"), "aux-book");
+        assert_eq!(slug("nul."), "nul-book");
+        assert_eq!(slug("COM1"), "com1-book");
+        assert_eq!(slug("com9"), "com9-book");
+        assert_eq!(slug("Com0"), "com0-book");
+        assert_eq!(slug("LPT1"), "lpt1-book");
+        assert_eq!(slug("LPT9"), "lpt9-book");
+        assert_eq!(slug("COM¹"), "com¹-book");
+        assert_eq!(slug("lpt³"), "lpt³-book");
+        // Everything else is as it always was.
+        assert_eq!(slug("Console"), "console");
+        assert_eq!(slug("Con Air"), "con-air");
+        assert_eq!(slug("COM10"), "com10");
+        assert_eq!(slug("LPT"), "lpt");
+        assert_eq!(slug("Com 1"), "com-1");
+        assert_eq!(slug("COM⁴"), "com⁴");
     }
 
     #[test]
