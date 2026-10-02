@@ -34,13 +34,17 @@ public final class WritingSession {
         public var save: @Sendable (String) async throws -> UInt32
         /// Writes the text to the recovery folder; returns the file.
         public var rescue: @Sendable (String) async throws -> URL
+        /// Counts the words when a save fails, as saving would have.
+        public var count: @Sendable (String) async -> UInt32
 
         public init(
             save: @escaping @Sendable (String) async throws -> UInt32,
-            rescue: @escaping @Sendable (String) async throws -> URL
+            rescue: @escaping @Sendable (String) async throws -> URL,
+            count: @escaping @Sendable (String) async -> UInt32 = { await JournalWorker.words(in: $0) }
         ) {
             self.save = save
             self.rescue = rescue
+            self.count = count
         }
     }
 
@@ -79,7 +83,8 @@ public final class WritingSession {
         }
     }
 
-    /// Saves what's there now. Returns whether it's saved.
+    /// Saves what's there now. Returns whether it's saved. The word count
+    /// follows the text either way: a failed save still counts it.
     @discardableResult
     public func save() async -> Bool {
         pending?.cancel()
@@ -97,6 +102,9 @@ public final class WritingSession {
             return true
         } catch {
             status = .failed(Self.message(for: error))
+            let counted = await store.count(snapshot)
+            // Unless a newer attempt has counted newer text meanwhile.
+            if text == snapshot { words = counted }
             return false
         }
     }

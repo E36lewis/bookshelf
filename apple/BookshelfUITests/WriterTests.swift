@@ -193,6 +193,8 @@ final class WriterTests: XCTestCase {
         app.typeText("Keep me safe.")
         let status = app.descendants(matching: .any)["writer.status"].firstMatch
         XCTAssertTrue(waitFor(status, timeout: 8) { $0.contains("Not saved") }, "status: \(status.label)")
+        // The count follows the text, saved or not.
+        XCTAssertTrue(waitFor(status) { $0.contains("3 words") }, "status: \(status.label)")
         keep(app, "27-writer-not-saved", .light)
 
         // Leaving: Keep Open stays on the page, with the text.

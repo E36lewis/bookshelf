@@ -114,6 +114,26 @@ final class WritingSessionTests: XCTestCase {
         XCTAssertEqual(Wording.notSaved("Dune"), "Your summary of “Dune” couldn't be saved")
     }
 
+    /// The status line's count follows the text even while saves fail,
+    /// rather than sticking at what was last saved. (The store's counter is
+    /// the default one, the core's, as in the app.)
+    func testAFailedSaveStillCountsTheWords() async {
+        await fake.failing(saves: true, rescue: false)
+        let page = session(delay: .seconds(60))
+        XCTAssertEqual(page.words, 0)
+        page.update("Keep me safe")
+        let ok = await page.save()
+        XCTAssertFalse(ok)
+        XCTAssertEqual(page.words, 3)
+
+        // Autosave attempts count too.
+        let quick = session(delay: .milliseconds(20))
+        quick.update("One two three four")
+        await eventually { quick.failure != nil && quick.words == 4 }
+        XCTAssertEqual(quick.words, 4)
+        XCTAssertNotNil(quick.failure)
+    }
+
     func testWhenEvenTheRecoveryCopyFailsTheTextGoesOnTheClipboard() async {
         await fake.failing(saves: true, rescue: true)
         let page = session()
