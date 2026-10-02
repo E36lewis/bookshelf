@@ -414,7 +414,29 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
 
 
 // Public interface members begin here.
+// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+private let IDX_CALLBACK_FREE: Int32 = 0
+// Callback return codes
+private let UNIFFI_CALLBACK_SUCCESS: Int32 = 0
+private let UNIFFI_CALLBACK_ERROR: Int32 = 1
+private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -428,6 +450,94 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 
     public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterBool : FfiConverter {
+    typealias FfiType = Int8
+    typealias SwiftType = Bool
+
+    public static func lift(_ value: Int8) throws -> Bool {
+        return value != 0
+    }
+
+    public static func lower(_ value: Bool) -> Int8 {
+        return value ? 1 : 0
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Bool {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Bool, into buf: inout [UInt8]) {
         writeInt(&buf, lower(value))
     }
 }
@@ -477,22 +587,181 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 /**
- * One open journal: the database and its folder.
+ * One open journal: the database, its folder and the Open Library client.
  */
 public protocol JournalProtocol: AnyObject, Sendable {
     
-    func createProfile(name: String) throws  -> Profile
+    /**
+     * Puts a saved book on one of the profile's shelves, dated today
+     * (local): Reading starts today, Finished finishes today, Eventually
+     * has no dates. Returns the new entry's id.
+     */
+    func addToShelf(userId: String, bookId: String, shelf: Shelf) throws  -> String
+    
+    /**
+     * Makes today's backup if there isn't one yet, and drops all but the
+     * newest few. Returns the new file, or `None` if today's was already
+     * made. Uses a connection of its own, never the journal's lock, so
+     * call it at startup without holding anything up.
+     */
+    func backUpNow() throws  -> String?
+    
+    /**
+     * Where backups go and the newest one's date. Looks at the backup
+     * folder without taking the journal's lock: it may be a slow drive.
+     */
+    func backupStatus() throws  -> BackupStatus
+    
+    /**
+     * A number that changes whenever the journal does: writes through
+     * this object and writes by anything else (a backup, another
+     * process). A home page can skip rebuilding when it's the same as
+     * last time. Today's date is up to the app (a Reading entry's "day
+     * 12" changes at midnight).
+     */
+    func changeToken() throws  -> UInt64
+    
+    /**
+     * Call when the app quits: folds the write-ahead log back into the
+     * journal file. Safe to call twice, and the journal stays usable, so
+     * a last autosave after it still lands.
+     */
+    func close() throws 
+    
+    /**
+     * Makes a profile. `email` is optional (blank means none). A bad email
+     * is refused before anything is made.
+     */
+    func createProfile(name: String, email: String?) throws  -> Profile
     
     /**
      * The folder the journal lives in.
      */
     func dataDir()  -> String
     
+    /**
+     * Deletes a profile with its settings and entries. Books stay, since
+     * other profiles may have them. There's no undo: apps ask first.
+     */
+    func deleteProfile(userId: String) throws 
+    
+    /**
+     * One entry, with its book: the book page and the writing page.
+     */
+    func entry(summaryId: String) throws  -> EntryDetail
+    
+    /**
+     * The profile's latest entry for a book, if it has one: after picking
+     * a search result, "open my entry" or "read it again".
+     */
+    func existingEntry(userId: String, bookId: String) throws  -> String?
+    
+    /**
+     * Writes each of the profile's entries as a Markdown file into a
+     * "Bookshelf summaries" folder inside `parent_dir` (an absolute path
+     * to an existing folder). Files already there are never overwritten.
+     */
+    func exportMarkdown(userId: String, parentDir: String) throws  -> ExportResult
+    
+    /**
+     * Every profile, by name.
+     */
     func profiles() throws  -> [Profile]
+    
+    /**
+     * Logs another reading of the entry's book: a new entry on the
+     * Reading shelf, started today (local). Returns its id.
+     */
+    func readAgain(summaryId: String) throws  -> String
+    
+    /**
+     * Removes an entry right away. Keep the result to offer "Undo" with
+     * `restore_entry`.
+     */
+    func removeEntry(summaryId: String) throws  -> RemovedEntry
+    
+    /**
+     * Renames a profile. Names are unique.
+     */
+    func renameProfile(userId: String, name: String) throws  -> Profile
+    
+    /**
+     * The last resort when `save_body` fails: writes the text to
+     * `<data dir>/recovery/<title>-<time>.md` so it isn't lost, and
+     * returns that file's path to tell the user.
+     */
+    func rescueBody(title: String, body: String) throws  -> String
+    
+    /**
+     * Puts a removed entry back exactly as it was. Restoring one that's
+     * already back does nothing, so a double-clicked Undo is harmless.
+     */
+    func restoreEntry(removed: RemovedEntry) throws 
+    
+    /**
+     * Saves the writing page's text (autosave, and Save now). Line ends
+     * are stored as `\n`, whatever the text view uses (`\r` in WinUI's
+     * RichEditBox, `\r\n` from a paste).
+     */
+    func saveBody(summaryId: String, body: String) throws  -> SaveResult
+    
+    /**
+     * Saves a picked search result as a book (the same book again if it
+     * was saved before), fetching its description and downloading its
+     * cover. Neither of those failing fails the save. Add it to a shelf
+     * with `add_to_shelf`, after `existing_entry`.
+     */
+    func saveSearchResult(userId: String, result: SearchResult) throws  -> BookInfo
+    
+    /**
+     * Searches Open Library (a network call; nothing is saved). Requests
+     * carry the profile's contact email, if it set one.
+     */
+    func searchBooks(userId: String, query: String) throws  -> [SearchResult]
+    
+    /**
+     * Keeps backups in `folder` (an absolute path to an existing folder)
+     * from now on, or in the default folder again with `None`. Follow it
+     * with `back_up_now` so the new place has a copy right away.
+     */
+    func setBackupFolder(folder: String?) throws 
+    
+    /**
+     * Sets (or clears, with `None`) when reading started and finished,
+     * as `YYYY-MM-DD`. Finishing before starting is refused. The entry
+     * moves shelf to match; the result says where it is now.
+     */
+    func setDates(summaryId: String, started: String?, finished: String?) throws  -> EntryDetail
+    
+    /**
+     * Sets or clears (`None` or blank) a profile's contact email.
+     */
+    func setProfileEmail(userId: String, email: String?) throws  -> Profile
+    
+    /**
+     * A profile's settings.
+     */
+    func settings(userId: String) throws  -> ProfileSettings
+    
+    /**
+     * One shelf of the home page, laid out. `today` is the local date
+     * (`YYYY-MM-DD`) and `utc_offset_minutes` the local offset from UTC
+     * right now (UTC+2 is 120): the "day 12" of a Reading entry counts
+     * from `today`, and an Eventually entry's "Added" date is the day it
+     * was added at that offset. Passing them in keeps the core off the
+     * system clock, so a shelf drawn just before midnight and its refresh
+     * agree, and tests can pick the day.
+     */
+    func shelf(userId: String, shelf: Shelf, today: String, utcOffsetMinutes: Int32) throws  -> ShelfView
+    
+    /**
+     * Saves a profile's settings (the profile is `settings.user_id`).
+     */
+    func updateSettings(settings: ProfileSettings) throws 
     
 }
 /**
- * One open journal: the database and its folder.
+ * One open journal: the database, its folder and the Open Library client.
  */
 open class Journal: JournalProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -546,7 +815,8 @@ open class Journal: JournalProtocol, @unchecked Sendable {
 
     
     /**
-     * Opens (or creates) the journal in `dir`.
+     * Opens (or creates) the journal in `dir`, an absolute path. Tests
+     * and previews use this with a folder of their own.
      */
 public static func openAt(dir: String)throws  -> Journal  {
     return try  FfiConverterTypeJournal_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
@@ -556,13 +826,99 @@ public static func openAt(dir: String)throws  -> Journal  {
 })
 }
     
+    /**
+     * Opens (or creates) this platform's journal: Application Support on
+     * macOS, `%LOCALAPPDATA%` on Windows. A preview build has its own.
+     */
+public static func openDefault(channel: Channel)throws  -> Journal  {
+    return try  FfiConverterTypeJournal_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_constructor_journal_open_default(
+        FfiConverterTypeChannel_lower(channel),$0
+    )
+})
+}
+    
 
     
-open func createProfile(name: String)throws  -> Profile  {
+    /**
+     * Puts a saved book on one of the profile's shelves, dated today
+     * (local): Reading starts today, Finished finishes today, Eventually
+     * has no dates. Returns the new entry's id.
+     */
+open func addToShelf(userId: String, bookId: String, shelf: Shelf)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_add_to_shelf(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterString.lower(bookId),
+        FfiConverterTypeShelf_lower(shelf),$0
+    )
+})
+}
+    
+    /**
+     * Makes today's backup if there isn't one yet, and drops all but the
+     * newest few. Returns the new file, or `None` if today's was already
+     * made. Uses a connection of its own, never the journal's lock, so
+     * call it at startup without holding anything up.
+     */
+open func backUpNow()throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_back_up_now(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * Where backups go and the newest one's date. Looks at the backup
+     * folder without taking the journal's lock: it may be a slow drive.
+     */
+open func backupStatus()throws  -> BackupStatus  {
+    return try  FfiConverterTypeBackupStatus_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_backup_status(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * A number that changes whenever the journal does: writes through
+     * this object and writes by anything else (a backup, another
+     * process). A home page can skip rebuilding when it's the same as
+     * last time. Today's date is up to the app (a Reading entry's "day
+     * 12" changes at midnight).
+     */
+open func changeToken()throws  -> UInt64  {
+    return try  FfiConverterUInt64.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_change_token(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * Call when the app quits: folds the write-ahead log back into the
+     * journal file. Safe to call twice, and the journal stays usable, so
+     * a last autosave after it still lands.
+     */
+open func close()throws   {try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_close(
+            self.uniffiCloneHandle(),$0
+    )
+}
+}
+    
+    /**
+     * Makes a profile. `email` is optional (blank means none). A bad email
+     * is refused before anything is made.
+     */
+open func createProfile(name: String, email: String?)throws  -> Profile  {
     return try  FfiConverterTypeProfile_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
     uniffi_bookshelf_ffi_fn_method_journal_create_profile(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(name),$0
+        FfiConverterString.lower(name),
+        FfiConverterOptionString.lower(email),$0
     )
 })
 }
@@ -578,12 +934,265 @@ open func dataDir() -> String  {
 })
 }
     
+    /**
+     * Deletes a profile with its settings and entries. Books stay, since
+     * other profiles may have them. There's no undo: apps ask first.
+     */
+open func deleteProfile(userId: String)throws   {try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_delete_profile(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),$0
+    )
+}
+}
+    
+    /**
+     * One entry, with its book: the book page and the writing page.
+     */
+open func entry(summaryId: String)throws  -> EntryDetail  {
+    return try  FfiConverterTypeEntryDetail_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_entry(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(summaryId),$0
+    )
+})
+}
+    
+    /**
+     * The profile's latest entry for a book, if it has one: after picking
+     * a search result, "open my entry" or "read it again".
+     */
+open func existingEntry(userId: String, bookId: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_existing_entry(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterString.lower(bookId),$0
+    )
+})
+}
+    
+    /**
+     * Writes each of the profile's entries as a Markdown file into a
+     * "Bookshelf summaries" folder inside `parent_dir` (an absolute path
+     * to an existing folder). Files already there are never overwritten.
+     */
+open func exportMarkdown(userId: String, parentDir: String)throws  -> ExportResult  {
+    return try  FfiConverterTypeExportResult_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_export_markdown(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterString.lower(parentDir),$0
+    )
+})
+}
+    
+    /**
+     * Every profile, by name.
+     */
 open func profiles()throws  -> [Profile]  {
     return try  FfiConverterSequenceTypeProfile.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
     uniffi_bookshelf_ffi_fn_method_journal_profiles(
             self.uniffiCloneHandle(),$0
     )
 })
+}
+    
+    /**
+     * Logs another reading of the entry's book: a new entry on the
+     * Reading shelf, started today (local). Returns its id.
+     */
+open func readAgain(summaryId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_read_again(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(summaryId),$0
+    )
+})
+}
+    
+    /**
+     * Removes an entry right away. Keep the result to offer "Undo" with
+     * `restore_entry`.
+     */
+open func removeEntry(summaryId: String)throws  -> RemovedEntry  {
+    return try  FfiConverterTypeRemovedEntry_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_remove_entry(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(summaryId),$0
+    )
+})
+}
+    
+    /**
+     * Renames a profile. Names are unique.
+     */
+open func renameProfile(userId: String, name: String)throws  -> Profile  {
+    return try  FfiConverterTypeProfile_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_rename_profile(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterString.lower(name),$0
+    )
+})
+}
+    
+    /**
+     * The last resort when `save_body` fails: writes the text to
+     * `<data dir>/recovery/<title>-<time>.md` so it isn't lost, and
+     * returns that file's path to tell the user.
+     */
+open func rescueBody(title: String, body: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_rescue_body(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(title),
+        FfiConverterString.lower(body),$0
+    )
+})
+}
+    
+    /**
+     * Puts a removed entry back exactly as it was. Restoring one that's
+     * already back does nothing, so a double-clicked Undo is harmless.
+     */
+open func restoreEntry(removed: RemovedEntry)throws   {try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_restore_entry(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeRemovedEntry_lower(removed),$0
+    )
+}
+}
+    
+    /**
+     * Saves the writing page's text (autosave, and Save now). Line ends
+     * are stored as `\n`, whatever the text view uses (`\r` in WinUI's
+     * RichEditBox, `\r\n` from a paste).
+     */
+open func saveBody(summaryId: String, body: String)throws  -> SaveResult  {
+    return try  FfiConverterTypeSaveResult_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_save_body(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(summaryId),
+        FfiConverterString.lower(body),$0
+    )
+})
+}
+    
+    /**
+     * Saves a picked search result as a book (the same book again if it
+     * was saved before), fetching its description and downloading its
+     * cover. Neither of those failing fails the save. Add it to a shelf
+     * with `add_to_shelf`, after `existing_entry`.
+     */
+open func saveSearchResult(userId: String, result: SearchResult)throws  -> BookInfo  {
+    return try  FfiConverterTypeBookInfo_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_save_search_result(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterTypeSearchResult_lower(result),$0
+    )
+})
+}
+    
+    /**
+     * Searches Open Library (a network call; nothing is saved). Requests
+     * carry the profile's contact email, if it set one.
+     */
+open func searchBooks(userId: String, query: String)throws  -> [SearchResult]  {
+    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_search_books(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterString.lower(query),$0
+    )
+})
+}
+    
+    /**
+     * Keeps backups in `folder` (an absolute path to an existing folder)
+     * from now on, or in the default folder again with `None`. Follow it
+     * with `back_up_now` so the new place has a copy right away.
+     */
+open func setBackupFolder(folder: String?)throws   {try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_set_backup_folder(
+            self.uniffiCloneHandle(),
+        FfiConverterOptionString.lower(folder),$0
+    )
+}
+}
+    
+    /**
+     * Sets (or clears, with `None`) when reading started and finished,
+     * as `YYYY-MM-DD`. Finishing before starting is refused. The entry
+     * moves shelf to match; the result says where it is now.
+     */
+open func setDates(summaryId: String, started: String?, finished: String?)throws  -> EntryDetail  {
+    return try  FfiConverterTypeEntryDetail_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_set_dates(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(summaryId),
+        FfiConverterOptionString.lower(started),
+        FfiConverterOptionString.lower(finished),$0
+    )
+})
+}
+    
+    /**
+     * Sets or clears (`None` or blank) a profile's contact email.
+     */
+open func setProfileEmail(userId: String, email: String?)throws  -> Profile  {
+    return try  FfiConverterTypeProfile_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_set_profile_email(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterOptionString.lower(email),$0
+    )
+})
+}
+    
+    /**
+     * A profile's settings.
+     */
+open func settings(userId: String)throws  -> ProfileSettings  {
+    return try  FfiConverterTypeProfileSettings_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),$0
+    )
+})
+}
+    
+    /**
+     * One shelf of the home page, laid out. `today` is the local date
+     * (`YYYY-MM-DD`) and `utc_offset_minutes` the local offset from UTC
+     * right now (UTC+2 is 120): the "day 12" of a Reading entry counts
+     * from `today`, and an Eventually entry's "Added" date is the day it
+     * was added at that offset. Passing them in keeps the core off the
+     * system clock, so a shelf drawn just before midnight and its refresh
+     * agree, and tests can pick the day.
+     */
+open func shelf(userId: String, shelf: Shelf, today: String, utcOffsetMinutes: Int32)throws  -> ShelfView  {
+    return try  FfiConverterTypeShelfView_lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_shelf(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterTypeShelf_lower(shelf),
+        FfiConverterString.lower(today),
+        FfiConverterInt32.lower(utcOffsetMinutes),$0
+    )
+})
+}
+    
+    /**
+     * Saves a profile's settings (the profile is `settings.user_id`).
+     */
+open func updateSettings(settings: ProfileSettings)throws   {try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_update_settings(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeProfileSettings_lower(settings),$0
+    )
+}
 }
     
 
@@ -634,14 +1243,1275 @@ public func FfiConverterTypeJournal_lower(_ value: Journal) -> UInt64 {
 
 
 
-public struct Profile: Equatable, Hashable {
-    public var id: String
+
+
+/**
+ * An entry that was just removed, kept whole (same id, dates and text) so
+ * `Journal::restore_entry` can put it back: the "Undo" on the removal
+ * notice. Opaque, so what was written stays inside the core. (No `Debug`,
+ * so the text can't end up in a log by accident.)
+ */
+public protocol RemovedEntryProtocol: AnyObject, Sendable {
+    
+    /**
+     * The removed entry's id.
+     */
+    func summaryId()  -> String
+    
+    /**
+     * The book's title, for "Removed “Dune”".
+     */
+    func title()  -> String
+    
+}
+/**
+ * An entry that was just removed, kept whole (same id, dates and text) so
+ * `Journal::restore_entry` can put it back: the "Undo" on the removal
+ * notice. Opaque, so what was written stays inside the core. (No `Debug`,
+ * so the text can't end up in a log by accident.)
+ */
+open class RemovedEntry: RemovedEntryProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_bookshelf_ffi_fn_clone_removedentry(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_bookshelf_ffi_fn_free_removedentry(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * The removed entry's id.
+     */
+open func summaryId() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_method_removedentry_summary_id(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The book's title, for "Removed “Dune”".
+     */
+open func title() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_method_removedentry_title(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRemovedEntry: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = RemovedEntry
+
+    public static func lift(_ handle: UInt64) throws -> RemovedEntry {
+        return RemovedEntry(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: RemovedEntry) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RemovedEntry {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: RemovedEntry, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRemovedEntry_lift(_ handle: UInt64) throws -> RemovedEntry {
+    return try FfiConverterTypeRemovedEntry.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRemovedEntry_lower(_ value: RemovedEntry) -> UInt64 {
+    return FfiConverterTypeRemovedEntry.lower(value)
+}
+
+
+
+
+/**
+ * One of the accent colors offered in Settings.
+ */
+public struct Accent: Equatable, Hashable {
+    /**
+     * Its name ("Teal"), for accessibility labels.
+     */
     public var name: String
+    /**
+     * `#rrggbb`.
+     */
+    public var hex: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Its name ("Teal"), for accessibility labels.
+         */name: String, 
+        /**
+         * `#rrggbb`.
+         */hex: String) {
+        self.name = name
+        self.hex = hex
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Accent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Accent {
+        return
+            try Accent(
+                name: FfiConverterString.read(from: &buf), 
+                hex: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Accent, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.hex, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccent_lift(_ buf: RustBuffer) throws -> Accent {
+    return try FfiConverterTypeAccent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccent_lower(_ value: Accent) -> RustBuffer {
+    return FfiConverterTypeAccent.lower(value)
+}
+
+
+/**
+ * Everything an app paints with one accent, as `#rrggbb`.
+ */
+public struct AccentPalette: Equatable, Hashable {
+    /**
+     * Filled things: suggested buttons, the selected swatch, switches.
+     */
+    public var bg: String
+    /**
+     * Text and icons on `bg`: near-black on light accents, else white.
+     */
+    public var fg: String
+    /**
+     * The accent as text (links) on the window background, lightened in
+     * dark mode and darkened in light mode so it reads.
+     */
+    public var text: String
+    /**
+     * WinUI's SystemAccentColorLight1: 25% toward white.
+     */
+    public var light1: String
+    /**
+     * SystemAccentColorLight2: 50% toward white.
+     */
+    public var light2: String
+    /**
+     * SystemAccentColorLight3: 75% toward white.
+     */
+    public var light3: String
+    /**
+     * SystemAccentColorDark1: 25% toward black.
+     */
+    public var dark1: String
+    /**
+     * SystemAccentColorDark2: 50% toward black.
+     */
+    public var dark2: String
+    /**
+     * SystemAccentColorDark3: 75% toward black.
+     */
+    public var dark3: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Filled things: suggested buttons, the selected swatch, switches.
+         */bg: String, 
+        /**
+         * Text and icons on `bg`: near-black on light accents, else white.
+         */fg: String, 
+        /**
+         * The accent as text (links) on the window background, lightened in
+         * dark mode and darkened in light mode so it reads.
+         */text: String, 
+        /**
+         * WinUI's SystemAccentColorLight1: 25% toward white.
+         */light1: String, 
+        /**
+         * SystemAccentColorLight2: 50% toward white.
+         */light2: String, 
+        /**
+         * SystemAccentColorLight3: 75% toward white.
+         */light3: String, 
+        /**
+         * SystemAccentColorDark1: 25% toward black.
+         */dark1: String, 
+        /**
+         * SystemAccentColorDark2: 50% toward black.
+         */dark2: String, 
+        /**
+         * SystemAccentColorDark3: 75% toward black.
+         */dark3: String) {
+        self.bg = bg
+        self.fg = fg
+        self.text = text
+        self.light1 = light1
+        self.light2 = light2
+        self.light3 = light3
+        self.dark1 = dark1
+        self.dark2 = dark2
+        self.dark3 = dark3
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AccentPalette: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccentPalette: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccentPalette {
+        return
+            try AccentPalette(
+                bg: FfiConverterString.read(from: &buf), 
+                fg: FfiConverterString.read(from: &buf), 
+                text: FfiConverterString.read(from: &buf), 
+                light1: FfiConverterString.read(from: &buf), 
+                light2: FfiConverterString.read(from: &buf), 
+                light3: FfiConverterString.read(from: &buf), 
+                dark1: FfiConverterString.read(from: &buf), 
+                dark2: FfiConverterString.read(from: &buf), 
+                dark3: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AccentPalette, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.bg, into: &buf)
+        FfiConverterString.write(value.fg, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterString.write(value.light1, into: &buf)
+        FfiConverterString.write(value.light2, into: &buf)
+        FfiConverterString.write(value.light3, into: &buf)
+        FfiConverterString.write(value.dark1, into: &buf)
+        FfiConverterString.write(value.dark2, into: &buf)
+        FfiConverterString.write(value.dark3, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccentPalette_lift(_ buf: RustBuffer) throws -> AccentPalette {
+    return try FfiConverterTypeAccentPalette.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccentPalette_lower(_ value: AccentPalette) -> RustBuffer {
+    return FfiConverterTypeAccentPalette.lower(value)
+}
+
+
+/**
+ * Where backups go, and how they're doing.
+ */
+public struct BackupStatus: Equatable, Hashable {
+    /**
+     * The folder backups go to (absolute).
+     */
+    public var folder: String
+    /**
+     * Whether that's a folder the user chose, rather than the default.
+     */
+    public var isCustom: Bool
+    /**
+     * Whether the folder is there right now. A chosen folder on a drive
+     * that's unplugged isn't, and backups wait until it's back.
+     */
+    public var available: Bool
+    /**
+     * The date of this journal's newest backup there, `YYYY-MM-DD`.
+     */
+    public var latest: String?
+    /**
+     * How many daily copies are kept.
+     */
+    public var keep: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The folder backups go to (absolute).
+         */folder: String, 
+        /**
+         * Whether that's a folder the user chose, rather than the default.
+         */isCustom: Bool, 
+        /**
+         * Whether the folder is there right now. A chosen folder on a drive
+         * that's unplugged isn't, and backups wait until it's back.
+         */available: Bool, 
+        /**
+         * The date of this journal's newest backup there, `YYYY-MM-DD`.
+         */latest: String?, 
+        /**
+         * How many daily copies are kept.
+         */keep: UInt32) {
+        self.folder = folder
+        self.isCustom = isCustom
+        self.available = available
+        self.latest = latest
+        self.keep = keep
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BackupStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBackupStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BackupStatus {
+        return
+            try BackupStatus(
+                folder: FfiConverterString.read(from: &buf), 
+                isCustom: FfiConverterBool.read(from: &buf), 
+                available: FfiConverterBool.read(from: &buf), 
+                latest: FfiConverterOptionString.read(from: &buf), 
+                keep: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BackupStatus, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.folder, into: &buf)
+        FfiConverterBool.write(value.isCustom, into: &buf)
+        FfiConverterBool.write(value.available, into: &buf)
+        FfiConverterOptionString.write(value.latest, into: &buf)
+        FfiConverterUInt32.write(value.keep, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupStatus_lift(_ buf: RustBuffer) throws -> BackupStatus {
+    return try FfiConverterTypeBackupStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBackupStatus_lower(_ value: BackupStatus) -> RustBuffer {
+    return FfiConverterTypeBackupStatus.lower(value)
+}
+
+
+/**
+ * A saved book. Books are shared by every profile; entries are not.
+ */
+public struct BookInfo: Equatable, Hashable {
+    /**
+     * The book's id.
+     */
+    public var id: String
+    /**
+     * The title.
+     */
+    public var title: String
+    /**
+     * The subtitle, if any.
+     */
+    public var subtitle: String?
+    /**
+     * The author.
+     */
+    public var author: String?
+    /**
+     * One ISBN.
+     */
+    public var isbn: String?
+    /**
+     * The publisher.
+     */
+    public var publisher: String?
+    /**
+     * The long description ("About this book").
+     */
+    public var description: String?
+    /**
+     * The year it was first published, as Open Library writes it.
+     */
+    public var publishedDate: String?
+    /**
+     * The typical page count.
+     */
+    public var pageCount: Int64?
+    /**
+     * The cover image's absolute path, if one was downloaded.
+     */
+    public var coverPath: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The book's id.
+         */id: String, 
+        /**
+         * The title.
+         */title: String, 
+        /**
+         * The subtitle, if any.
+         */subtitle: String?, 
+        /**
+         * The author.
+         */author: String?, 
+        /**
+         * One ISBN.
+         */isbn: String?, 
+        /**
+         * The publisher.
+         */publisher: String?, 
+        /**
+         * The long description ("About this book").
+         */description: String?, 
+        /**
+         * The year it was first published, as Open Library writes it.
+         */publishedDate: String?, 
+        /**
+         * The typical page count.
+         */pageCount: Int64?, 
+        /**
+         * The cover image's absolute path, if one was downloaded.
+         */coverPath: String?) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.author = author
+        self.isbn = isbn
+        self.publisher = publisher
+        self.description = description
+        self.publishedDate = publishedDate
+        self.pageCount = pageCount
+        self.coverPath = coverPath
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BookInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBookInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BookInfo {
+        return
+            try BookInfo(
+                id: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                subtitle: FfiConverterOptionString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                isbn: FfiConverterOptionString.read(from: &buf), 
+                publisher: FfiConverterOptionString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                publishedDate: FfiConverterOptionString.read(from: &buf), 
+                pageCount: FfiConverterOptionInt64.read(from: &buf), 
+                coverPath: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BookInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.subtitle, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.isbn, into: &buf)
+        FfiConverterOptionString.write(value.publisher, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.publishedDate, into: &buf)
+        FfiConverterOptionInt64.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.coverPath, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBookInfo_lift(_ buf: RustBuffer) throws -> BookInfo {
+    return try FfiConverterTypeBookInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBookInfo_lower(_ value: BookInfo) -> RustBuffer {
+    return FfiConverterTypeBookInfo.lower(value)
+}
+
+
+/**
+ * One entry: a profile's reading of a book, with what they wrote.
+ */
+public struct EntryDetail: Equatable, Hashable {
+    /**
+     * The entry's id (a "summary" in the database).
+     */
+    public var summaryId: String
+    /**
+     * Whose entry it is.
+     */
+    public var userId: String
+    /**
+     * The book.
+     */
+    public var book: BookInfo
+    /**
+     * When reading started, `YYYY-MM-DD`.
+     */
+    public var started: String?
+    /**
+     * When it was finished, `YYYY-MM-DD`.
+     */
+    public var finished: String?
+    /**
+     * Days from start to finish, when both are set.
+     */
+    public var days: Int64?
+    /**
+     * What was written, in Markdown, with `\n` line ends.
+     */
+    public var body: String
+    /**
+     * The shelf it's on, from its dates.
+     */
+    public var shelf: Shelf
+    /**
+     * When the entry was made, in Unix milliseconds.
+     */
+    public var createdAtMs: Int64
+    /**
+     * When it last changed, in Unix milliseconds.
+     */
+    public var updatedAtMs: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The entry's id (a "summary" in the database).
+         */summaryId: String, 
+        /**
+         * Whose entry it is.
+         */userId: String, 
+        /**
+         * The book.
+         */book: BookInfo, 
+        /**
+         * When reading started, `YYYY-MM-DD`.
+         */started: String?, 
+        /**
+         * When it was finished, `YYYY-MM-DD`.
+         */finished: String?, 
+        /**
+         * Days from start to finish, when both are set.
+         */days: Int64?, 
+        /**
+         * What was written, in Markdown, with `\n` line ends.
+         */body: String, 
+        /**
+         * The shelf it's on, from its dates.
+         */shelf: Shelf, 
+        /**
+         * When the entry was made, in Unix milliseconds.
+         */createdAtMs: Int64, 
+        /**
+         * When it last changed, in Unix milliseconds.
+         */updatedAtMs: Int64) {
+        self.summaryId = summaryId
+        self.userId = userId
+        self.book = book
+        self.started = started
+        self.finished = finished
+        self.days = days
+        self.body = body
+        self.shelf = shelf
+        self.createdAtMs = createdAtMs
+        self.updatedAtMs = updatedAtMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EntryDetail: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEntryDetail: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EntryDetail {
+        return
+            try EntryDetail(
+                summaryId: FfiConverterString.read(from: &buf), 
+                userId: FfiConverterString.read(from: &buf), 
+                book: FfiConverterTypeBookInfo.read(from: &buf), 
+                started: FfiConverterOptionString.read(from: &buf), 
+                finished: FfiConverterOptionString.read(from: &buf), 
+                days: FfiConverterOptionInt64.read(from: &buf), 
+                body: FfiConverterString.read(from: &buf), 
+                shelf: FfiConverterTypeShelf.read(from: &buf), 
+                createdAtMs: FfiConverterInt64.read(from: &buf), 
+                updatedAtMs: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EntryDetail, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.summaryId, into: &buf)
+        FfiConverterString.write(value.userId, into: &buf)
+        FfiConverterTypeBookInfo.write(value.book, into: &buf)
+        FfiConverterOptionString.write(value.started, into: &buf)
+        FfiConverterOptionString.write(value.finished, into: &buf)
+        FfiConverterOptionInt64.write(value.days, into: &buf)
+        FfiConverterString.write(value.body, into: &buf)
+        FfiConverterTypeShelf.write(value.shelf, into: &buf)
+        FfiConverterInt64.write(value.createdAtMs, into: &buf)
+        FfiConverterInt64.write(value.updatedAtMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEntryDetail_lift(_ buf: RustBuffer) throws -> EntryDetail {
+    return try FfiConverterTypeEntryDetail.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEntryDetail_lower(_ value: EntryDetail) -> RustBuffer {
+    return FfiConverterTypeEntryDetail.lower(value)
+}
+
+
+/**
+ * What an export wrote.
+ */
+public struct ExportResult: Equatable, Hashable {
+    /**
+     * How many Markdown files were written.
+     */
+    public var count: UInt32
+    /**
+     * The folder they're in (absolute), to offer to open it.
+     */
+    public var folder: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * How many Markdown files were written.
+         */count: UInt32, 
+        /**
+         * The folder they're in (absolute), to offer to open it.
+         */folder: String) {
+        self.count = count
+        self.folder = folder
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ExportResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeExportResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ExportResult {
+        return
+            try ExportResult(
+                count: FfiConverterUInt32.read(from: &buf), 
+                folder: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ExportResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.count, into: &buf)
+        FfiConverterString.write(value.folder, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeExportResult_lift(_ buf: RustBuffer) throws -> ExportResult {
+    return try FfiConverterTypeExportResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeExportResult_lower(_ value: ExportResult) -> RustBuffer {
+    return FfiConverterTypeExportResult.lower(value)
+}
+
+
+/**
+ * A key plus modifier flags, for `NSEvent.ModifierFlags` + key equivalent
+ * on the Mac and `VirtualKeyModifiers` + `VirtualKey` on Windows.
+ */
+public struct KeyCombo: Equatable, Hashable {
+    /**
+     * The key.
+     */
+    public var key: ShortcutKey
+    /**
+     * ⌘ on the Mac. Never set for Windows.
+     */
+    public var command: Bool
+    /**
+     * ⌃ on the Mac, Ctrl on Windows.
+     */
+    public var control: Bool
+    /**
+     * Shift.
+     */
+    public var shift: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The key.
+         */key: ShortcutKey, 
+        /**
+         * ⌘ on the Mac. Never set for Windows.
+         */command: Bool, 
+        /**
+         * ⌃ on the Mac, Ctrl on Windows.
+         */control: Bool, 
+        /**
+         * Shift.
+         */shift: Bool) {
+        self.key = key
+        self.command = command
+        self.control = control
+        self.shift = shift
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension KeyCombo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeKeyCombo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> KeyCombo {
+        return
+            try KeyCombo(
+                key: FfiConverterTypeShortcutKey.read(from: &buf), 
+                command: FfiConverterBool.read(from: &buf), 
+                control: FfiConverterBool.read(from: &buf), 
+                shift: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: KeyCombo, into buf: inout [UInt8]) {
+        FfiConverterTypeShortcutKey.write(value.key, into: &buf)
+        FfiConverterBool.write(value.command, into: &buf)
+        FfiConverterBool.write(value.control, into: &buf)
+        FfiConverterBool.write(value.shift, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyCombo_lift(_ buf: RustBuffer) throws -> KeyCombo {
+    return try FfiConverterTypeKeyCombo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeKeyCombo_lower(_ value: KeyCombo) -> RustBuffer {
+    return FfiConverterTypeKeyCombo.lower(value)
+}
+
+
+/**
+ * The user manual, split up for an in-app page.
+ */
+public struct Manual: Equatable, Hashable {
+    /**
+     * The title and opening paragraphs, in Markdown.
+     */
+    public var intro: String
+    /**
+     * The manual's own "Contents" list.
+     */
+    public var contents: [ManualEntry]
+    /**
+     * Every `##`/`###` heading with the Markdown under it, in order.
+     */
+    public var sections: [ManualSection]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The title and opening paragraphs, in Markdown.
+         */intro: String, 
+        /**
+         * The manual's own "Contents" list.
+         */contents: [ManualEntry], 
+        /**
+         * Every `##`/`###` heading with the Markdown under it, in order.
+         */sections: [ManualSection]) {
+        self.intro = intro
+        self.contents = contents
+        self.sections = sections
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Manual: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeManual: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Manual {
+        return
+            try Manual(
+                intro: FfiConverterString.read(from: &buf), 
+                contents: FfiConverterSequenceTypeManualEntry.read(from: &buf), 
+                sections: FfiConverterSequenceTypeManualSection.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Manual, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.intro, into: &buf)
+        FfiConverterSequenceTypeManualEntry.write(value.contents, into: &buf)
+        FfiConverterSequenceTypeManualSection.write(value.sections, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManual_lift(_ buf: RustBuffer) throws -> Manual {
+    return try FfiConverterTypeManual.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManual_lower(_ value: Manual) -> RustBuffer {
+    return FfiConverterTypeManual.lower(value)
+}
+
+
+/**
+ * A line of the manual's Contents.
+ */
+public struct ManualEntry: Equatable, Hashable {
+    /**
+     * The section's title.
+     */
+    public var title: String
+    /**
+     * The section it leads to (a `ManualSection.anchor`).
+     */
+    public var anchor: String
+    /**
+     * A subsection, indented in the Contents.
+     */
+    public var nested: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The section's title.
+         */title: String, 
+        /**
+         * The section it leads to (a `ManualSection.anchor`).
+         */anchor: String, 
+        /**
+         * A subsection, indented in the Contents.
+         */nested: Bool) {
+        self.title = title
+        self.anchor = anchor
+        self.nested = nested
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ManualEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeManualEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ManualEntry {
+        return
+            try ManualEntry(
+                title: FfiConverterString.read(from: &buf), 
+                anchor: FfiConverterString.read(from: &buf), 
+                nested: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ManualEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.anchor, into: &buf)
+        FfiConverterBool.write(value.nested, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManualEntry_lift(_ buf: RustBuffer) throws -> ManualEntry {
+    return try FfiConverterTypeManualEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManualEntry_lower(_ value: ManualEntry) -> RustBuffer {
+    return FfiConverterTypeManualEntry.lower(value)
+}
+
+
+/**
+ * One section of the manual.
+ */
+public struct ManualSection: Equatable, Hashable {
+    /**
+     * The anchor GitHub gives the heading, so Contents links work in the
+     * app and on GitHub alike.
+     */
+    public var anchor: String
+    /**
+     * The heading line and everything up to the next heading, in Markdown
+     * (lay it out with `render_markdown`).
+     */
+    public var markdown: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The anchor GitHub gives the heading, so Contents links work in the
+         * app and on GitHub alike.
+         */anchor: String, 
+        /**
+         * The heading line and everything up to the next heading, in Markdown
+         * (lay it out with `render_markdown`).
+         */markdown: String) {
+        self.anchor = anchor
+        self.markdown = markdown
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ManualSection: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeManualSection: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ManualSection {
+        return
+            try ManualSection(
+                anchor: FfiConverterString.read(from: &buf), 
+                markdown: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ManualSection, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.anchor, into: &buf)
+        FfiConverterString.write(value.markdown, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManualSection_lift(_ buf: RustBuffer) throws -> ManualSection {
+    return try FfiConverterTypeManualSection.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeManualSection_lower(_ value: ManualSection) -> RustBuffer {
+    return FfiConverterTypeManualSection.lower(value)
+}
+
+
+/**
+ * The writing page's measurements, in pixels (at 96 to the inch).
+ */
+public struct PageLayout: Equatable, Hashable {
+    /**
+     * The widest the text column gets (the reading page uses it too).
+     */
+    public var columnWidth: Int32
+    /**
+     * Space between the wrapped rows of one paragraph line.
+     */
+    public var wrapGap: Int32
+    /**
+     * Space below each line.
+     */
+    public var lineGap: Int32
+    /**
+     * The writing size.
+     */
+    public var fontPx: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The widest the text column gets (the reading page uses it too).
+         */columnWidth: Int32, 
+        /**
+         * Space between the wrapped rows of one paragraph line.
+         */wrapGap: Int32, 
+        /**
+         * Space below each line.
+         */lineGap: Int32, 
+        /**
+         * The writing size.
+         */fontPx: Double) {
+        self.columnWidth = columnWidth
+        self.wrapGap = wrapGap
+        self.lineGap = lineGap
+        self.fontPx = fontPx
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PageLayout: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePageLayout: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PageLayout {
+        return
+            try PageLayout(
+                columnWidth: FfiConverterInt32.read(from: &buf), 
+                wrapGap: FfiConverterInt32.read(from: &buf), 
+                lineGap: FfiConverterInt32.read(from: &buf), 
+                fontPx: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PageLayout, into buf: inout [UInt8]) {
+        FfiConverterInt32.write(value.columnWidth, into: &buf)
+        FfiConverterInt32.write(value.wrapGap, into: &buf)
+        FfiConverterInt32.write(value.lineGap, into: &buf)
+        FfiConverterDouble.write(value.fontPx, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePageLayout_lift(_ buf: RustBuffer) throws -> PageLayout {
+    return try FfiConverterTypePageLayout.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePageLayout_lower(_ value: PageLayout) -> RustBuffer {
+    return FfiConverterTypePageLayout.lower(value)
+}
+
+
+/**
+ * A profile: one person's shelves.
+ */
+public struct Profile: Equatable, Hashable {
+    /**
+     * The profile's id.
+     */
+    public var id: String
+    /**
+     * The name on the "Who's reading?" page. Unique.
+     */
+    public var name: String
+    /**
+     * Optional contact sent to Open Library with searches, as it asks of
+     * API users. Always a valid address when set.
+     */
     public var email: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, email: String?) {
+    public init(
+        /**
+         * The profile's id.
+         */id: String, 
+        /**
+         * The name on the "Who's reading?" page. Unique.
+         */name: String, 
+        /**
+         * Optional contact sent to Open Library with searches, as it asks of
+         * API users. Always a valid address when set.
+         */email: String?) {
         self.id = id
         self.name = name
         self.email = email
@@ -693,16 +2563,857 @@ public func FfiConverterTypeProfile_lower(_ value: Profile) -> RustBuffer {
 
 
 /**
+ * One profile's settings. Read them with `Journal::settings`, change any
+ * field and pass the whole record to `Journal::update_settings`.
+ */
+public struct ProfileSettings: Equatable, Hashable {
+    /**
+     * Whose settings these are.
+     */
+    public var userId: String
+    /**
+     * Light, dark or the system's.
+     */
+    public var theme: Theme
+    /**
+     * The accent color, `#rrggbb` (one of `accents()`, or any color).
+     */
+    public var accent: String
+    /**
+     * The typeface of titles and headings.
+     */
+    public var headingFont: HeadingFont
+    /**
+     * The typeface of the writing page.
+     */
+    public var writingFont: WritingFont
+    /**
+     * The writing size in points, 10 to 28.
+     */
+    public var writingSize: UInt32
+    /**
+     * Space between lines on the writing page.
+     */
+    public var lineSpacing: LineSpacing
+    /**
+     * How wide the writing column gets.
+     */
+    public var pageWidth: PageWidth
+    /**
+     * Whether the writing page opens in focus mode.
+     */
+    public var focusDefault: Bool
+    /**
+     * How dates are written.
+     */
+    public var dateFormat: DateFormat
+    /**
+     * The first day of the week in date pickers.
+     */
+    public var weekStart: WeekStart
+    /**
+     * The shelf the home page opens on.
+     */
+    public var startShelf: Shelf
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Whose settings these are.
+         */userId: String, 
+        /**
+         * Light, dark or the system's.
+         */theme: Theme, 
+        /**
+         * The accent color, `#rrggbb` (one of `accents()`, or any color).
+         */accent: String, 
+        /**
+         * The typeface of titles and headings.
+         */headingFont: HeadingFont, 
+        /**
+         * The typeface of the writing page.
+         */writingFont: WritingFont, 
+        /**
+         * The writing size in points, 10 to 28.
+         */writingSize: UInt32, 
+        /**
+         * Space between lines on the writing page.
+         */lineSpacing: LineSpacing, 
+        /**
+         * How wide the writing column gets.
+         */pageWidth: PageWidth, 
+        /**
+         * Whether the writing page opens in focus mode.
+         */focusDefault: Bool, 
+        /**
+         * How dates are written.
+         */dateFormat: DateFormat, 
+        /**
+         * The first day of the week in date pickers.
+         */weekStart: WeekStart, 
+        /**
+         * The shelf the home page opens on.
+         */startShelf: Shelf) {
+        self.userId = userId
+        self.theme = theme
+        self.accent = accent
+        self.headingFont = headingFont
+        self.writingFont = writingFont
+        self.writingSize = writingSize
+        self.lineSpacing = lineSpacing
+        self.pageWidth = pageWidth
+        self.focusDefault = focusDefault
+        self.dateFormat = dateFormat
+        self.weekStart = weekStart
+        self.startShelf = startShelf
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProfileSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProfileSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProfileSettings {
+        return
+            try ProfileSettings(
+                userId: FfiConverterString.read(from: &buf), 
+                theme: FfiConverterTypeTheme.read(from: &buf), 
+                accent: FfiConverterString.read(from: &buf), 
+                headingFont: FfiConverterTypeHeadingFont.read(from: &buf), 
+                writingFont: FfiConverterTypeWritingFont.read(from: &buf), 
+                writingSize: FfiConverterUInt32.read(from: &buf), 
+                lineSpacing: FfiConverterTypeLineSpacing.read(from: &buf), 
+                pageWidth: FfiConverterTypePageWidth.read(from: &buf), 
+                focusDefault: FfiConverterBool.read(from: &buf), 
+                dateFormat: FfiConverterTypeDateFormat.read(from: &buf), 
+                weekStart: FfiConverterTypeWeekStart.read(from: &buf), 
+                startShelf: FfiConverterTypeShelf.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProfileSettings, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.userId, into: &buf)
+        FfiConverterTypeTheme.write(value.theme, into: &buf)
+        FfiConverterString.write(value.accent, into: &buf)
+        FfiConverterTypeHeadingFont.write(value.headingFont, into: &buf)
+        FfiConverterTypeWritingFont.write(value.writingFont, into: &buf)
+        FfiConverterUInt32.write(value.writingSize, into: &buf)
+        FfiConverterTypeLineSpacing.write(value.lineSpacing, into: &buf)
+        FfiConverterTypePageWidth.write(value.pageWidth, into: &buf)
+        FfiConverterBool.write(value.focusDefault, into: &buf)
+        FfiConverterTypeDateFormat.write(value.dateFormat, into: &buf)
+        FfiConverterTypeWeekStart.write(value.weekStart, into: &buf)
+        FfiConverterTypeShelf.write(value.startShelf, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProfileSettings_lift(_ buf: RustBuffer) throws -> ProfileSettings {
+    return try FfiConverterTypeProfileSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProfileSettings_lower(_ value: ProfileSettings) -> RustBuffer {
+    return FfiConverterTypeProfileSettings.lower(value)
+}
+
+
+/**
+ * A stretch of text with one set of styles. A `\n` in `text` is a line
+ * break the writer typed. May be empty (see `Block`).
+ */
+public struct Run: Equatable, Hashable {
+    /**
+     * The text.
+     */
+    public var text: String
+    /**
+     * Outermost first, in the order they were written.
+     */
+    public var styles: [RunStyle]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The text.
+         */text: String, 
+        /**
+         * Outermost first, in the order they were written.
+         */styles: [RunStyle]) {
+        self.text = text
+        self.styles = styles
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Run: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRun: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Run {
+        return
+            try Run(
+                text: FfiConverterString.read(from: &buf), 
+                styles: FfiConverterSequenceTypeRunStyle.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Run, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterSequenceTypeRunStyle.write(value.styles, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRun_lift(_ buf: RustBuffer) throws -> Run {
+    return try FfiConverterTypeRun.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRun_lower(_ value: Run) -> RustBuffer {
+    return FfiConverterTypeRun.lower(value)
+}
+
+
+/**
+ * What saving the writing page's text gives back.
+ */
+public struct SaveResult: Equatable, Hashable {
+    /**
+     * The word count of what was saved, for the status line.
+     */
+    public var words: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The word count of what was saved, for the status line.
+         */words: UInt32) {
+        self.words = words
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SaveResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSaveResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SaveResult {
+        return
+            try SaveResult(
+                words: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SaveResult, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.words, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSaveResult_lift(_ buf: RustBuffer) throws -> SaveResult {
+    return try FfiConverterTypeSaveResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSaveResult_lower(_ value: SaveResult) -> RustBuffer {
+    return FfiConverterTypeSaveResult.lower(value)
+}
+
+
+/**
+ * A book found on Open Library, not saved yet. Pass it back to
+ * `Journal::save_search_result` to keep it.
+ */
+public struct SearchResult: Equatable, Hashable {
+    /**
+     * Open Library's key, like `/works/OL45804W`.
+     */
+    public var externalId: String
+    /**
+     * The title.
+     */
+    public var title: String
+    /**
+     * The subtitle, if any.
+     */
+    public var subtitle: String?
+    /**
+     * The first author.
+     */
+    public var author: String?
+    /**
+     * One ISBN.
+     */
+    public var isbn: String?
+    /**
+     * The first publisher.
+     */
+    public var publisher: String?
+    /**
+     * The long description. Search results don't have one; it's fetched
+     * when the book is saved.
+     */
+    public var description: String?
+    /**
+     * The year it was first published, as Open Library writes it.
+     */
+    public var publishedDate: String?
+    /**
+     * The typical page count.
+     */
+    public var pageCount: Int64?
+    /**
+     * An https link to the cover image, for showing in the results. The
+     * cover is downloaded when the book is saved.
+     */
+    public var coverUrl: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Open Library's key, like `/works/OL45804W`.
+         */externalId: String, 
+        /**
+         * The title.
+         */title: String, 
+        /**
+         * The subtitle, if any.
+         */subtitle: String?, 
+        /**
+         * The first author.
+         */author: String?, 
+        /**
+         * One ISBN.
+         */isbn: String?, 
+        /**
+         * The first publisher.
+         */publisher: String?, 
+        /**
+         * The long description. Search results don't have one; it's fetched
+         * when the book is saved.
+         */description: String?, 
+        /**
+         * The year it was first published, as Open Library writes it.
+         */publishedDate: String?, 
+        /**
+         * The typical page count.
+         */pageCount: Int64?, 
+        /**
+         * An https link to the cover image, for showing in the results. The
+         * cover is downloaded when the book is saved.
+         */coverUrl: String?) {
+        self.externalId = externalId
+        self.title = title
+        self.subtitle = subtitle
+        self.author = author
+        self.isbn = isbn
+        self.publisher = publisher
+        self.description = description
+        self.publishedDate = publishedDate
+        self.pageCount = pageCount
+        self.coverUrl = coverUrl
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchResult {
+        return
+            try SearchResult(
+                externalId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                subtitle: FfiConverterOptionString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                isbn: FfiConverterOptionString.read(from: &buf), 
+                publisher: FfiConverterOptionString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                publishedDate: FfiConverterOptionString.read(from: &buf), 
+                pageCount: FfiConverterOptionInt64.read(from: &buf), 
+                coverUrl: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchResult, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.externalId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.subtitle, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.isbn, into: &buf)
+        FfiConverterOptionString.write(value.publisher, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.publishedDate, into: &buf)
+        FfiConverterOptionInt64.write(value.pageCount, into: &buf)
+        FfiConverterOptionString.write(value.coverUrl, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> SearchResult {
+    return try FfiConverterTypeSearchResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
+    return FfiConverterTypeSearchResult.lower(value)
+}
+
+
+/**
+ * One book on a shelf.
+ */
+public struct ShelfEntry: Equatable, Hashable {
+    /**
+     * The entry's id, for `Journal::entry` and the rest.
+     */
+    public var summaryId: String
+    /**
+     * The book's id.
+     */
+    public var bookId: String
+    /**
+     * The book's title.
+     */
+    public var title: String
+    /**
+     * The book's author.
+     */
+    public var author: String?
+    /**
+     * The cover image's absolute path, if there is one.
+     */
+    public var coverPath: String?
+    /**
+     * "Finished Sep 5, 2026 · 10 days"; empty when there's nothing to say.
+     */
+    public var meta: String
+    /**
+     * A plain-text taste of what was written; may be empty.
+     */
+    public var excerpt: String
+    /**
+     * What to show when `excerpt` is empty ("Nothing written yet."), if
+     * anything.
+     */
+    public var emptyNote: String?
+    /**
+     * The lowercased text the shelf search looks in: pass it to
+     * `matches` with the `query_terms` of the search.
+     */
+    public var haystack: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The entry's id, for `Journal::entry` and the rest.
+         */summaryId: String, 
+        /**
+         * The book's id.
+         */bookId: String, 
+        /**
+         * The book's title.
+         */title: String, 
+        /**
+         * The book's author.
+         */author: String?, 
+        /**
+         * The cover image's absolute path, if there is one.
+         */coverPath: String?, 
+        /**
+         * "Finished Sep 5, 2026 · 10 days"; empty when there's nothing to say.
+         */meta: String, 
+        /**
+         * A plain-text taste of what was written; may be empty.
+         */excerpt: String, 
+        /**
+         * What to show when `excerpt` is empty ("Nothing written yet."), if
+         * anything.
+         */emptyNote: String?, 
+        /**
+         * The lowercased text the shelf search looks in: pass it to
+         * `matches` with the `query_terms` of the search.
+         */haystack: String) {
+        self.summaryId = summaryId
+        self.bookId = bookId
+        self.title = title
+        self.author = author
+        self.coverPath = coverPath
+        self.meta = meta
+        self.excerpt = excerpt
+        self.emptyNote = emptyNote
+        self.haystack = haystack
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ShelfEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShelfEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ShelfEntry {
+        return
+            try ShelfEntry(
+                summaryId: FfiConverterString.read(from: &buf), 
+                bookId: FfiConverterString.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                coverPath: FfiConverterOptionString.read(from: &buf), 
+                meta: FfiConverterString.read(from: &buf), 
+                excerpt: FfiConverterString.read(from: &buf), 
+                emptyNote: FfiConverterOptionString.read(from: &buf), 
+                haystack: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ShelfEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.summaryId, into: &buf)
+        FfiConverterString.write(value.bookId, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.coverPath, into: &buf)
+        FfiConverterString.write(value.meta, into: &buf)
+        FfiConverterString.write(value.excerpt, into: &buf)
+        FfiConverterOptionString.write(value.emptyNote, into: &buf)
+        FfiConverterString.write(value.haystack, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfEntry_lift(_ buf: RustBuffer) throws -> ShelfEntry {
+    return try FfiConverterTypeShelfEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfEntry_lower(_ value: ShelfEntry) -> RustBuffer {
+    return FfiConverterTypeShelfEntry.lower(value)
+}
+
+
+/**
+ * One shelf of the home page, ready to draw, in display order.
+ */
+public struct ShelfView: Equatable, Hashable {
+    /**
+     * Year headings (Finished shelf only) and entries, in order.
+     */
+    public var rows: [ShelfRow]
+    /**
+     * Books on the shelf.
+     */
+    public var total: UInt32
+    /**
+     * Books finished this calendar year (Finished shelf only, else 0).
+     */
+    public var thisYear: UInt32
+    /**
+     * "12 books · 3 this year", under the shelf's heading.
+     */
+    public var countLine: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Year headings (Finished shelf only) and entries, in order.
+         */rows: [ShelfRow], 
+        /**
+         * Books on the shelf.
+         */total: UInt32, 
+        /**
+         * Books finished this calendar year (Finished shelf only, else 0).
+         */thisYear: UInt32, 
+        /**
+         * "12 books · 3 this year", under the shelf's heading.
+         */countLine: String) {
+        self.rows = rows
+        self.total = total
+        self.thisYear = thisYear
+        self.countLine = countLine
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ShelfView: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShelfView: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ShelfView {
+        return
+            try ShelfView(
+                rows: FfiConverterSequenceTypeShelfRow.read(from: &buf), 
+                total: FfiConverterUInt32.read(from: &buf), 
+                thisYear: FfiConverterUInt32.read(from: &buf), 
+                countLine: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ShelfView, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeShelfRow.write(value.rows, into: &buf)
+        FfiConverterUInt32.write(value.total, into: &buf)
+        FfiConverterUInt32.write(value.thisYear, into: &buf)
+        FfiConverterString.write(value.countLine, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfView_lift(_ buf: RustBuffer) throws -> ShelfView {
+    return try FfiConverterTypeShelfView.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfView_lower(_ value: ShelfView) -> RustBuffer {
+    return FfiConverterTypeShelfView.lower(value)
+}
+
+
+/**
+ * One action and its keys.
+ */
+public struct Shortcut: Equatable, Hashable {
+    /**
+     * What it does ("Bold").
+     */
+    public var title: String
+    /**
+     * The keys.
+     */
+    public var accel: Accel
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * What it does ("Bold").
+         */title: String, 
+        /**
+         * The keys.
+         */accel: Accel) {
+        self.title = title
+        self.accel = accel
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Shortcut: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShortcut: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Shortcut {
+        return
+            try Shortcut(
+                title: FfiConverterString.read(from: &buf), 
+                accel: FfiConverterTypeAccel.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Shortcut, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterTypeAccel.write(value.accel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcut_lift(_ buf: RustBuffer) throws -> Shortcut {
+    return try FfiConverterTypeShortcut.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcut_lower(_ value: Shortcut) -> RustBuffer {
+    return FfiConverterTypeShortcut.lower(value)
+}
+
+
+/**
+ * A titled group of shortcuts ("Writing").
+ */
+public struct ShortcutGroup: Equatable, Hashable {
+    /**
+     * The group's title.
+     */
+    public var title: String
+    /**
+     * Its shortcuts, in the order shown.
+     */
+    public var items: [Shortcut]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The group's title.
+         */title: String, 
+        /**
+         * Its shortcuts, in the order shown.
+         */items: [Shortcut]) {
+        self.title = title
+        self.items = items
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ShortcutGroup: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShortcutGroup: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ShortcutGroup {
+        return
+            try ShortcutGroup(
+                title: FfiConverterString.read(from: &buf), 
+                items: FfiConverterSequenceTypeShortcut.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ShortcutGroup, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterSequenceTypeShortcut.write(value.items, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcutGroup_lift(_ buf: RustBuffer) throws -> ShortcutGroup {
+    return try FfiConverterTypeShortcutGroup.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcutGroup_lower(_ value: ShortcutGroup) -> RustBuffer {
+    return FfiConverterTypeShortcutGroup.lower(value)
+}
+
+
+/**
  * `start..end` in UTF-16 code units, as NSTextView and RichEditBox count.
  */
 public struct StyleSpan: Equatable, Hashable {
+    /**
+     * What the text is.
+     */
     public var kind: StyleKind
+    /**
+     * Where it starts.
+     */
     public var start: UInt32
+    /**
+     * Where it ends (exclusive).
+     */
     public var end: UInt32
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(kind: StyleKind, start: UInt32, end: UInt32) {
+    public init(
+        /**
+         * What the text is.
+         */kind: StyleKind, 
+        /**
+         * Where it starts.
+         */start: UInt32, 
+        /**
+         * Where it ends (exclusive).
+         */end: UInt32) {
         self.kind = kind
         self.start = start
         self.end = end
@@ -754,20 +3465,531 @@ public func FfiConverterTypeStyleSpan_lower(_ value: StyleSpan) -> RustBuffer {
 
 
 /**
- * Errors as the apps see them. Messages are written for people.
+ * One formatting button press: replace `start..end` with `replacement`
+ * (as one undo step), then select `new_sel_start..new_sel_end` in the
+ * edited text (equal: just place the caret). UTF-16 code units.
+ */
+public struct TextEdit: Equatable, Hashable {
+    /**
+     * Start of the text to replace.
+     */
+    public var start: UInt32
+    /**
+     * End of the text to replace (exclusive).
+     */
+    public var end: UInt32
+    /**
+     * What goes there.
+     */
+    public var replacement: String
+    /**
+     * The new selection's start, in the edited text.
+     */
+    public var newSelStart: UInt32
+    /**
+     * The new selection's end, in the edited text.
+     */
+    public var newSelEnd: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Start of the text to replace.
+         */start: UInt32, 
+        /**
+         * End of the text to replace (exclusive).
+         */end: UInt32, 
+        /**
+         * What goes there.
+         */replacement: String, 
+        /**
+         * The new selection's start, in the edited text.
+         */newSelStart: UInt32, 
+        /**
+         * The new selection's end, in the edited text.
+         */newSelEnd: UInt32) {
+        self.start = start
+        self.end = end
+        self.replacement = replacement
+        self.newSelStart = newSelStart
+        self.newSelEnd = newSelEnd
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TextEdit: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTextEdit: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TextEdit {
+        return
+            try TextEdit(
+                start: FfiConverterUInt32.read(from: &buf), 
+                end: FfiConverterUInt32.read(from: &buf), 
+                replacement: FfiConverterString.read(from: &buf), 
+                newSelStart: FfiConverterUInt32.read(from: &buf), 
+                newSelEnd: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TextEdit, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.start, into: &buf)
+        FfiConverterUInt32.write(value.end, into: &buf)
+        FfiConverterString.write(value.replacement, into: &buf)
+        FfiConverterUInt32.write(value.newSelStart, into: &buf)
+        FfiConverterUInt32.write(value.newSelEnd, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTextEdit_lift(_ buf: RustBuffer) throws -> TextEdit {
+    return try FfiConverterTypeTextEdit.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTextEdit_lower(_ value: TextEdit) -> RustBuffer {
+    return FfiConverterTypeTextEdit.lower(value)
+}
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The keys for a shortcut.
+ */
+
+public enum Accel: Equatable, Hashable {
+    
+    /**
+     * A GTK accelerator string (Linux), like `<Control>n`.
+     */
+    case gtk(
+        /**
+         * As `gtk::accelerator_parse` reads it.
+         */accelerator: String
+    )
+    /**
+     * A key and its modifiers (Mac and Windows).
+     */
+    case keys(
+        /**
+         * The key and modifiers.
+         */combo: KeyCombo
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Accel: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccel: FfiConverterRustBuffer {
+    typealias SwiftType = Accel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Accel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .gtk(accelerator: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .keys(combo: try FfiConverterTypeKeyCombo.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Accel, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .gtk(accelerator):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(accelerator, into: &buf)
+            
+        
+        case let .keys(combo):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeKeyCombo.write(combo, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccel_lift(_ buf: RustBuffer) throws -> Accel {
+    return try FfiConverterTypeAccel.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccel_lower(_ value: Accel) -> RustBuffer {
+    return FfiConverterTypeAccel.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A block of Markdown laid out for reading. The model is flat: lists are
+ * items with a depth. `ListEnd`, `ItemText` and empty runs exist for the
+ * GTK app's exact spacing; other apps may ignore them.
+ */
+
+public enum Block: Equatable, Hashable {
+    
+    /**
+     * `#` to `######`.
+     */
+    case heading(
+        /**
+         * 1 to 6.
+         */level: UInt8, 
+        /**
+         * The heading's text.
+         */runs: [Run]
+    )
+    /**
+     * A paragraph. A blank line follows it.
+     */
+    case paragraph(
+        /**
+         * The paragraph's text.
+         */runs: [Run]
+    )
+    /**
+     * A list item, its marker indented `depth` levels (0 = top level).
+     * In a loose list (blank lines between items) a blank line follows.
+     */
+    case listItem(
+        /**
+         * How deeply nested the list is.
+         */depth: UInt32, 
+        /**
+         * A bullet, or the item's number.
+         */marker: ListMarker, 
+        /**
+         * The text right after the marker.
+         */runs: [Run], 
+        /**
+         * Whether a blank line follows.
+         */loose: Bool
+    )
+    /**
+     * More of a list item's text, after a block inside the item. Rare.
+     */
+    case itemText(
+        /**
+         * The text.
+         */runs: [Run]
+    )
+    /**
+     * A list ended; `depth` 0 means the whole list is over.
+     */
+    case listEnd(
+        /**
+         * The ended list's depth.
+         */depth: UInt32
+    )
+    /**
+     * A code block, as written (usually ending in `\n`).
+     */
+    case codeBlock(
+        /**
+         * The code.
+         */text: String
+    )
+    /**
+     * Raw HTML, as written. Shown as text, never as HTML.
+     */
+    case html(
+        /**
+         * The HTML source.
+         */text: String
+    )
+    /**
+     * `---` on its own line.
+     */
+    case rule
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Block: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlock: FfiConverterRustBuffer {
+    typealias SwiftType = Block
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Block {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .heading(level: try FfiConverterUInt8.read(from: &buf), runs: try FfiConverterSequenceTypeRun.read(from: &buf)
+        )
+        
+        case 2: return .paragraph(runs: try FfiConverterSequenceTypeRun.read(from: &buf)
+        )
+        
+        case 3: return .listItem(depth: try FfiConverterUInt32.read(from: &buf), marker: try FfiConverterTypeListMarker.read(from: &buf), runs: try FfiConverterSequenceTypeRun.read(from: &buf), loose: try FfiConverterBool.read(from: &buf)
+        )
+        
+        case 4: return .itemText(runs: try FfiConverterSequenceTypeRun.read(from: &buf)
+        )
+        
+        case 5: return .listEnd(depth: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 6: return .codeBlock(text: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 7: return .html(text: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 8: return .rule
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Block, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .heading(level,runs):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt8.write(level, into: &buf)
+            FfiConverterSequenceTypeRun.write(runs, into: &buf)
+            
+        
+        case let .paragraph(runs):
+            writeInt(&buf, Int32(2))
+            FfiConverterSequenceTypeRun.write(runs, into: &buf)
+            
+        
+        case let .listItem(depth,marker,runs,loose):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt32.write(depth, into: &buf)
+            FfiConverterTypeListMarker.write(marker, into: &buf)
+            FfiConverterSequenceTypeRun.write(runs, into: &buf)
+            FfiConverterBool.write(loose, into: &buf)
+            
+        
+        case let .itemText(runs):
+            writeInt(&buf, Int32(4))
+            FfiConverterSequenceTypeRun.write(runs, into: &buf)
+            
+        
+        case let .listEnd(depth):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(depth, into: &buf)
+            
+        
+        case let .codeBlock(text):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(text, into: &buf)
+            
+        
+        case let .html(text):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(text, into: &buf)
+            
+        
+        case .rule:
+            writeInt(&buf, Int32(8))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlock_lift(_ buf: RustBuffer) throws -> Block {
+    return try FfiConverterTypeBlock.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlock_lower(_ value: Block) -> RustBuffer {
+    return FfiConverterTypeBlock.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Which build is running. A preview keeps its journal in its own folder,
+ * so trying one out never touches the real one.
+ */
+
+public enum Channel: Equatable, Hashable {
+    
+    /**
+     * The released app.
+     */
+    case stable
+    /**
+     * A test build, with a journal of its own.
+     */
+    case preview
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Channel: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChannel: FfiConverterRustBuffer {
+    typealias SwiftType = Channel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Channel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .stable
+        
+        case 2: return .preview
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Channel, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .stable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .preview:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChannel_lift(_ buf: RustBuffer) throws -> Channel {
+    return try FfiConverterTypeChannel.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChannel_lower(_ value: Channel) -> RustBuffer {
+    return FfiConverterTypeChannel.lower(value)
+}
+
+
+
+/**
+ * Errors as the apps see them. Every `message` is a sentence for people,
+ * ready to show as is ("That name is already taken.").
  */
 public enum CoreError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
-    case Database(message: String
+    /**
+     * The journal file couldn't be read or written.
+     */
+    case Database(
+        /**
+         * The sentence to show.
+         */message: String
     )
-    case Network(message: String
+    /**
+     * Open Library couldn't be reached, or answered with an error.
+     */
+    case Network(
+        /**
+         * The sentence to show.
+         */message: String
     )
-    case Io(message: String
+    /**
+     * A file or folder couldn't be read or written.
+     */
+    case Io(
+        /**
+         * The sentence to show.
+         */message: String
     )
-    case NotFound
-    case Invalid(message: String
+    /**
+     * No such profile, entry or book (it may have just been deleted).
+     */
+    case NotFound(
+        /**
+         * The sentence to show.
+         */message: String
+    )
+    /**
+     * Something passed in was refused: a blank or taken name, a bad
+     * email or date, a folder that isn't one.
+     */
+    case Invalid(
+        /**
+         * The sentence to show.
+         */message: String
+    )
+    /**
+     * The journal was made by a newer Bookshelf, with a format (`found`)
+     * newer than this one understands (`supported`). Ask for an update.
+     */
+    case NewerJournal(
+        /**
+         * The journal's format version.
+         */found: UInt32, 
+        /**
+         * The newest format this build understands.
+         */supported: UInt32, 
+        /**
+         * The sentence to show.
+         */message: String
     )
 
     
@@ -807,8 +4029,15 @@ public struct FfiConverterTypeCoreError: FfiConverterRustBuffer {
         case 3: return .Io(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 4: return .NotFound
+        case 4: return .NotFound(
+            message: try FfiConverterString.read(from: &buf)
+            )
         case 5: return .Invalid(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 6: return .NewerJournal(
+            found: try FfiConverterUInt32.read(from: &buf), 
+            supported: try FfiConverterUInt32.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
 
@@ -838,12 +4067,20 @@ public struct FfiConverterTypeCoreError: FfiConverterRustBuffer {
             FfiConverterString.write(message, into: &buf)
             
         
-        case .NotFound:
+        case let .NotFound(message):
             writeInt(&buf, Int32(4))
-        
+            FfiConverterString.write(message, into: &buf)
+            
         
         case let .Invalid(message):
             writeInt(&buf, Int32(5))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .NewerJournal(found,supported,message):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt32.write(found, into: &buf)
+            FfiConverterUInt32.write(supported, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         }
@@ -867,15 +4104,1182 @@ public func FfiConverterTypeCoreError_lower(_ value: CoreError) -> RustBuffer {
 
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * How dates are written in the app. The core writes them (in meta
+ * lines, for one); the apps use it for their date pickers.
+ */
+
+public enum DateFormat: Equatable, Hashable {
+    
+    /**
+     * "Sep 20, 2026".
+     */
+    case long
+    /**
+     * "09/20/2026".
+     */
+    case monthDayYear
+    /**
+     * "20/09/2026".
+     */
+    case dayMonthYear
+    /**
+     * "2026-09-20".
+     */
+    case yearMonthDay
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DateFormat: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDateFormat: FfiConverterRustBuffer {
+    typealias SwiftType = DateFormat
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DateFormat {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .long
+        
+        case 2: return .monthDayYear
+        
+        case 3: return .dayMonthYear
+        
+        case 4: return .yearMonthDay
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DateFormat, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .long:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .monthDayYear:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .dayMonthYear:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .yearMonthDay:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDateFormat_lift(_ buf: RustBuffer) throws -> DateFormat {
+    return try FfiConverterTypeDateFormat.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDateFormat_lower(_ value: DateFormat) -> RustBuffer {
+    return FfiConverterTypeDateFormat.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A button on the formatting bar.
+ */
+
+public enum FormatAction: Equatable, Hashable {
+    
+    /**
+     * `**bold**`.
+     */
+    case bold
+    /**
+     * `*italic*`.
+     */
+    case italic
+    /**
+     * `~~struck~~`.
+     */
+    case strike
+    /**
+     * `` `code` ``.
+     */
+    case code
+    /**
+     * `[text](url)`.
+     */
+    case link
+    /**
+     * `#` to `######`; pressing the same level again removes it. Levels
+     * outside 1 to 6 are taken as the nearest one.
+     */
+    case heading(
+        /**
+         * 1 to 6.
+         */level: UInt8
+    )
+    /**
+     * `> quote` lines.
+     */
+    case quote
+    /**
+     * `- ` bullet lines.
+     */
+    case bullets
+    /**
+     * `1. ` numbered lines.
+     */
+    case numbered
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension FormatAction: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFormatAction: FfiConverterRustBuffer {
+    typealias SwiftType = FormatAction
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FormatAction {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bold
+        
+        case 2: return .italic
+        
+        case 3: return .strike
+        
+        case 4: return .code
+        
+        case 5: return .link
+        
+        case 6: return .heading(level: try FfiConverterUInt8.read(from: &buf)
+        )
+        
+        case 7: return .quote
+        
+        case 8: return .bullets
+        
+        case 9: return .numbered
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: FormatAction, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .bold:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .italic:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .strike:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .code:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .link:
+            writeInt(&buf, Int32(5))
+        
+        
+        case let .heading(level):
+            writeInt(&buf, Int32(6))
+            FfiConverterUInt8.write(level, into: &buf)
+            
+        
+        case .quote:
+            writeInt(&buf, Int32(7))
+        
+        
+        case .bullets:
+            writeInt(&buf, Int32(8))
+        
+        
+        case .numbered:
+            writeInt(&buf, Int32(9))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFormatAction_lift(_ buf: RustBuffer) throws -> FormatAction {
+    return try FfiConverterTypeFormatAction.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFormatAction_lower(_ value: FormatAction) -> RustBuffer {
+    return FfiConverterTypeFormatAction.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The typeface of titles and headings.
+ */
+
+public enum HeadingFont: Equatable, Hashable {
+    
+    /**
+     * Source Serif.
+     */
+    case serif
+    /**
+     * The system's sans-serif.
+     */
+    case sans
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension HeadingFont: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeHeadingFont: FfiConverterRustBuffer {
+    typealias SwiftType = HeadingFont
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> HeadingFont {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .serif
+        
+        case 2: return .sans
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: HeadingFont, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .serif:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .sans:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadingFont_lift(_ buf: RustBuffer) throws -> HeadingFont {
+    return try FfiConverterTypeHeadingFont.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeHeadingFont_lower(_ value: HeadingFont) -> RustBuffer {
+    return FfiConverterTypeHeadingFont.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Space between lines on the writing page (see [`PageLayout`]).
+ */
+
+public enum LineSpacing: Equatable, Hashable {
+    
+    /**
+     * Close together.
+     */
+    case tight
+    /**
+     * "Comfortable".
+     */
+    case normal
+    /**
+     * Generous.
+     */
+    case airy
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LineSpacing: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLineSpacing: FfiConverterRustBuffer {
+    typealias SwiftType = LineSpacing
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LineSpacing {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .tight
+        
+        case 2: return .normal
+        
+        case 3: return .airy
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LineSpacing, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .tight:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .normal:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .airy:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLineSpacing_lift(_ buf: RustBuffer) throws -> LineSpacing {
+    return try FfiConverterTypeLineSpacing.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLineSpacing_lower(_ value: LineSpacing) -> RustBuffer {
+    return FfiConverterTypeLineSpacing.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A list item's marker.
+ */
+
+public enum ListMarker: Equatable, Hashable {
+    
+    /**
+     * `•`.
+     */
+    case bullet
+    /**
+     * `3.`: a numbered list counts up from its first number.
+     */
+    case number(
+        /**
+         * The item's number.
+         */value: UInt64
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ListMarker: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeListMarker: FfiConverterRustBuffer {
+    typealias SwiftType = ListMarker
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ListMarker {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bullet
+        
+        case 2: return .number(value: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ListMarker, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .bullet:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .number(value):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(value, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeListMarker_lift(_ buf: RustBuffer) throws -> ListMarker {
+    return try FfiConverterTypeListMarker.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeListMarker_lower(_ value: ListMarker) -> RustBuffer {
+    return FfiConverterTypeListMarker.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * How serious a log message is.
+ */
+
+public enum LogLevel: Equatable, Hashable {
+    
+    /**
+     * Something failed.
+     */
+    case error
+    /**
+     * Something went wrong but was worked around (a cover that didn't
+     * download, say).
+     */
+    case warn
+    /**
+     * A note.
+     */
+    case info
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LogLevel: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLogLevel: FfiConverterRustBuffer {
+    typealias SwiftType = LogLevel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LogLevel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .error
+        
+        case 2: return .warn
+        
+        case 3: return .info
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LogLevel, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .error:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .warn:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .info:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLogLevel_lift(_ buf: RustBuffer) throws -> LogLevel {
+    return try FfiConverterTypeLogLevel.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLogLevel_lower(_ value: LogLevel) -> RustBuffer {
+    return FfiConverterTypeLogLevel.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * How wide the writing and reading column gets (see [`PageLayout`]).
+ */
+
+public enum PageWidth: Equatable, Hashable {
+    
+    /**
+     * 600 px.
+     */
+    case narrow
+    /**
+     * 720 px.
+     */
+    case medium
+    /**
+     * 900 px.
+     */
+    case wide
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PageWidth: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePageWidth: FfiConverterRustBuffer {
+    typealias SwiftType = PageWidth
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PageWidth {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .narrow
+        
+        case 2: return .medium
+        
+        case 3: return .wide
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PageWidth, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .narrow:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .medium:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .wide:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePageWidth_lift(_ buf: RustBuffer) throws -> PageWidth {
+    return try FfiConverterTypePageWidth.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePageWidth_lower(_ value: PageWidth) -> RustBuffer {
+    return FfiConverterTypePageWidth.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Which app's shortcuts to list.
+ */
+
+public enum Platform: Equatable, Hashable {
+    
+    /**
+     * GTK accelerators.
+     */
+    case linux
+    /**
+     * Key combos with ⌘.
+     */
+    case mac
+    /**
+     * Key combos with Ctrl.
+     */
+    case windows
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Platform: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlatform: FfiConverterRustBuffer {
+    typealias SwiftType = Platform
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Platform {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .linux
+        
+        case 2: return .mac
+        
+        case 3: return .windows
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Platform, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .linux:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .mac:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .windows:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlatform_lift(_ buf: RustBuffer) throws -> Platform {
+    return try FfiConverterTypePlatform.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlatform_lower(_ value: Platform) -> RustBuffer {
+    return FfiConverterTypePlatform.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * An inline style. (Not `Style`, which WinUI already uses.)
+ */
+
+public enum RunStyle: Equatable, Hashable {
+    
+    /**
+     * Bold.
+     */
+    case bold
+    /**
+     * Italic.
+     */
+    case italic
+    /**
+     * Struck through.
+     */
+    case strike
+    /**
+     * Inline code. Always innermost.
+     */
+    case code
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension RunStyle: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRunStyle: FfiConverterRustBuffer {
+    typealias SwiftType = RunStyle
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RunStyle {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bold
+        
+        case 2: return .italic
+        
+        case 3: return .strike
+        
+        case 4: return .code
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: RunStyle, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .bold:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .italic:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .strike:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .code:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRunStyle_lift(_ buf: RustBuffer) throws -> RunStyle {
+    return try FfiConverterTypeRunStyle.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRunStyle_lower(_ value: RunStyle) -> RustBuffer {
+    return FfiConverterTypeRunStyle.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * One of the three shelves on the home page. A book's shelf follows
+ * from its dates: finished, started, or neither.
+ */
+
+public enum Shelf: Equatable, Hashable {
+    
+    /**
+     * Started, not finished.
+     */
+    case reading
+    /**
+     * Finished.
+     */
+    case finished
+    /**
+     * Not started yet ("Someday").
+     */
+    case eventually
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Shelf: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShelf: FfiConverterRustBuffer {
+    typealias SwiftType = Shelf
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Shelf {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .reading
+        
+        case 2: return .finished
+        
+        case 3: return .eventually
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Shelf, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .reading:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .finished:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .eventually:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelf_lift(_ buf: RustBuffer) throws -> Shelf {
+    return try FfiConverterTypeShelf.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelf_lower(_ value: Shelf) -> RustBuffer {
+    return FfiConverterTypeShelf.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A row on a shelf.
+ */
+
+public enum ShelfRow: Equatable, Hashable {
+    
+    /**
+     * "2026 · 12 books" between the Finished shelf's entries.
+     */
+    case yearHeading(
+        /**
+         * The year.
+         */year: Int32, 
+        /**
+         * Books finished that year.
+         */count: UInt32, 
+        /**
+         * "12 books".
+         */label: String
+    )
+    /**
+     * One book on the shelf.
+     */
+    case entry(
+        /**
+         * What the row shows.
+         */item: ShelfEntry
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ShelfRow: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShelfRow: FfiConverterRustBuffer {
+    typealias SwiftType = ShelfRow
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ShelfRow {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .yearHeading(year: try FfiConverterInt32.read(from: &buf), count: try FfiConverterUInt32.read(from: &buf), label: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .entry(item: try FfiConverterTypeShelfEntry.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ShelfRow, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .yearHeading(year,count,label):
+            writeInt(&buf, Int32(1))
+            FfiConverterInt32.write(year, into: &buf)
+            FfiConverterUInt32.write(count, into: &buf)
+            FfiConverterString.write(label, into: &buf)
+            
+        
+        case let .entry(item):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeShelfEntry.write(item, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfRow_lift(_ buf: RustBuffer) throws -> ShelfRow {
+    return try FfiConverterTypeShelfRow.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShelfRow_lower(_ value: ShelfRow) -> RustBuffer {
+    return FfiConverterTypeShelfRow.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A key on the keyboard.
+ */
+
+public enum ShortcutKey: Equatable, Hashable {
+    
+    /**
+     * The key that types this character: a lowercase letter, a digit or
+     * punctuation (`,`, `?`). For `?` the Shift it takes is implied, not
+     * in `shift`: AppKit takes "?" as the key equivalent as is; on
+     * Windows it's Shift + the `/` key (VK_OEM_2) on most layouts.
+     */
+    case character(
+        /**
+         * One character.
+         */text: String
+    )
+    /**
+     * Return (Enter).
+     */
+    case `return`
+    /**
+     * Escape.
+     */
+    case escape
+    /**
+     * F1 to F12.
+     */
+    case function(
+        /**
+         * 1 to 12.
+         */number: UInt8
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ShortcutKey: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeShortcutKey: FfiConverterRustBuffer {
+    typealias SwiftType = ShortcutKey
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ShortcutKey {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .character(text: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .`return`
+        
+        case 3: return .escape
+        
+        case 4: return .function(number: try FfiConverterUInt8.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ShortcutKey, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .character(text):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(text, into: &buf)
+            
+        
+        case .`return`:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .escape:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .function(number):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt8.write(number, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcutKey_lift(_ buf: RustBuffer) throws -> ShortcutKey {
+    return try FfiConverterTypeShortcutKey.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeShortcutKey_lower(_ value: ShortcutKey) -> RustBuffer {
+    return FfiConverterTypeShortcutKey.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * What a highlighted span of text is.
+ */
 
 public enum StyleKind: Equatable, Hashable {
     
+    /**
+     * A whole `# Heading` line.
+     */
     case heading
+    /**
+     * `**bold**`.
+     */
     case bold
+    /**
+     * `*italic*`.
+     */
     case italic
+    /**
+     * A whole `> quote` line.
+     */
     case quote
+    /**
+     * `` `code` ``.
+     */
     case code
+    /**
+     * `~~struck~~`.
+     */
     case strike
+    /**
+     * The Markdown marks themselves (`**`, `#`, `- `...), shown dimmed.
+     */
     case syntax
 
 
@@ -967,6 +5371,427 @@ public func FfiConverterTypeStyleKind_lower(_ value: StyleKind) -> RustBuffer {
 }
 
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Light or dark, or whatever the system uses.
+ */
+
+public enum Theme: Equatable, Hashable {
+    
+    /**
+     * Follow the system's appearance.
+     */
+    case system
+    /**
+     * Always light.
+     */
+    case light
+    /**
+     * Always dark.
+     */
+    case dark
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Theme: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTheme: FfiConverterRustBuffer {
+    typealias SwiftType = Theme
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Theme {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .system
+        
+        case 2: return .light
+        
+        case 3: return .dark
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Theme, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .system:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .light:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .dark:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTheme_lift(_ buf: RustBuffer) throws -> Theme {
+    return try FfiConverterTypeTheme.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTheme_lower(_ value: Theme) -> RustBuffer {
+    return FfiConverterTypeTheme.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The first day of the week in date pickers.
+ */
+
+public enum WeekStart: Equatable, Hashable {
+    
+    /**
+     * Sunday first.
+     */
+    case sunday
+    /**
+     * Monday first.
+     */
+    case monday
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension WeekStart: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeWeekStart: FfiConverterRustBuffer {
+    typealias SwiftType = WeekStart
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WeekStart {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .sunday
+        
+        case 2: return .monday
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: WeekStart, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .sunday:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .monday:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWeekStart_lift(_ buf: RustBuffer) throws -> WeekStart {
+    return try FfiConverterTypeWeekStart.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWeekStart_lower(_ value: WeekStart) -> RustBuffer {
+    return FfiConverterTypeWeekStart.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The typeface of the writing page.
+ */
+
+public enum WritingFont: Equatable, Hashable {
+    
+    /**
+     * iA Writer Duo (monospace), bundled with the app.
+     */
+    case iaDuo
+    /**
+     * Source Serif.
+     */
+    case serif
+    /**
+     * The system's sans-serif.
+     */
+    case sans
+    /**
+     * The system's monospace.
+     */
+    case mono
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension WritingFont: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeWritingFont: FfiConverterRustBuffer {
+    typealias SwiftType = WritingFont
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WritingFont {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .iaDuo
+        
+        case 2: return .serif
+        
+        case 3: return .sans
+        
+        case 4: return .mono
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: WritingFont, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .iaDuo:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .serif:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .sans:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .mono:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWritingFont_lift(_ buf: RustBuffer) throws -> WritingFont {
+    return try FfiConverterTypeWritingFont.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeWritingFont_lower(_ value: WritingFont) -> RustBuffer {
+    return FfiConverterTypeWritingFont.lower(value)
+}
+
+
+
+
+
+/**
+ * Where the core's log messages go. Implemented by the app.
+ *
+ * `log` is called on whatever thread the core is working on, sometimes
+ * while the journal is busy, so it must be quick and must never call back
+ * into the journal.
+ */
+public protocol Logger: AnyObject, Sendable {
+    
+    /**
+     * One message. `target` is the part of the core it came from
+     * (`bookshelf_core::backup`). Messages never hold what anyone wrote.
+     */
+    func log(level: LogLevel, target: String, message: String) 
+    
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceLogger {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // This creates 1-element array, since this seems to be the only way to construct a const
+    // pointer that we can pass to the Rust code.
+    static let vtable: [UniffiVTableCallbackInterfaceLogger] = [UniffiVTableCallbackInterfaceLogger(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterCallbackInterfaceLogger.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface Logger: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterCallbackInterfaceLogger.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface Logger: handle missing in uniffiClone")
+            }
+        },
+        log: { (
+            uniffiHandle: UInt64,
+            level: RustBuffer,
+            target: RustBuffer,
+            message: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceLogger.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.log(
+                     level: try FfiConverterTypeLogLevel_lift(level),
+                     target: try FfiConverterString.lift(target),
+                     message: try FfiConverterString.lift(message)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )]
+}
+
+private func uniffiCallbackInitLogger() {
+    uniffi_bookshelf_ffi_fn_init_callback_vtable_logger(UniffiCallbackInterfaceLogger.vtable)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfaceLogger {
+    fileprivate static let handleMap = UniffiHandleMap<Logger>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfaceLogger : FfiConverter {
+    typealias SwiftType = Logger
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfaceLogger_lift(_ handle: UInt64) throws -> Logger {
+    return try FfiConverterCallbackInterfaceLogger.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfaceLogger_lower(_ v: Logger) -> UInt64 {
+    return FfiConverterCallbackInterfaceLogger.lower(v)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -988,6 +5813,130 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         case 1: return try FfiConverterString.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTextEdit: FfiConverterRustBuffer {
+    typealias SwiftType = TextEdit?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTextEdit.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTextEdit.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAccent: FfiConverterRustBuffer {
+    typealias SwiftType = [Accent]
+
+    public static func write(_ value: [Accent], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAccent.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Accent] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Accent]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAccent.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeManualEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [ManualEntry]
+
+    public static func write(_ value: [ManualEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeManualEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ManualEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ManualEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeManualEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeManualSection: FfiConverterRustBuffer {
+    typealias SwiftType = [ManualSection]
+
+    public static func write(_ value: [ManualSection], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeManualSection.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ManualSection] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ManualSection]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeManualSection.read(from: &buf))
+        }
+        return seq
     }
 }
 
@@ -1019,6 +5968,106 @@ fileprivate struct FfiConverterSequenceTypeProfile: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeRun: FfiConverterRustBuffer {
+    typealias SwiftType = [Run]
+
+    public static func write(_ value: [Run], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRun.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Run] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Run]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRun.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
+    typealias SwiftType = [SearchResult]
+
+    public static func write(_ value: [SearchResult], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSearchResult.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SearchResult] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SearchResult]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSearchResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeShortcut: FfiConverterRustBuffer {
+    typealias SwiftType = [Shortcut]
+
+    public static func write(_ value: [Shortcut], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeShortcut.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Shortcut] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Shortcut]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeShortcut.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeShortcutGroup: FfiConverterRustBuffer {
+    typealias SwiftType = [ShortcutGroup]
+
+    public static func write(_ value: [ShortcutGroup], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeShortcutGroup.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ShortcutGroup] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ShortcutGroup]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeShortcutGroup.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer {
     typealias SwiftType = [StyleSpan]
 
@@ -1040,6 +6089,81 @@ fileprivate struct FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer {
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBlock: FfiConverterRustBuffer {
+    typealias SwiftType = [Block]
+
+    public static func write(_ value: [Block], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBlock.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Block] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Block]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBlock.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeRunStyle: FfiConverterRustBuffer {
+    typealias SwiftType = [RunStyle]
+
+    public static func write(_ value: [RunStyle], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRunStyle.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RunStyle] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RunStyle]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRunStyle.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeShelfRow: FfiConverterRustBuffer {
+    typealias SwiftType = [ShelfRow]
+
+    public static func write(_ value: [ShelfRow], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeShelfRow.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ShelfRow] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ShelfRow]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeShelfRow.read(from: &buf))
+        }
+        return seq
+    }
+}
 /**
  * The core's version, so an app can show what it's running on.
  */
@@ -1050,11 +6174,188 @@ public func coreVersion() -> String  {
 })
 }
 /**
- * Markdown highlighting for the writing page (see `core::text::highlight`).
+ * A path for people, with the home folder shown as `~` (`home` is the
+ * user's home folder, if the app wants that).
+ */
+public func displayPath(path: String, home: String?) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_display_path(
+        FfiConverterString.lower(path),
+        FfiConverterOptionString.lower(home),$0
+    )
+})
+}
+/**
+ * Whether a shelf entry matches a search: every word of `terms` (from
+ * `query_terms`) appears somewhere in its `haystack`, in any order.
+ */
+public func matches(haystack: String, terms: [String]) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_matches(
+        FfiConverterString.lower(haystack),
+        FfiConverterSequenceString.lower(terms),$0
+    )
+})
+}
+/**
+ * The words of a shelf search, lowercased. No words means no search.
+ */
+public func queryTerms(query: String) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_query_terms(
+        FfiConverterString.lower(query),$0
+    )
+})
+}
+/**
+ * Checks an email address as typed: `None` for blank, the trimmed address
+ * if it's usable, or an `Invalid` error to show under the field.
+ */
+public func validateEmail(email: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_func_validate_email(
+        FfiConverterString.lower(email),$0
+    )
+})
+}
+/**
+ * The user manual.
+ */
+public func manual() -> Manual  {
+    return try!  FfiConverterTypeManual_lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_manual($0
+    )
+})
+}
+/**
+ * The keyboard shortcuts list for one platform, in the order it's shown.
+ */
+public func shortcuts(platform: Platform) -> [ShortcutGroup]  {
+    return try!  FfiConverterSequenceTypeShortcutGroup.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_shortcuts(
+        FfiConverterTypePlatform_lower(platform),$0
+    )
+})
+}
+/**
+ * Sends the core's log messages to `logger` from now on. Call once at
+ * startup; calling again replaces the logger.
+ */
+public func setLogger(logger: Logger)  {try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_set_logger(
+        FfiConverterCallbackInterfaceLogger_lower(logger),$0
+    )
+}
+}
+/**
+ * The shades of accent `hex` for a light or dark window. Anything that
+ * isn't a `#rrggbb` color gets the default blue's.
+ */
+public func accentColors(hex: String, dark: Bool) -> AccentPalette  {
+    return try!  FfiConverterTypeAccentPalette_lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_accent_colors(
+        FfiConverterString.lower(hex),
+        FfiConverterBool.lower(dark),$0
+    )
+})
+}
+/**
+ * The accent colors offered in Settings, the default (blue) first.
+ */
+public func accents() -> [Accent]  {
+    return try!  FfiConverterSequenceTypeAccent.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_accents($0
+    )
+})
+}
+/**
+ * How long typing has to pause, in milliseconds, before the writing page
+ * saves.
+ */
+public func autosaveMs() -> UInt32  {
+    return try!  FfiConverterUInt32.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_autosave_ms($0
+    )
+})
+}
+/**
+ * Questions shown on an empty writing page, one per line, depending on
+ * the entry's shelf.
+ */
+public func prompts(shelf: Shelf) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_prompts(
+        FfiConverterTypeShelf_lower(shelf),$0
+    )
+})
+}
+/**
+ * Words are whatever sits between spaces, Markdown marks included. The
+ * same count as `SaveResult.words`.
+ */
+public func wordCount(text: String) -> UInt32  {
+    return try!  FfiConverterUInt32.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_word_count(
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * The writing page's measurements for a profile's settings.
+ */
+public func writerLayout(settings: ProfileSettings) -> PageLayout  {
+    return try!  FfiConverterTypePageLayout_lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_writer_layout(
+        FfiConverterTypeProfileSettings_lower(settings),$0
+    )
+})
+}
+/**
+ * What pressing `action` does to `text` with `sel_start..sel_end`
+ * selected (equal: just the caret), in UTF-16 code units. `None` means
+ * leave the text and selection alone. Offsets past the end count as the
+ * end.
+ */
+public func formatEdit(text: String, selStart: UInt32, selEnd: UInt32, action: FormatAction) -> TextEdit?  {
+    return try!  FfiConverterOptionTypeTextEdit.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_format_edit(
+        FfiConverterString.lower(text),
+        FfiConverterUInt32.lower(selStart),
+        FfiConverterUInt32.lower(selEnd),
+        FfiConverterTypeFormatAction_lower(action),$0
+    )
+})
+}
+/**
+ * Whether, with nothing selected, `action` acts on the word around the
+ * caret. The app finds that word with its own word rules and passes it
+ * in as the selection. Line actions just take the caret's line.
+ */
+public func formatExpandsToWord(action: FormatAction) -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_format_expands_to_word(
+        FfiConverterTypeFormatAction_lower(action),$0
+    )
+})
+}
+/**
+ * Markdown highlighting for the writing page. Each line is highlighted on
+ * its own, so after an edit only the lines it touched need restyling.
  */
 public func markdownSpans(text: String) -> [StyleSpan]  {
     return try!  FfiConverterSequenceTypeStyleSpan.lift(try! rustCall() {
     uniffi_bookshelf_ffi_fn_func_markdown_spans(
+        FfiConverterString.lower(text),$0
+    )
+})
+}
+/**
+ * Markdown laid out as blocks, for the reading page. HTML is never
+ * interpreted: it comes through as the text that was typed.
+ */
+public func renderMarkdown(text: String) -> [Block]  {
+    return try!  FfiConverterSequenceTypeBlock.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_render_markdown(
         FfiConverterString.lower(text),$0
     )
 })
@@ -1078,22 +6379,152 @@ private let initializationResult: InitializationResult = {
     if (uniffi_bookshelf_ffi_checksum_func_core_version() != 48680) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_func_markdown_spans() != 21081) {
+    if (uniffi_bookshelf_ffi_checksum_func_display_path() != 8760) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_method_journal_create_profile() != 3562) {
+    if (uniffi_bookshelf_ffi_checksum_func_matches() != 47768) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_method_journal_data_dir() != 6044) {
+    if (uniffi_bookshelf_ffi_checksum_func_query_terms() != 59918) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_method_journal_profiles() != 47426) {
+    if (uniffi_bookshelf_ffi_checksum_func_validate_email() != 17322) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_constructor_journal_open_at() != 54923) {
+    if (uniffi_bookshelf_ffi_checksum_func_manual() != 4467) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_shortcuts() != 44278) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_set_logger() != 34411) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_accent_colors() != 545) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_accents() != 48702) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_autosave_ms() != 31011) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_prompts() != 32744) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_word_count() != 58624) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_writer_layout() != 48246) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_format_edit() != 48266) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_format_expands_to_word() != 10693) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_markdown_spans() != 60121) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_render_markdown() != 48977) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_add_to_shelf() != 53563) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_back_up_now() != 24850) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_backup_status() != 39250) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_change_token() != 40647) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_close() != 15393) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_create_profile() != 20320) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_data_dir() != 10022) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_delete_profile() != 1051) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_entry() != 54418) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_existing_entry() != 50861) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_export_markdown() != 41124) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_profiles() != 1246) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_read_again() != 24972) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_remove_entry() != 60608) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_rename_profile() != 48894) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_rescue_body() != 9603) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_restore_entry() != 10387) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_save_body() != 62163) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_save_search_result() != 56379) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_search_books() != 46885) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder() != 1091) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_set_dates() != 35240) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_set_profile_email() != 65164) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_settings() != 43200) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_shelf() != 32868) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_update_settings() != 59916) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_removedentry_summary_id() != 34641) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_removedentry_title() != 1911) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_constructor_journal_open_at() != 48660) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_constructor_journal_open_default() != 23238) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_logger_log() != 19338) {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiCallbackInitLogger()
     return InitializationResult.ok
 }()
 

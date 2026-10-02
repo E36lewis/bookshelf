@@ -17,6 +17,8 @@ bookshelf-core = { path = "../bookshelf-core" }
 # come from tools/uniffi-bindgen at the same version.
 uniffi = "=0.31.0"
 thiserror = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+log = "0.4"
 
 [dev-dependencies]
 tempfile = "3"

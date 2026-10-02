@@ -148,6 +148,8 @@ name = "bookshelf-ffi"
 version = "0.1.0"
 dependencies = [
  "bookshelf-core",
+ "chrono",
+ "log",
  "tempfile",
  "thiserror",
  "uniffi",

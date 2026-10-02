@@ -243,6 +243,22 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureRes
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_LOGGER_METHOD0
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_LOGGER_METHOD0
+typedef void (*UniffiCallbackInterfaceLoggerMethod0)(uint64_t, RustBuffer, RustBuffer, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_LOGGER
+#define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_LOGGER
+typedef struct UniffiVTableCallbackInterfaceLogger {
+    UniffiCallbackInterfaceFree _Nonnull uniffiFree;
+    UniffiCallbackInterfaceClone _Nonnull uniffiClone;
+    UniffiCallbackInterfaceLoggerMethod0 _Nonnull log;
+} UniffiVTableCallbackInterfaceLogger;
+
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CLONE_JOURNAL
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CLONE_JOURNAL
 uint64_t uniffi_bookshelf_ffi_fn_clone_journal(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -258,9 +274,39 @@ void uniffi_bookshelf_ffi_fn_free_journal(uint64_t handle, RustCallStatus *_Nonn
 uint64_t uniffi_bookshelf_ffi_fn_constructor_journal_open_at(RustBuffer dir, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CONSTRUCTOR_JOURNAL_OPEN_DEFAULT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CONSTRUCTOR_JOURNAL_OPEN_DEFAULT
+uint64_t uniffi_bookshelf_ffi_fn_constructor_journal_open_default(RustBuffer channel, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_ADD_TO_SHELF
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_ADD_TO_SHELF
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_add_to_shelf(uint64_t ptr, RustBuffer user_id, RustBuffer book_id, RustBuffer shelf, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_BACK_UP_NOW
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_BACK_UP_NOW
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_back_up_now(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_BACKUP_STATUS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_BACKUP_STATUS
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_backup_status(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CHANGE_TOKEN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CHANGE_TOKEN
+uint64_t uniffi_bookshelf_ffi_fn_method_journal_change_token(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CLOSE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CLOSE
+void uniffi_bookshelf_ffi_fn_method_journal_close(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CREATE_PROFILE
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_CREATE_PROFILE
-RustBuffer uniffi_bookshelf_ffi_fn_method_journal_create_profile(uint64_t ptr, RustBuffer name, RustCallStatus *_Nonnull out_status
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_create_profile(uint64_t ptr, RustBuffer name, RustBuffer email, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_DATA_DIR
@@ -268,9 +314,124 @@ RustBuffer uniffi_bookshelf_ffi_fn_method_journal_create_profile(uint64_t ptr, R
 RustBuffer uniffi_bookshelf_ffi_fn_method_journal_data_dir(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_DELETE_PROFILE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_DELETE_PROFILE
+void uniffi_bookshelf_ffi_fn_method_journal_delete_profile(uint64_t ptr, RustBuffer user_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_ENTRY
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_entry(uint64_t ptr, RustBuffer summary_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_EXISTING_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_EXISTING_ENTRY
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_existing_entry(uint64_t ptr, RustBuffer user_id, RustBuffer book_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_EXPORT_MARKDOWN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_EXPORT_MARKDOWN
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_export_markdown(uint64_t ptr, RustBuffer user_id, RustBuffer parent_dir, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_PROFILES
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_PROFILES
 RustBuffer uniffi_bookshelf_ffi_fn_method_journal_profiles(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_READ_AGAIN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_READ_AGAIN
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_read_again(uint64_t ptr, RustBuffer summary_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_REMOVE_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_REMOVE_ENTRY
+uint64_t uniffi_bookshelf_ffi_fn_method_journal_remove_entry(uint64_t ptr, RustBuffer summary_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RENAME_PROFILE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RENAME_PROFILE
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_rename_profile(uint64_t ptr, RustBuffer user_id, RustBuffer name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RESCUE_BODY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RESCUE_BODY
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_rescue_body(uint64_t ptr, RustBuffer title, RustBuffer body, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RESTORE_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_RESTORE_ENTRY
+void uniffi_bookshelf_ffi_fn_method_journal_restore_entry(uint64_t ptr, uint64_t removed, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SAVE_BODY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SAVE_BODY
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_save_body(uint64_t ptr, RustBuffer summary_id, RustBuffer body, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SAVE_SEARCH_RESULT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SAVE_SEARCH_RESULT
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_save_search_result(uint64_t ptr, RustBuffer user_id, RustBuffer result, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SEARCH_BOOKS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SEARCH_BOOKS
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_books(uint64_t ptr, RustBuffer user_id, RustBuffer query, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_BACKUP_FOLDER
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_BACKUP_FOLDER
+void uniffi_bookshelf_ffi_fn_method_journal_set_backup_folder(uint64_t ptr, RustBuffer folder, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_DATES
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_DATES
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_set_dates(uint64_t ptr, RustBuffer summary_id, RustBuffer started, RustBuffer finished, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_PROFILE_EMAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_PROFILE_EMAIL
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_set_profile_email(uint64_t ptr, RustBuffer user_id, RustBuffer email, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SETTINGS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SETTINGS
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_settings(uint64_t ptr, RustBuffer user_id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SHELF
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SHELF
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_shelf(uint64_t ptr, RustBuffer user_id, RustBuffer shelf, RustBuffer today, int32_t utc_offset_minutes, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_UPDATE_SETTINGS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_UPDATE_SETTINGS
+void uniffi_bookshelf_ffi_fn_method_journal_update_settings(uint64_t ptr, RustBuffer settings, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CLONE_REMOVEDENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_CLONE_REMOVEDENTRY
+uint64_t uniffi_bookshelf_ffi_fn_clone_removedentry(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FREE_REMOVEDENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FREE_REMOVEDENTRY
+void uniffi_bookshelf_ffi_fn_free_removedentry(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_REMOVEDENTRY_SUMMARY_ID
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_REMOVEDENTRY_SUMMARY_ID
+RustBuffer uniffi_bookshelf_ffi_fn_method_removedentry_summary_id(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_REMOVEDENTRY_TITLE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_REMOVEDENTRY_TITLE
+RustBuffer uniffi_bookshelf_ffi_fn_method_removedentry_title(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_INIT_CALLBACK_VTABLE_LOGGER
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_INIT_CALLBACK_VTABLE_LOGGER
+void uniffi_bookshelf_ffi_fn_init_callback_vtable_logger(const UniffiVTableCallbackInterfaceLogger* _Nonnull vtable
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_CORE_VERSION
@@ -279,9 +440,92 @@ RustBuffer uniffi_bookshelf_ffi_fn_func_core_version(RustCallStatus *_Nonnull ou
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_DISPLAY_PATH
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_DISPLAY_PATH
+RustBuffer uniffi_bookshelf_ffi_fn_func_display_path(RustBuffer path, RustBuffer home, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MATCHES
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MATCHES
+int8_t uniffi_bookshelf_ffi_fn_func_matches(RustBuffer haystack, RustBuffer terms, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_QUERY_TERMS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_QUERY_TERMS
+RustBuffer uniffi_bookshelf_ffi_fn_func_query_terms(RustBuffer query, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_VALIDATE_EMAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_VALIDATE_EMAIL
+RustBuffer uniffi_bookshelf_ffi_fn_func_validate_email(RustBuffer email, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MANUAL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MANUAL
+RustBuffer uniffi_bookshelf_ffi_fn_func_manual(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SHORTCUTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SHORTCUTS
+RustBuffer uniffi_bookshelf_ffi_fn_func_shortcuts(RustBuffer platform, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SET_LOGGER
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SET_LOGGER
+void uniffi_bookshelf_ffi_fn_func_set_logger(uint64_t logger, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_ACCENT_COLORS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_ACCENT_COLORS
+RustBuffer uniffi_bookshelf_ffi_fn_func_accent_colors(RustBuffer hex, int8_t dark, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_ACCENTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_ACCENTS
+RustBuffer uniffi_bookshelf_ffi_fn_func_accents(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_AUTOSAVE_MS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_AUTOSAVE_MS
+uint32_t uniffi_bookshelf_ffi_fn_func_autosave_ms(RustCallStatus *_Nonnull out_status
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_PROMPTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_PROMPTS
+RustBuffer uniffi_bookshelf_ffi_fn_func_prompts(RustBuffer shelf, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_WORD_COUNT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_WORD_COUNT
+uint32_t uniffi_bookshelf_ffi_fn_func_word_count(RustBuffer text, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_WRITER_LAYOUT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_WRITER_LAYOUT
+RustBuffer uniffi_bookshelf_ffi_fn_func_writer_layout(RustBuffer settings, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_FORMAT_EDIT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_FORMAT_EDIT
+RustBuffer uniffi_bookshelf_ffi_fn_func_format_edit(RustBuffer text, uint32_t sel_start, uint32_t sel_end, RustBuffer action, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_FORMAT_EXPANDS_TO_WORD
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_FORMAT_EXPANDS_TO_WORD
+int8_t uniffi_bookshelf_ffi_fn_func_format_expands_to_word(RustBuffer action, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MARKDOWN_SPANS
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MARKDOWN_SPANS
 RustBuffer uniffi_bookshelf_ffi_fn_func_markdown_spans(RustBuffer text, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_RENDER_MARKDOWN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_RENDER_MARKDOWN
+RustBuffer uniffi_bookshelf_ffi_fn_func_render_markdown(RustBuffer text, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_BOOKSHELF_FFI_RUSTBUFFER_ALLOC
@@ -550,9 +794,135 @@ uint16_t uniffi_bookshelf_ffi_checksum_func_core_version(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_DISPLAY_PATH
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_DISPLAY_PATH
+uint16_t uniffi_bookshelf_ffi_checksum_func_display_path(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MATCHES
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MATCHES
+uint16_t uniffi_bookshelf_ffi_checksum_func_matches(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_QUERY_TERMS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_QUERY_TERMS
+uint16_t uniffi_bookshelf_ffi_checksum_func_query_terms(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_VALIDATE_EMAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_VALIDATE_EMAIL
+uint16_t uniffi_bookshelf_ffi_checksum_func_validate_email(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL
+uint16_t uniffi_bookshelf_ffi_checksum_func_manual(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_SHORTCUTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_SHORTCUTS
+uint16_t uniffi_bookshelf_ffi_checksum_func_shortcuts(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_SET_LOGGER
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_SET_LOGGER
+uint16_t uniffi_bookshelf_ffi_checksum_func_set_logger(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_ACCENT_COLORS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_ACCENT_COLORS
+uint16_t uniffi_bookshelf_ffi_checksum_func_accent_colors(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_ACCENTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_ACCENTS
+uint16_t uniffi_bookshelf_ffi_checksum_func_accents(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_AUTOSAVE_MS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_AUTOSAVE_MS
+uint16_t uniffi_bookshelf_ffi_checksum_func_autosave_ms(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_PROMPTS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_PROMPTS
+uint16_t uniffi_bookshelf_ffi_checksum_func_prompts(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_WORD_COUNT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_WORD_COUNT
+uint16_t uniffi_bookshelf_ffi_checksum_func_word_count(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_WRITER_LAYOUT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_WRITER_LAYOUT
+uint16_t uniffi_bookshelf_ffi_checksum_func_writer_layout(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EDIT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EDIT
+uint16_t uniffi_bookshelf_ffi_checksum_func_format_edit(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EXPANDS_TO_WORD
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EXPANDS_TO_WORD
+uint16_t uniffi_bookshelf_ffi_checksum_func_format_expands_to_word(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MARKDOWN_SPANS
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MARKDOWN_SPANS
 uint16_t uniffi_bookshelf_ffi_checksum_func_markdown_spans(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_RENDER_MARKDOWN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_RENDER_MARKDOWN
+uint16_t uniffi_bookshelf_ffi_checksum_func_render_markdown(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_ADD_TO_SHELF
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_ADD_TO_SHELF
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_add_to_shelf(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_BACK_UP_NOW
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_BACK_UP_NOW
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_back_up_now(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_BACKUP_STATUS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_BACKUP_STATUS
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_backup_status(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_CHANGE_TOKEN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_CHANGE_TOKEN
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_change_token(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_CLOSE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_CLOSE
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_close(void
     
 );
 #endif
@@ -568,15 +938,147 @@ uint16_t uniffi_bookshelf_ffi_checksum_method_journal_data_dir(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_DELETE_PROFILE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_DELETE_PROFILE
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_delete_profile(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_ENTRY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_entry(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_EXISTING_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_EXISTING_ENTRY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_existing_entry(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_EXPORT_MARKDOWN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_EXPORT_MARKDOWN
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_export_markdown(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_PROFILES
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_PROFILES
 uint16_t uniffi_bookshelf_ffi_checksum_method_journal_profiles(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_READ_AGAIN
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_READ_AGAIN
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_read_again(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_REMOVE_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_REMOVE_ENTRY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_remove_entry(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RENAME_PROFILE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RENAME_PROFILE
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_rename_profile(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RESCUE_BODY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RESCUE_BODY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_rescue_body(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RESTORE_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_RESTORE_ENTRY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_restore_entry(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SAVE_BODY
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SAVE_BODY
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_save_body(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SAVE_SEARCH_RESULT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SAVE_SEARCH_RESULT
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_save_search_result(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_BOOKS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_BOOKS
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_search_books(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_BACKUP_FOLDER
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_BACKUP_FOLDER
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_DATES
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_DATES
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_set_dates(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_PROFILE_EMAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SET_PROFILE_EMAIL
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_set_profile_email(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SETTINGS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SETTINGS
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_settings(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SHELF
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SHELF
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_shelf(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_UPDATE_SETTINGS
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_UPDATE_SETTINGS
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_update_settings(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_REMOVEDENTRY_SUMMARY_ID
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_REMOVEDENTRY_SUMMARY_ID
+uint16_t uniffi_bookshelf_ffi_checksum_method_removedentry_summary_id(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_REMOVEDENTRY_TITLE
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_REMOVEDENTRY_TITLE
+uint16_t uniffi_bookshelf_ffi_checksum_method_removedentry_title(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_CONSTRUCTOR_JOURNAL_OPEN_AT
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_CONSTRUCTOR_JOURNAL_OPEN_AT
 uint16_t uniffi_bookshelf_ffi_checksum_constructor_journal_open_at(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_CONSTRUCTOR_JOURNAL_OPEN_DEFAULT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_CONSTRUCTOR_JOURNAL_OPEN_DEFAULT
+uint16_t uniffi_bookshelf_ffi_checksum_constructor_journal_open_default(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_LOGGER_LOG
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_LOGGER_LOG
+uint16_t uniffi_bookshelf_ffi_checksum_method_logger_log(void
     
 );
 #endif

@@ -9,7 +9,9 @@
 
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -687,6 +689,105 @@ static class _UniFFILib {
     public delegate void UniffiForeignFutureCompleteVoid(
         ulong @callbackData,_UniFFILib.UniffiForeignFutureResultVoid @result
     );
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void UniffiCallbackInterfaceLoggerMethod0(
+        ulong @uniffiHandle,RustBuffer @level,RustBuffer @target,RustBuffer @message,IntPtr @uniffiOutReturn,ref UniffiRustCallStatus _uniffi_out_err
+    );
+    [StructLayout(LayoutKind.Sequential)]
+    public struct UniffiVTableCallbackInterfaceLogger
+    {
+        public IntPtr @uniffiFree;
+        public IntPtr @uniffiClone;
+        public IntPtr @log;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -759,6 +860,7 @@ static class _UniFFILib {
         _UniFFILib.uniffiCheckContractApiVersion();
         _UniFFILib.uniffiCheckApiChecksums();
         
+        UniffiCallbackInterfaceLogger.Register();
         }
 
     #if NET8_0_OR_GREATER
@@ -802,7 +904,73 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
-     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_create_profile(ulong @ptr,RustBuffer @name,ref UniffiRustCallStatus _uniffi_out_err
+     ulong uniffi_bookshelf_ffi_fn_constructor_journal_open_default(RustBuffer @channel,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_add_to_shelf(ulong @ptr,RustBuffer @userId,RustBuffer @bookId,RustBuffer @shelf,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_back_up_now(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_backup_status(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ulong uniffi_bookshelf_ffi_fn_method_journal_change_token(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_method_journal_close(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_create_profile(ulong @ptr,RustBuffer @name,RustBuffer @email,ref UniffiRustCallStatus _uniffi_out_err
     );
 
     #if NET8_0_OR_GREATER
@@ -824,7 +992,260 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     void uniffi_bookshelf_ffi_fn_method_journal_delete_profile(ulong @ptr,RustBuffer @userId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_entry(ulong @ptr,RustBuffer @summaryId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_existing_entry(ulong @ptr,RustBuffer @userId,RustBuffer @bookId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_export_markdown(ulong @ptr,RustBuffer @userId,RustBuffer @parentDir,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      RustBuffer uniffi_bookshelf_ffi_fn_method_journal_profiles(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_read_again(ulong @ptr,RustBuffer @summaryId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ulong uniffi_bookshelf_ffi_fn_method_journal_remove_entry(ulong @ptr,RustBuffer @summaryId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_rename_profile(ulong @ptr,RustBuffer @userId,RustBuffer @name,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_rescue_body(ulong @ptr,RustBuffer @title,RustBuffer @body,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_method_journal_restore_entry(ulong @ptr,ulong @removed,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_save_body(ulong @ptr,RustBuffer @summaryId,RustBuffer @body,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_save_search_result(ulong @ptr,RustBuffer @userId,RustBuffer @result,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_books(ulong @ptr,RustBuffer @userId,RustBuffer @query,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_method_journal_set_backup_folder(ulong @ptr,RustBuffer @folder,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_set_dates(ulong @ptr,RustBuffer @summaryId,RustBuffer @started,RustBuffer @finished,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_set_profile_email(ulong @ptr,RustBuffer @userId,RustBuffer @email,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_settings(ulong @ptr,RustBuffer @userId,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_shelf(ulong @ptr,RustBuffer @userId,RustBuffer @shelf,RustBuffer @today,int @utcOffsetMinutes,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_method_journal_update_settings(ulong @ptr,RustBuffer @settings,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ulong uniffi_bookshelf_ffi_fn_clone_removedentry(ulong @handle,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_free_removedentry(ulong @handle,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_removedentry_summary_id(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_removedentry_title(ulong @ptr,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_init_callback_vtable_logger(IntPtr /*_UniFFILib.UniffiVTableCallbackInterfaceLogger*/ @vtable
     );
 
     #if NET8_0_OR_GREATER
@@ -846,7 +1267,183 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_display_path(RustBuffer @path,RustBuffer @home,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     sbyte uniffi_bookshelf_ffi_fn_func_matches(RustBuffer @haystack,RustBuffer @terms,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_query_terms(RustBuffer @query,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_validate_email(RustBuffer @email,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_manual(ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_shortcuts(RustBuffer @platform,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     void uniffi_bookshelf_ffi_fn_func_set_logger(ulong @logger,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_accent_colors(RustBuffer @hex,sbyte @dark,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_accents(ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     uint uniffi_bookshelf_ffi_fn_func_autosave_ms(ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_prompts(RustBuffer @shelf,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     uint uniffi_bookshelf_ffi_fn_func_word_count(RustBuffer @text,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_writer_layout(RustBuffer @settings,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_format_edit(RustBuffer @text,uint @selStart,uint @selEnd,RustBuffer @action,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     sbyte uniffi_bookshelf_ffi_fn_func_format_expands_to_word(RustBuffer @action,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      RustBuffer uniffi_bookshelf_ffi_fn_func_markdown_spans(RustBuffer @text,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_render_markdown(RustBuffer @text,ref UniffiRustCallStatus _uniffi_out_err
     );
 
     #if NET8_0_OR_GREATER
@@ -1440,7 +2037,238 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_func_display_path(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_matches(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_query_terms(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_validate_email(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_manual(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_shortcuts(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_set_logger(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_accent_colors(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_accents(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_autosave_ms(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_prompts(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_word_count(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_writer_layout(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_format_edit(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_format_expands_to_word(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_func_markdown_spans(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_func_render_markdown(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_add_to_shelf(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_back_up_now(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_backup_status(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_change_token(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_close(
     );
 
     #if NET8_0_OR_GREATER
@@ -1473,6 +2301,50 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_delete_profile(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_entry(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_existing_entry(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_export_markdown(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_method_journal_profiles(
     );
 
@@ -1484,7 +2356,205 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_read_again(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_remove_entry(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_rename_profile(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_rescue_body(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_restore_entry(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_save_body(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_save_search_result(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_search_books(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_set_dates(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_set_profile_email(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_settings(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_shelf(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_update_settings(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_removedentry_summary_id(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_removedentry_title(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_constructor_journal_open_at(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_constructor_journal_open_default(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     ushort uniffi_bookshelf_ffi_checksum_method_logger_log(
     );
 
     #if NET8_0_OR_GREATER
@@ -1514,33 +2584,291 @@ static class _UniFFILib {
             }
         }
         {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_display_path();
+            if (checksum != 8760) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_display_path` checksum `8760`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_matches();
+            if (checksum != 47768) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_matches` checksum `47768`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_query_terms();
+            if (checksum != 59918) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_query_terms` checksum `59918`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_validate_email();
+            if (checksum != 17322) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_validate_email` checksum `17322`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_manual();
+            if (checksum != 4467) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_manual` checksum `4467`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_shortcuts();
+            if (checksum != 44278) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_shortcuts` checksum `44278`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_set_logger();
+            if (checksum != 34411) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_set_logger` checksum `34411`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_accent_colors();
+            if (checksum != 545) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_accent_colors` checksum `545`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_accents();
+            if (checksum != 48702) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_accents` checksum `48702`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_autosave_ms();
+            if (checksum != 31011) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_autosave_ms` checksum `31011`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_prompts();
+            if (checksum != 32744) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_prompts` checksum `32744`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_word_count();
+            if (checksum != 58624) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_word_count` checksum `58624`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_writer_layout();
+            if (checksum != 48246) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_writer_layout` checksum `48246`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_format_edit();
+            if (checksum != 48266) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_format_edit` checksum `48266`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_format_expands_to_word();
+            if (checksum != 10693) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_format_expands_to_word` checksum `10693`, library returned `{checksum}`");
+            }
+        }
+        {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_markdown_spans();
-            if (checksum != 21081) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_markdown_spans` checksum `21081`, library returned `{checksum}`");
+            if (checksum != 60121) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_markdown_spans` checksum `60121`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_render_markdown();
+            if (checksum != 48977) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_render_markdown` checksum `48977`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_add_to_shelf();
+            if (checksum != 53563) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_add_to_shelf` checksum `53563`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_back_up_now();
+            if (checksum != 24850) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_back_up_now` checksum `24850`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_backup_status();
+            if (checksum != 39250) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_backup_status` checksum `39250`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_change_token();
+            if (checksum != 40647) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_change_token` checksum `40647`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_close();
+            if (checksum != 15393) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_close` checksum `15393`, library returned `{checksum}`");
             }
         }
         {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_create_profile();
-            if (checksum != 3562) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_create_profile` checksum `3562`, library returned `{checksum}`");
+            if (checksum != 20320) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_create_profile` checksum `20320`, library returned `{checksum}`");
             }
         }
         {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_data_dir();
-            if (checksum != 6044) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_data_dir` checksum `6044`, library returned `{checksum}`");
+            if (checksum != 10022) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_data_dir` checksum `10022`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_delete_profile();
+            if (checksum != 1051) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_delete_profile` checksum `1051`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_entry();
+            if (checksum != 54418) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_entry` checksum `54418`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_existing_entry();
+            if (checksum != 50861) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_existing_entry` checksum `50861`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_export_markdown();
+            if (checksum != 41124) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_export_markdown` checksum `41124`, library returned `{checksum}`");
             }
         }
         {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_profiles();
-            if (checksum != 47426) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_profiles` checksum `47426`, library returned `{checksum}`");
+            if (checksum != 1246) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_profiles` checksum `1246`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_read_again();
+            if (checksum != 24972) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_read_again` checksum `24972`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_remove_entry();
+            if (checksum != 60608) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_remove_entry` checksum `60608`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_rename_profile();
+            if (checksum != 48894) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_rename_profile` checksum `48894`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_rescue_body();
+            if (checksum != 9603) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_rescue_body` checksum `9603`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_restore_entry();
+            if (checksum != 10387) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_restore_entry` checksum `10387`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_save_body();
+            if (checksum != 62163) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_save_body` checksum `62163`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_save_search_result();
+            if (checksum != 56379) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_save_search_result` checksum `56379`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_search_books();
+            if (checksum != 46885) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_search_books` checksum `46885`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder();
+            if (checksum != 1091) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder` checksum `1091`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_set_dates();
+            if (checksum != 35240) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_set_dates` checksum `35240`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_set_profile_email();
+            if (checksum != 65164) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_set_profile_email` checksum `65164`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_settings();
+            if (checksum != 43200) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_settings` checksum `43200`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_shelf();
+            if (checksum != 32868) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_shelf` checksum `32868`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_update_settings();
+            if (checksum != 59916) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_update_settings` checksum `59916`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_removedentry_summary_id();
+            if (checksum != 34641) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_removedentry_summary_id` checksum `34641`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_removedentry_title();
+            if (checksum != 1911) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_removedentry_title` checksum `1911`, library returned `{checksum}`");
             }
         }
         {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_constructor_journal_open_at();
-            if (checksum != 54923) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_constructor_journal_open_at` checksum `54923`, library returned `{checksum}`");
+            if (checksum != 48660) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_constructor_journal_open_at` checksum `48660`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_constructor_journal_open_default();
+            if (checksum != 23238) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_constructor_journal_open_default` checksum `23238`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_logger_log();
+            if (checksum != 19338) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_logger_log` checksum `19338`, library returned `{checksum}`");
             }
         }
     }
@@ -1550,6 +2878,32 @@ static class _UniFFILib {
 
 #pragma warning disable 8625
 
+
+
+
+class FfiConverterUInt8: FfiConverter<byte, byte> {
+    public static FfiConverterUInt8 INSTANCE = new FfiConverterUInt8();
+
+    public override byte Lift(byte value) {
+        return value;
+    }
+
+    public override byte Read(BigEndianStream stream) {
+        return stream.ReadByte();
+    }
+
+    public override byte Lower(byte value) {
+        return value;
+    }
+
+    public override int AllocationSize(byte value) {
+        return 1;
+    }
+
+    public override void Write(byte value, BigEndianStream stream) {
+        stream.WriteByte(value);
+    }
+}
 
 
 
@@ -1574,6 +2928,136 @@ class FfiConverterUInt32: FfiConverter<uint, uint> {
 
     public override void Write(uint value, BigEndianStream stream) {
         stream.WriteUInt(value);
+    }
+}
+
+
+
+class FfiConverterInt32: FfiConverter<int, int> {
+    public static FfiConverterInt32 INSTANCE = new FfiConverterInt32();
+
+    public override int Lift(int value) {
+        return value;
+    }
+
+    public override int Read(BigEndianStream stream) {
+        return stream.ReadInt();
+    }
+
+    public override int Lower(int value) {
+        return value;
+    }
+
+    public override int AllocationSize(int value) {
+        return 4;
+    }
+
+    public override void Write(int value, BigEndianStream stream) {
+        stream.WriteInt(value);
+    }
+}
+
+
+
+class FfiConverterUInt64: FfiConverter<ulong, ulong> {
+    public static FfiConverterUInt64 INSTANCE = new FfiConverterUInt64();
+
+    public override ulong Lift(ulong value) {
+        return value;
+    }
+
+    public override ulong Read(BigEndianStream stream) {
+        return stream.ReadULong();
+    }
+
+    public override ulong Lower(ulong value) {
+        return value;
+    }
+
+    public override int AllocationSize(ulong value) {
+        return 8;
+    }
+
+    public override void Write(ulong value, BigEndianStream stream) {
+        stream.WriteULong(value);
+    }
+}
+
+
+
+class FfiConverterInt64: FfiConverter<long, long> {
+    public static FfiConverterInt64 INSTANCE = new FfiConverterInt64();
+
+    public override long Lift(long value) {
+        return value;
+    }
+
+    public override long Read(BigEndianStream stream) {
+        return stream.ReadLong();
+    }
+
+    public override long Lower(long value) {
+        return value;
+    }
+
+    public override int AllocationSize(long value) {
+        return 8;
+    }
+
+    public override void Write(long value, BigEndianStream stream) {
+        stream.WriteLong(value);
+    }
+}
+
+
+
+class FfiConverterDouble: FfiConverter<double, double> {
+    public static FfiConverterDouble INSTANCE = new FfiConverterDouble();
+
+    public override double Lift(double value) {
+        return value;
+    }
+
+    public override double Read(BigEndianStream stream) {
+        return stream.ReadDouble();
+    }
+
+    public override double Lower(double value) {
+        return value;
+    }
+
+    public override int AllocationSize(double value) {
+        return 8;
+    }
+
+    public override void Write(double value, BigEndianStream stream) {
+        stream.WriteDouble(value);
+    }
+}
+
+
+
+class FfiConverterBoolean: FfiConverter<bool, sbyte> {
+    public static FfiConverterBoolean INSTANCE = new FfiConverterBoolean();
+
+    public override bool Lift(sbyte value) {
+        return value != 0;
+    }
+
+    public override bool Read(BigEndianStream stream) {
+        return Lift(stream.ReadSByte());
+    }
+
+    public override sbyte Lower(bool value) {
+        return value ? (sbyte)1 : (sbyte)0;
+    }
+
+    public override int AllocationSize(bool value) {
+        return (sbyte)1;
+    }
+
+    public override void Write(bool value, BigEndianStream stream) {
+        stream.WriteSByte(Lower(value));
     }
 }
 
@@ -1627,20 +3111,179 @@ class FfiConverterString: FfiConverter<string, RustBuffer> {
 
 
 /// <summary>
-/// One open journal: the database and its folder.
+/// One open journal: the database, its folder and the Open Library client.
 /// </summary>
 public interface IJournal {
+    /// <summary>
+    /// Puts a saved book on one of the profile's shelves, dated today
+    /// (local): Reading starts today, Finished finishes today, Eventually
+    /// has no dates. Returns the new entry's id.
+    /// </summary>
     /// <exception cref="CoreException"></exception>
-    Profile CreateProfile(string @name);
+    string AddToShelf(string @userId, string @bookId, Shelf @shelf);
+    /// <summary>
+    /// Makes today's backup if there isn't one yet, and drops all but the
+    /// newest few. Returns the new file, or `None` if today's was already
+    /// made. Uses a connection of its own, never the journal's lock, so
+    /// call it at startup without holding anything up.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    string? BackUpNow();
+    /// <summary>
+    /// Where backups go and the newest one's date. Looks at the backup
+    /// folder without taking the journal's lock: it may be a slow drive.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    BackupStatus BackupStatus();
+    /// <summary>
+    /// A number that changes whenever the journal does: writes through
+    /// this object and writes by anything else (a backup, another
+    /// process). A home page can skip rebuilding when it's the same as
+    /// last time. Today's date is up to the app (a Reading entry's "day
+    /// 12" changes at midnight).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    ulong ChangeToken();
+    /// <summary>
+    /// Call when the app quits: folds the write-ahead log back into the
+    /// journal file. Safe to call twice, and the journal stays usable, so
+    /// a last autosave after it still lands.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    void Close();
+    /// <summary>
+    /// Makes a profile. `email` is optional (blank means none). A bad email
+    /// is refused before anything is made.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    Profile CreateProfile(string @name, string? @email);
     /// <summary>
     /// The folder the journal lives in.
     /// </summary>
     string DataDir();
+    /// <summary>
+    /// Deletes a profile with its settings and entries. Books stay, since
+    /// other profiles may have them. There's no undo: apps ask first.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    void DeleteProfile(string @userId);
+    /// <summary>
+    /// One entry, with its book: the book page and the writing page.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    EntryDetail Entry(string @summaryId);
+    /// <summary>
+    /// The profile's latest entry for a book, if it has one: after picking
+    /// a search result, "open my entry" or "read it again".
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    string? ExistingEntry(string @userId, string @bookId);
+    /// <summary>
+    /// Writes each of the profile's entries as a Markdown file into a
+    /// "Bookshelf summaries" folder inside `parent_dir` (an absolute path
+    /// to an existing folder). Files already there are never overwritten.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    ExportResult ExportMarkdown(string @userId, string @parentDir);
+    /// <summary>
+    /// Every profile, by name.
+    /// </summary>
     /// <exception cref="CoreException"></exception>
     Profile[] Profiles();
+    /// <summary>
+    /// Logs another reading of the entry's book: a new entry on the
+    /// Reading shelf, started today (local). Returns its id.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    string ReadAgain(string @summaryId);
+    /// <summary>
+    /// Removes an entry right away. Keep the result to offer "Undo" with
+    /// `restore_entry`.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    RemovedEntry RemoveEntry(string @summaryId);
+    /// <summary>
+    /// Renames a profile. Names are unique.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    Profile RenameProfile(string @userId, string @name);
+    /// <summary>
+    /// The last resort when `save_body` fails: writes the text to
+    /// `<data dir>/recovery/<title>-<time>.md` so it isn't lost, and
+    /// returns that file's path to tell the user.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    string RescueBody(string @title, string @body);
+    /// <summary>
+    /// Puts a removed entry back exactly as it was. Restoring one that's
+    /// already back does nothing, so a double-clicked Undo is harmless.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    void RestoreEntry(RemovedEntry @removed);
+    /// <summary>
+    /// Saves the writing page's text (autosave, and Save now). Line ends
+    /// are stored as `\n`, whatever the text view uses (`\r` in WinUI's
+    /// RichEditBox, `\r\n` from a paste).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    SaveResult SaveBody(string @summaryId, string @body);
+    /// <summary>
+    /// Saves a picked search result as a book (the same book again if it
+    /// was saved before), fetching its description and downloading its
+    /// cover. Neither of those failing fails the save. Add it to a shelf
+    /// with `add_to_shelf`, after `existing_entry`.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    BookInfo SaveSearchResult(string @userId, SearchResult @result);
+    /// <summary>
+    /// Searches Open Library (a network call; nothing is saved). Requests
+    /// carry the profile's contact email, if it set one.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    SearchResult[] SearchBooks(string @userId, string @query);
+    /// <summary>
+    /// Keeps backups in `folder` (an absolute path to an existing folder)
+    /// from now on, or in the default folder again with `None`. Follow it
+    /// with `back_up_now` so the new place has a copy right away.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    void SetBackupFolder(string? @folder);
+    /// <summary>
+    /// Sets (or clears, with `None`) when reading started and finished,
+    /// as `YYYY-MM-DD`. Finishing before starting is refused. The entry
+    /// moves shelf to match; the result says where it is now.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    EntryDetail SetDates(string @summaryId, string? @started, string? @finished);
+    /// <summary>
+    /// Sets or clears (`None` or blank) a profile's contact email.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    Profile SetProfileEmail(string @userId, string? @email);
+    /// <summary>
+    /// A profile's settings.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    ProfileSettings Settings(string @userId);
+    /// <summary>
+    /// One shelf of the home page, laid out. `today` is the local date
+    /// (`YYYY-MM-DD`) and `utc_offset_minutes` the local offset from UTC
+    /// right now (UTC+2 is 120): the "day 12" of a Reading entry counts
+    /// from `today`, and an Eventually entry's "Added" date is the day it
+    /// was added at that offset. Passing them in keeps the core off the
+    /// system clock, so a shelf drawn just before midnight and its refresh
+    /// agree, and tests can pick the day.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    ShelfView Shelf(string @userId, Shelf @shelf, string @today, int @utcOffsetMinutes);
+    /// <summary>
+    /// Saves a profile's settings (the profile is `settings.user_id`).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    void UpdateSettings(ProfileSettings @settings);
 }
 /// <summary>
-/// One open journal: the database and its folder.
+/// One open journal: the database, its folder and the Open Library client.
 /// </summary>
 public class Journal : IJournal, IDisposable {
     protected ulong pointer;
@@ -1731,11 +3374,88 @@ public class Journal : IJournal, IDisposable {
     }
 
     
+    /// <summary>
+    /// Puts a saved book on one of the profile's shelves, dated today
+    /// (local): Reading starts today, Finished finishes today, Eventually
+    /// has no dates. Returns the new entry's id.
+    /// </summary>
     /// <exception cref="CoreException"></exception>
-    public Profile CreateProfile(string @name) {
+    public string AddToShelf(string @userId, string @bookId, Shelf @shelf) {
+        return CallWithPointer(thisPtr => FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_add_to_shelf(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@bookId), FfiConverterTypeShelf.INSTANCE.Lower(@shelf), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Makes today's backup if there isn't one yet, and drops all but the
+    /// newest few. Returns the new file, or `None` if today's was already
+    /// made. Uses a connection of its own, never the journal's lock, so
+    /// call it at startup without holding anything up.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public string? BackUpNow() {
+        return CallWithPointer(thisPtr => FfiConverterOptionalString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_back_up_now(thisPtr,  ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Where backups go and the newest one's date. Looks at the backup
+    /// folder without taking the journal's lock: it may be a slow drive.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public BackupStatus BackupStatus() {
+        return CallWithPointer(thisPtr => FfiConverterTypeBackupStatus.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_backup_status(thisPtr,  ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// A number that changes whenever the journal does: writes through
+    /// this object and writes by anything else (a backup, another
+    /// process). A home page can skip rebuilding when it's the same as
+    /// last time. Today's date is up to the app (a Reading entry's "day
+    /// 12" changes at midnight).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public ulong ChangeToken() {
+        return CallWithPointer(thisPtr => FfiConverterUInt64.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_change_token(thisPtr,  ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Call when the app quits: folds the write-ahead log back into the
+    /// journal file. Safe to call twice, and the journal stays usable, so
+    /// a last autosave after it still lands.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public void Close() {
+        CallWithPointer(thisPtr =>
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_close(thisPtr,  ref _status)
+));
+    }
+    
+    
+    
+    /// <summary>
+    /// Makes a profile. `email` is optional (blank means none). A bad email
+    /// is refused before anything is made.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public Profile CreateProfile(string @name, string? @email) {
         return CallWithPointer(thisPtr => FfiConverterTypeProfile.INSTANCE.Lift(
     _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
-    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_create_profile(thisPtr, FfiConverterString.INSTANCE.Lower(@name), ref _status)
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_create_profile(thisPtr, FfiConverterString.INSTANCE.Lower(@name), FfiConverterOptionalString.INSTANCE.Lower(@email), ref _status)
 )));
     }
     
@@ -1751,6 +3471,62 @@ public class Journal : IJournal, IDisposable {
     }
     
     
+    /// <summary>
+    /// Deletes a profile with its settings and entries. Books stay, since
+    /// other profiles may have them. There's no undo: apps ask first.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public void DeleteProfile(string @userId) {
+        CallWithPointer(thisPtr =>
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_delete_profile(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), ref _status)
+));
+    }
+    
+    
+    
+    /// <summary>
+    /// One entry, with its book: the book page and the writing page.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public EntryDetail Entry(string @summaryId) {
+        return CallWithPointer(thisPtr => FfiConverterTypeEntryDetail.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_entry(thisPtr, FfiConverterString.INSTANCE.Lower(@summaryId), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// The profile's latest entry for a book, if it has one: after picking
+    /// a search result, "open my entry" or "read it again".
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public string? ExistingEntry(string @userId, string @bookId) {
+        return CallWithPointer(thisPtr => FfiConverterOptionalString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_existing_entry(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@bookId), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Writes each of the profile's entries as a Markdown file into a
+    /// "Bookshelf summaries" folder inside `parent_dir` (an absolute path
+    /// to an existing folder). Files already there are never overwritten.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public ExportResult ExportMarkdown(string @userId, string @parentDir) {
+        return CallWithPointer(thisPtr => FfiConverterTypeExportResult.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_export_markdown(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@parentDir), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Every profile, by name.
+    /// </summary>
     /// <exception cref="CoreException"></exception>
     public Profile[] Profiles() {
         return CallWithPointer(thisPtr => FfiConverterSequenceTypeProfile.INSTANCE.Lift(
@@ -1760,16 +3536,221 @@ public class Journal : IJournal, IDisposable {
     }
     
     
+    /// <summary>
+    /// Logs another reading of the entry's book: a new entry on the
+    /// Reading shelf, started today (local). Returns its id.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public string ReadAgain(string @summaryId) {
+        return CallWithPointer(thisPtr => FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_read_again(thisPtr, FfiConverterString.INSTANCE.Lower(@summaryId), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Removes an entry right away. Keep the result to offer "Undo" with
+    /// `restore_entry`.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public RemovedEntry RemoveEntry(string @summaryId) {
+        return CallWithPointer(thisPtr => FfiConverterTypeRemovedEntry.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_remove_entry(thisPtr, FfiConverterString.INSTANCE.Lower(@summaryId), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Renames a profile. Names are unique.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public Profile RenameProfile(string @userId, string @name) {
+        return CallWithPointer(thisPtr => FfiConverterTypeProfile.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_rename_profile(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@name), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// The last resort when `save_body` fails: writes the text to
+    /// `<data dir>/recovery/<title>-<time>.md` so it isn't lost, and
+    /// returns that file's path to tell the user.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public string RescueBody(string @title, string @body) {
+        return CallWithPointer(thisPtr => FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_rescue_body(thisPtr, FfiConverterString.INSTANCE.Lower(@title), FfiConverterString.INSTANCE.Lower(@body), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Puts a removed entry back exactly as it was. Restoring one that's
+    /// already back does nothing, so a double-clicked Undo is harmless.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public void RestoreEntry(RemovedEntry @removed) {
+        CallWithPointer(thisPtr =>
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_restore_entry(thisPtr, FfiConverterTypeRemovedEntry.INSTANCE.Lower(@removed), ref _status)
+));
+    }
+    
+    
+    
+    /// <summary>
+    /// Saves the writing page's text (autosave, and Save now). Line ends
+    /// are stored as `\n`, whatever the text view uses (`\r` in WinUI's
+    /// RichEditBox, `\r\n` from a paste).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public SaveResult SaveBody(string @summaryId, string @body) {
+        return CallWithPointer(thisPtr => FfiConverterTypeSaveResult.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_save_body(thisPtr, FfiConverterString.INSTANCE.Lower(@summaryId), FfiConverterString.INSTANCE.Lower(@body), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Saves a picked search result as a book (the same book again if it
+    /// was saved before), fetching its description and downloading its
+    /// cover. Neither of those failing fails the save. Add it to a shelf
+    /// with `add_to_shelf`, after `existing_entry`.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public BookInfo SaveSearchResult(string @userId, SearchResult @result) {
+        return CallWithPointer(thisPtr => FfiConverterTypeBookInfo.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_save_search_result(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterTypeSearchResult.INSTANCE.Lower(@result), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Searches Open Library (a network call; nothing is saved). Requests
+    /// carry the profile's contact email, if it set one.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public SearchResult[] SearchBooks(string @userId, string @query) {
+        return CallWithPointer(thisPtr => FfiConverterSequenceTypeSearchResult.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_search_books(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@query), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Keeps backups in `folder` (an absolute path to an existing folder)
+    /// from now on, or in the default folder again with `None`. Follow it
+    /// with `back_up_now` so the new place has a copy right away.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public void SetBackupFolder(string? @folder) {
+        CallWithPointer(thisPtr =>
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_set_backup_folder(thisPtr, FfiConverterOptionalString.INSTANCE.Lower(@folder), ref _status)
+));
+    }
+    
+    
+    
+    /// <summary>
+    /// Sets (or clears, with `None`) when reading started and finished,
+    /// as `YYYY-MM-DD`. Finishing before starting is refused. The entry
+    /// moves shelf to match; the result says where it is now.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public EntryDetail SetDates(string @summaryId, string? @started, string? @finished) {
+        return CallWithPointer(thisPtr => FfiConverterTypeEntryDetail.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_set_dates(thisPtr, FfiConverterString.INSTANCE.Lower(@summaryId), FfiConverterOptionalString.INSTANCE.Lower(@started), FfiConverterOptionalString.INSTANCE.Lower(@finished), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Sets or clears (`None` or blank) a profile's contact email.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public Profile SetProfileEmail(string @userId, string? @email) {
+        return CallWithPointer(thisPtr => FfiConverterTypeProfile.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_set_profile_email(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterOptionalString.INSTANCE.Lower(@email), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// A profile's settings.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public ProfileSettings Settings(string @userId) {
+        return CallWithPointer(thisPtr => FfiConverterTypeProfileSettings.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_settings(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// One shelf of the home page, laid out. `today` is the local date
+    /// (`YYYY-MM-DD`) and `utc_offset_minutes` the local offset from UTC
+    /// right now (UTC+2 is 120): the "day 12" of a Reading entry counts
+    /// from `today`, and an Eventually entry's "Added" date is the day it
+    /// was added at that offset. Passing them in keeps the core off the
+    /// system clock, so a shelf drawn just before midnight and its refresh
+    /// agree, and tests can pick the day.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public ShelfView Shelf(string @userId, Shelf @shelf, string @today, int @utcOffsetMinutes) {
+        return CallWithPointer(thisPtr => FfiConverterTypeShelfView.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_shelf(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterTypeShelf.INSTANCE.Lower(@shelf), FfiConverterString.INSTANCE.Lower(@today), FfiConverterInt32.INSTANCE.Lower(@utcOffsetMinutes), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// Saves a profile's settings (the profile is `settings.user_id`).
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public void UpdateSettings(ProfileSettings @settings) {
+        CallWithPointer(thisPtr =>
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_update_settings(thisPtr, FfiConverterTypeProfileSettings.INSTANCE.Lower(@settings), ref _status)
+));
+    }
+    
+    
+    
 
     
     /// <summary>
-    /// Opens (or creates) the journal in `dir`.
+    /// Opens (or creates) the journal in `dir`, an absolute path. Tests
+    /// and previews use this with a folder of their own.
     /// </summary>
     /// <exception cref="CoreException"></exception>
     public static Journal OpenAt(string @dir) {
         return new Journal(
     _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
     _UniFFILib.uniffi_bookshelf_ffi_fn_constructor_journal_open_at(FfiConverterString.INSTANCE.Lower(@dir), ref _status)
+));
+    }
+    
+    /// <summary>
+    /// Opens (or creates) this platform's journal: Application Support on
+    /// macOS, `%LOCALAPPDATA%` on Windows. A preview build has its own.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public static Journal OpenDefault(Channel @channel) {
+        return new Journal(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_constructor_journal_open_default(FfiConverterTypeChannel.INSTANCE.Lower(@channel), ref _status)
 ));
     }
     
@@ -1802,9 +3783,1019 @@ class FfiConverterTypeJournal: FfiConverter<Journal, ulong> {
 
 
 
-public record Profile (
-    string Id, 
+/// <summary>
+/// An entry that was just removed, kept whole (same id, dates and text) so
+/// `Journal::restore_entry` can put it back: the "Undo" on the removal
+/// notice. Opaque, so what was written stays inside the core. (No `Debug`,
+/// so the text can't end up in a log by accident.)
+/// </summary>
+public interface IRemovedEntry {
+    /// <summary>
+    /// The removed entry's id.
+    /// </summary>
+    string SummaryId();
+    /// <summary>
+    /// The book's title, for "Removed “Dune”".
+    /// </summary>
+    string Title();
+}
+/// <summary>
+/// An entry that was just removed, kept whole (same id, dates and text) so
+/// `Journal::restore_entry` can put it back: the "Undo" on the removal
+/// notice. Opaque, so what was written stays inside the core. (No `Debug`,
+/// so the text can't end up in a log by accident.)
+/// </summary>
+public class RemovedEntry : IRemovedEntry, IDisposable {
+    protected ulong pointer;
+    private int _wasDestroyed = 0;
+    private long _callCounter = 1;
+
+    public RemovedEntry(ulong pointer) {
+        this.pointer = pointer;
+    }
+
+    ~RemovedEntry() {
+        Destroy();
+    }
+
+    protected void FreeRustArcPtr() {
+        _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
+            _UniFFILib.uniffi_bookshelf_ffi_fn_free_removedentry(this.pointer, ref status);
+        });
+    }
+
+    protected ulong CloneRustArcPtr() {
+        return _UniffiHelpers.RustCall((ref UniffiRustCallStatus status) => {
+            return _UniFFILib.uniffi_bookshelf_ffi_fn_clone_removedentry(this.pointer, ref status);
+        });
+    }
+
+    public void Destroy()
+    {
+        // Only allow a single call to this method.
+        if (Interlocked.CompareExchange(ref _wasDestroyed, 1, 0) == 0)
+        {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (Interlocked.Decrement(ref _callCounter) == 0)
+            {
+                FreeRustArcPtr();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        Destroy();
+        GC.SuppressFinalize(this); // Suppress finalization to avoid unnecessary GC overhead.
+    }
+
+    private void IncrementCallCounter() 
+    {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        long count;
+        do
+        {
+            count = Interlocked.Read(ref _callCounter);
+            if (count == 0L) throw new System.ObjectDisposedException(String.Format("'{0}' object has already been destroyed", this.GetType().Name));
+            if (count == long.MaxValue) throw new System.OverflowException(String.Format("'{0}' call counter would overflow", this.GetType().Name));
+
+        } while (Interlocked.CompareExchange(ref _callCounter, count + 1, count) != count);
+    }
+
+    private void DecrementCallCounter() 
+    {
+        // This decrement always matches the increment we performed above.
+        if (Interlocked.Decrement(ref _callCounter) == 0) {
+            FreeRustArcPtr();
+        }
+    }
+
+    internal void CallWithPointer(Action<ulong> action)
+    {
+        IncrementCallCounter();
+        try {
+            action(CloneRustArcPtr());
+        }
+        finally {
+            DecrementCallCounter();
+        }
+    }
+
+    internal T CallWithPointer<T>(Func<ulong, T> func)
+    {   
+        IncrementCallCounter();
+        try {
+            return func(CloneRustArcPtr());
+        }
+        finally {
+            DecrementCallCounter();
+        }
+    }
+
+    
+    /// <summary>
+    /// The removed entry's id.
+    /// </summary>
+    public string SummaryId() {
+        return CallWithPointer(thisPtr => FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_removedentry_summary_id(thisPtr,  ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// The book's title, for "Removed “Dune”".
+    /// </summary>
+    public string Title() {
+        return CallWithPointer(thisPtr => FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_removedentry_title(thisPtr,  ref _status)
+)));
+    }
+    
+    
+
+    
+}
+class FfiConverterTypeRemovedEntry: FfiConverter<RemovedEntry, ulong> {
+    public static FfiConverterTypeRemovedEntry INSTANCE = new FfiConverterTypeRemovedEntry();
+
+
+    public override ulong Lower(RemovedEntry value) {
+        return value.CallWithPointer(thisPtr => thisPtr);
+    }
+
+    public override RemovedEntry Lift(ulong value) {
+        return new RemovedEntry(value);
+    }
+
+    public override RemovedEntry Read(BigEndianStream stream) {
+        return Lift(stream.ReadULong());
+    }
+
+    public override int AllocationSize(RemovedEntry value) {
+        return 8;
+    }
+
+    public override void Write(RemovedEntry value, BigEndianStream stream) {
+        stream.WriteULong(Lower(value));
+    }
+}
+
+
+
+/// <summary>
+/// One of the accent colors offered in Settings.
+/// </summary>
+/// <param name="Name">
+/// Its name ("Teal"), for accessibility labels.
+/// </param>
+/// <param name="Hex">
+/// `#rrggbb`.
+/// </param>
+public record Accent (
+    /// <summary>
+    /// Its name ("Teal"), for accessibility labels.
+    /// </summary>
     string Name, 
+    /// <summary>
+    /// `#rrggbb`.
+    /// </summary>
+    string Hex
+) {
+}
+
+class FfiConverterTypeAccent: FfiConverterRustBuffer<Accent> {
+    public static FfiConverterTypeAccent INSTANCE = new FfiConverterTypeAccent();
+
+    public override Accent Read(BigEndianStream stream) {
+        return new Accent(
+            Name: FfiConverterString.INSTANCE.Read(stream),
+            Hex: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(Accent value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Name)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Hex);
+    }
+
+    public override void Write(Accent value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Name, stream);
+            FfiConverterString.INSTANCE.Write(value.Hex, stream);
+    }
+}
+
+
+
+/// <summary>
+/// Everything an app paints with one accent, as `#rrggbb`.
+/// </summary>
+/// <param name="Bg">
+/// Filled things: suggested buttons, the selected swatch, switches.
+/// </param>
+/// <param name="Fg">
+/// Text and icons on `bg`: near-black on light accents, else white.
+/// </param>
+/// <param name="Text">
+/// The accent as text (links) on the window background, lightened in
+/// dark mode and darkened in light mode so it reads.
+/// </param>
+/// <param name="Light1">
+/// WinUI's SystemAccentColorLight1: 25% toward white.
+/// </param>
+/// <param name="Light2">
+/// SystemAccentColorLight2: 50% toward white.
+/// </param>
+/// <param name="Light3">
+/// SystemAccentColorLight3: 75% toward white.
+/// </param>
+/// <param name="Dark1">
+/// SystemAccentColorDark1: 25% toward black.
+/// </param>
+/// <param name="Dark2">
+/// SystemAccentColorDark2: 50% toward black.
+/// </param>
+/// <param name="Dark3">
+/// SystemAccentColorDark3: 75% toward black.
+/// </param>
+public record AccentPalette (
+    /// <summary>
+    /// Filled things: suggested buttons, the selected swatch, switches.
+    /// </summary>
+    string Bg, 
+    /// <summary>
+    /// Text and icons on `bg`: near-black on light accents, else white.
+    /// </summary>
+    string Fg, 
+    /// <summary>
+    /// The accent as text (links) on the window background, lightened in
+    /// dark mode and darkened in light mode so it reads.
+    /// </summary>
+    string Text, 
+    /// <summary>
+    /// WinUI's SystemAccentColorLight1: 25% toward white.
+    /// </summary>
+    string Light1, 
+    /// <summary>
+    /// SystemAccentColorLight2: 50% toward white.
+    /// </summary>
+    string Light2, 
+    /// <summary>
+    /// SystemAccentColorLight3: 75% toward white.
+    /// </summary>
+    string Light3, 
+    /// <summary>
+    /// SystemAccentColorDark1: 25% toward black.
+    /// </summary>
+    string Dark1, 
+    /// <summary>
+    /// SystemAccentColorDark2: 50% toward black.
+    /// </summary>
+    string Dark2, 
+    /// <summary>
+    /// SystemAccentColorDark3: 75% toward black.
+    /// </summary>
+    string Dark3
+) {
+}
+
+class FfiConverterTypeAccentPalette: FfiConverterRustBuffer<AccentPalette> {
+    public static FfiConverterTypeAccentPalette INSTANCE = new FfiConverterTypeAccentPalette();
+
+    public override AccentPalette Read(BigEndianStream stream) {
+        return new AccentPalette(
+            Bg: FfiConverterString.INSTANCE.Read(stream),
+            Fg: FfiConverterString.INSTANCE.Read(stream),
+            Text: FfiConverterString.INSTANCE.Read(stream),
+            Light1: FfiConverterString.INSTANCE.Read(stream),
+            Light2: FfiConverterString.INSTANCE.Read(stream),
+            Light3: FfiConverterString.INSTANCE.Read(stream),
+            Dark1: FfiConverterString.INSTANCE.Read(stream),
+            Dark2: FfiConverterString.INSTANCE.Read(stream),
+            Dark3: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(AccentPalette value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Bg)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Fg)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Text)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Light1)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Light2)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Light3)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Dark1)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Dark2)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Dark3);
+    }
+
+    public override void Write(AccentPalette value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Bg, stream);
+            FfiConverterString.INSTANCE.Write(value.Fg, stream);
+            FfiConverterString.INSTANCE.Write(value.Text, stream);
+            FfiConverterString.INSTANCE.Write(value.Light1, stream);
+            FfiConverterString.INSTANCE.Write(value.Light2, stream);
+            FfiConverterString.INSTANCE.Write(value.Light3, stream);
+            FfiConverterString.INSTANCE.Write(value.Dark1, stream);
+            FfiConverterString.INSTANCE.Write(value.Dark2, stream);
+            FfiConverterString.INSTANCE.Write(value.Dark3, stream);
+    }
+}
+
+
+
+/// <summary>
+/// Where backups go, and how they're doing.
+/// </summary>
+/// <param name="Folder">
+/// The folder backups go to (absolute).
+/// </param>
+/// <param name="IsCustom">
+/// Whether that's a folder the user chose, rather than the default.
+/// </param>
+/// <param name="Available">
+/// Whether the folder is there right now. A chosen folder on a drive
+/// that's unplugged isn't, and backups wait until it's back.
+/// </param>
+/// <param name="Latest">
+/// The date of this journal's newest backup there, `YYYY-MM-DD`.
+/// </param>
+/// <param name="Keep">
+/// How many daily copies are kept.
+/// </param>
+public record BackupStatus (
+    /// <summary>
+    /// The folder backups go to (absolute).
+    /// </summary>
+    string Folder, 
+    /// <summary>
+    /// Whether that's a folder the user chose, rather than the default.
+    /// </summary>
+    bool IsCustom, 
+    /// <summary>
+    /// Whether the folder is there right now. A chosen folder on a drive
+    /// that's unplugged isn't, and backups wait until it's back.
+    /// </summary>
+    bool Available, 
+    /// <summary>
+    /// The date of this journal's newest backup there, `YYYY-MM-DD`.
+    /// </summary>
+    string? Latest, 
+    /// <summary>
+    /// How many daily copies are kept.
+    /// </summary>
+    uint Keep
+) {
+}
+
+class FfiConverterTypeBackupStatus: FfiConverterRustBuffer<BackupStatus> {
+    public static FfiConverterTypeBackupStatus INSTANCE = new FfiConverterTypeBackupStatus();
+
+    public override BackupStatus Read(BigEndianStream stream) {
+        return new BackupStatus(
+            Folder: FfiConverterString.INSTANCE.Read(stream),
+            IsCustom: FfiConverterBoolean.INSTANCE.Read(stream),
+            Available: FfiConverterBoolean.INSTANCE.Read(stream),
+            Latest: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Keep: FfiConverterUInt32.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(BackupStatus value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Folder)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.IsCustom)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.Available)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Latest)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.Keep);
+    }
+
+    public override void Write(BackupStatus value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Folder, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.IsCustom, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.Available, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Latest, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.Keep, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A saved book. Books are shared by every profile; entries are not.
+/// </summary>
+/// <param name="Id">
+/// The book's id.
+/// </param>
+/// <param name="Title">
+/// The title.
+/// </param>
+/// <param name="Subtitle">
+/// The subtitle, if any.
+/// </param>
+/// <param name="Author">
+/// The author.
+/// </param>
+/// <param name="Isbn">
+/// One ISBN.
+/// </param>
+/// <param name="Publisher">
+/// The publisher.
+/// </param>
+/// <param name="Description">
+/// The long description ("About this book").
+/// </param>
+/// <param name="PublishedDate">
+/// The year it was first published, as Open Library writes it.
+/// </param>
+/// <param name="PageCount">
+/// The typical page count.
+/// </param>
+/// <param name="CoverPath">
+/// The cover image's absolute path, if one was downloaded.
+/// </param>
+public record BookInfo (
+    /// <summary>
+    /// The book's id.
+    /// </summary>
+    string Id, 
+    /// <summary>
+    /// The title.
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// The subtitle, if any.
+    /// </summary>
+    string? Subtitle, 
+    /// <summary>
+    /// The author.
+    /// </summary>
+    string? Author, 
+    /// <summary>
+    /// One ISBN.
+    /// </summary>
+    string? Isbn, 
+    /// <summary>
+    /// The publisher.
+    /// </summary>
+    string? Publisher, 
+    /// <summary>
+    /// The long description ("About this book").
+    /// </summary>
+    string? Description, 
+    /// <summary>
+    /// The year it was first published, as Open Library writes it.
+    /// </summary>
+    string? PublishedDate, 
+    /// <summary>
+    /// The typical page count.
+    /// </summary>
+    long? PageCount, 
+    /// <summary>
+    /// The cover image's absolute path, if one was downloaded.
+    /// </summary>
+    string? CoverPath
+) {
+}
+
+class FfiConverterTypeBookInfo: FfiConverterRustBuffer<BookInfo> {
+    public static FfiConverterTypeBookInfo INSTANCE = new FfiConverterTypeBookInfo();
+
+    public override BookInfo Read(BigEndianStream stream) {
+        return new BookInfo(
+            Id: FfiConverterString.INSTANCE.Read(stream),
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Subtitle: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Author: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Isbn: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Publisher: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Description: FfiConverterOptionalString.INSTANCE.Read(stream),
+            PublishedDate: FfiConverterOptionalString.INSTANCE.Read(stream),
+            PageCount: FfiConverterOptionalInt64.INSTANCE.Read(stream),
+            CoverPath: FfiConverterOptionalString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(BookInfo value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Id)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Subtitle)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Author)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Isbn)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Publisher)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Description)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.PublishedDate)
+            + FfiConverterOptionalInt64.INSTANCE.AllocationSize(value.PageCount)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.CoverPath);
+    }
+
+    public override void Write(BookInfo value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Id, stream);
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Subtitle, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Author, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Isbn, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Publisher, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Description, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.PublishedDate, stream);
+            FfiConverterOptionalInt64.INSTANCE.Write(value.PageCount, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.CoverPath, stream);
+    }
+}
+
+
+
+/// <summary>
+/// One entry: a profile's reading of a book, with what they wrote.
+/// </summary>
+/// <param name="SummaryId">
+/// The entry's id (a "summary" in the database).
+/// </param>
+/// <param name="UserId">
+/// Whose entry it is.
+/// </param>
+/// <param name="Book">
+/// The book.
+/// </param>
+/// <param name="Started">
+/// When reading started, `YYYY-MM-DD`.
+/// </param>
+/// <param name="Finished">
+/// When it was finished, `YYYY-MM-DD`.
+/// </param>
+/// <param name="Days">
+/// Days from start to finish, when both are set.
+/// </param>
+/// <param name="Body">
+/// What was written, in Markdown, with `\n` line ends.
+/// </param>
+/// <param name="Shelf">
+/// The shelf it's on, from its dates.
+/// </param>
+/// <param name="CreatedAtMs">
+/// When the entry was made, in Unix milliseconds.
+/// </param>
+/// <param name="UpdatedAtMs">
+/// When it last changed, in Unix milliseconds.
+/// </param>
+public record EntryDetail (
+    /// <summary>
+    /// The entry's id (a "summary" in the database).
+    /// </summary>
+    string SummaryId, 
+    /// <summary>
+    /// Whose entry it is.
+    /// </summary>
+    string UserId, 
+    /// <summary>
+    /// The book.
+    /// </summary>
+    BookInfo Book, 
+    /// <summary>
+    /// When reading started, `YYYY-MM-DD`.
+    /// </summary>
+    string? Started, 
+    /// <summary>
+    /// When it was finished, `YYYY-MM-DD`.
+    /// </summary>
+    string? Finished, 
+    /// <summary>
+    /// Days from start to finish, when both are set.
+    /// </summary>
+    long? Days, 
+    /// <summary>
+    /// What was written, in Markdown, with `\n` line ends.
+    /// </summary>
+    string Body, 
+    /// <summary>
+    /// The shelf it's on, from its dates.
+    /// </summary>
+    Shelf Shelf, 
+    /// <summary>
+    /// When the entry was made, in Unix milliseconds.
+    /// </summary>
+    long CreatedAtMs, 
+    /// <summary>
+    /// When it last changed, in Unix milliseconds.
+    /// </summary>
+    long UpdatedAtMs
+) {
+}
+
+class FfiConverterTypeEntryDetail: FfiConverterRustBuffer<EntryDetail> {
+    public static FfiConverterTypeEntryDetail INSTANCE = new FfiConverterTypeEntryDetail();
+
+    public override EntryDetail Read(BigEndianStream stream) {
+        return new EntryDetail(
+            SummaryId: FfiConverterString.INSTANCE.Read(stream),
+            UserId: FfiConverterString.INSTANCE.Read(stream),
+            Book: FfiConverterTypeBookInfo.INSTANCE.Read(stream),
+            Started: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Finished: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Days: FfiConverterOptionalInt64.INSTANCE.Read(stream),
+            Body: FfiConverterString.INSTANCE.Read(stream),
+            Shelf: FfiConverterTypeShelf.INSTANCE.Read(stream),
+            CreatedAtMs: FfiConverterInt64.INSTANCE.Read(stream),
+            UpdatedAtMs: FfiConverterInt64.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(EntryDetail value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.SummaryId)
+            + FfiConverterString.INSTANCE.AllocationSize(value.UserId)
+            + FfiConverterTypeBookInfo.INSTANCE.AllocationSize(value.Book)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Started)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Finished)
+            + FfiConverterOptionalInt64.INSTANCE.AllocationSize(value.Days)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Body)
+            + FfiConverterTypeShelf.INSTANCE.AllocationSize(value.Shelf)
+            + FfiConverterInt64.INSTANCE.AllocationSize(value.CreatedAtMs)
+            + FfiConverterInt64.INSTANCE.AllocationSize(value.UpdatedAtMs);
+    }
+
+    public override void Write(EntryDetail value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.SummaryId, stream);
+            FfiConverterString.INSTANCE.Write(value.UserId, stream);
+            FfiConverterTypeBookInfo.INSTANCE.Write(value.Book, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Started, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Finished, stream);
+            FfiConverterOptionalInt64.INSTANCE.Write(value.Days, stream);
+            FfiConverterString.INSTANCE.Write(value.Body, stream);
+            FfiConverterTypeShelf.INSTANCE.Write(value.Shelf, stream);
+            FfiConverterInt64.INSTANCE.Write(value.CreatedAtMs, stream);
+            FfiConverterInt64.INSTANCE.Write(value.UpdatedAtMs, stream);
+    }
+}
+
+
+
+/// <summary>
+/// What an export wrote.
+/// </summary>
+/// <param name="Count">
+/// How many Markdown files were written.
+/// </param>
+/// <param name="Folder">
+/// The folder they're in (absolute), to offer to open it.
+/// </param>
+public record ExportResult (
+    /// <summary>
+    /// How many Markdown files were written.
+    /// </summary>
+    uint Count, 
+    /// <summary>
+    /// The folder they're in (absolute), to offer to open it.
+    /// </summary>
+    string Folder
+) {
+}
+
+class FfiConverterTypeExportResult: FfiConverterRustBuffer<ExportResult> {
+    public static FfiConverterTypeExportResult INSTANCE = new FfiConverterTypeExportResult();
+
+    public override ExportResult Read(BigEndianStream stream) {
+        return new ExportResult(
+            Count: FfiConverterUInt32.INSTANCE.Read(stream),
+            Folder: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ExportResult value) {
+        return 0
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.Count)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Folder);
+    }
+
+    public override void Write(ExportResult value, BigEndianStream stream) {
+            FfiConverterUInt32.INSTANCE.Write(value.Count, stream);
+            FfiConverterString.INSTANCE.Write(value.Folder, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A key plus modifier flags, for `NSEvent.ModifierFlags` + key equivalent
+/// on the Mac and `VirtualKeyModifiers` + `VirtualKey` on Windows.
+/// </summary>
+/// <param name="Key">
+/// The key.
+/// </param>
+/// <param name="Command">
+/// ⌘ on the Mac. Never set for Windows.
+/// </param>
+/// <param name="Control">
+/// ⌃ on the Mac, Ctrl on Windows.
+/// </param>
+/// <param name="Shift">
+/// Shift.
+/// </param>
+public record KeyCombo (
+    /// <summary>
+    /// The key.
+    /// </summary>
+    ShortcutKey Key, 
+    /// <summary>
+    /// ⌘ on the Mac. Never set for Windows.
+    /// </summary>
+    bool Command, 
+    /// <summary>
+    /// ⌃ on the Mac, Ctrl on Windows.
+    /// </summary>
+    bool Control, 
+    /// <summary>
+    /// Shift.
+    /// </summary>
+    bool Shift
+) {
+}
+
+class FfiConverterTypeKeyCombo: FfiConverterRustBuffer<KeyCombo> {
+    public static FfiConverterTypeKeyCombo INSTANCE = new FfiConverterTypeKeyCombo();
+
+    public override KeyCombo Read(BigEndianStream stream) {
+        return new KeyCombo(
+            Key: FfiConverterTypeShortcutKey.INSTANCE.Read(stream),
+            Command: FfiConverterBoolean.INSTANCE.Read(stream),
+            Control: FfiConverterBoolean.INSTANCE.Read(stream),
+            Shift: FfiConverterBoolean.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(KeyCombo value) {
+        return 0
+            + FfiConverterTypeShortcutKey.INSTANCE.AllocationSize(value.Key)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.Command)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.Control)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.Shift);
+    }
+
+    public override void Write(KeyCombo value, BigEndianStream stream) {
+            FfiConverterTypeShortcutKey.INSTANCE.Write(value.Key, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.Command, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.Control, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.Shift, stream);
+    }
+}
+
+
+
+/// <summary>
+/// The user manual, split up for an in-app page.
+/// </summary>
+/// <param name="Intro">
+/// The title and opening paragraphs, in Markdown.
+/// </param>
+/// <param name="Contents">
+/// The manual's own "Contents" list.
+/// </param>
+/// <param name="Sections">
+/// Every `##`/`###` heading with the Markdown under it, in order.
+/// </param>
+public record Manual (
+    /// <summary>
+    /// The title and opening paragraphs, in Markdown.
+    /// </summary>
+    string Intro, 
+    /// <summary>
+    /// The manual's own "Contents" list.
+    /// </summary>
+    ManualEntry[] Contents, 
+    /// <summary>
+    /// Every `##`/`###` heading with the Markdown under it, in order.
+    /// </summary>
+    ManualSection[] Sections
+) {
+}
+
+class FfiConverterTypeManual: FfiConverterRustBuffer<Manual> {
+    public static FfiConverterTypeManual INSTANCE = new FfiConverterTypeManual();
+
+    public override Manual Read(BigEndianStream stream) {
+        return new Manual(
+            Intro: FfiConverterString.INSTANCE.Read(stream),
+            Contents: FfiConverterSequenceTypeManualEntry.INSTANCE.Read(stream),
+            Sections: FfiConverterSequenceTypeManualSection.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(Manual value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Intro)
+            + FfiConverterSequenceTypeManualEntry.INSTANCE.AllocationSize(value.Contents)
+            + FfiConverterSequenceTypeManualSection.INSTANCE.AllocationSize(value.Sections);
+    }
+
+    public override void Write(Manual value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Intro, stream);
+            FfiConverterSequenceTypeManualEntry.INSTANCE.Write(value.Contents, stream);
+            FfiConverterSequenceTypeManualSection.INSTANCE.Write(value.Sections, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A line of the manual's Contents.
+/// </summary>
+/// <param name="Title">
+/// The section's title.
+/// </param>
+/// <param name="Anchor">
+/// The section it leads to (a `ManualSection.anchor`).
+/// </param>
+/// <param name="Nested">
+/// A subsection, indented in the Contents.
+/// </param>
+public record ManualEntry (
+    /// <summary>
+    /// The section's title.
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// The section it leads to (a `ManualSection.anchor`).
+    /// </summary>
+    string Anchor, 
+    /// <summary>
+    /// A subsection, indented in the Contents.
+    /// </summary>
+    bool Nested
+) {
+}
+
+class FfiConverterTypeManualEntry: FfiConverterRustBuffer<ManualEntry> {
+    public static FfiConverterTypeManualEntry INSTANCE = new FfiConverterTypeManualEntry();
+
+    public override ManualEntry Read(BigEndianStream stream) {
+        return new ManualEntry(
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Anchor: FfiConverterString.INSTANCE.Read(stream),
+            Nested: FfiConverterBoolean.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ManualEntry value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Anchor)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.Nested);
+    }
+
+    public override void Write(ManualEntry value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterString.INSTANCE.Write(value.Anchor, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.Nested, stream);
+    }
+}
+
+
+
+/// <summary>
+/// One section of the manual.
+/// </summary>
+/// <param name="Anchor">
+/// The anchor GitHub gives the heading, so Contents links work in the
+/// app and on GitHub alike.
+/// </param>
+/// <param name="Markdown">
+/// The heading line and everything up to the next heading, in Markdown
+/// (lay it out with `render_markdown`).
+/// </param>
+public record ManualSection (
+    /// <summary>
+    /// The anchor GitHub gives the heading, so Contents links work in the
+    /// app and on GitHub alike.
+    /// </summary>
+    string Anchor, 
+    /// <summary>
+    /// The heading line and everything up to the next heading, in Markdown
+    /// (lay it out with `render_markdown`).
+    /// </summary>
+    string Markdown
+) {
+}
+
+class FfiConverterTypeManualSection: FfiConverterRustBuffer<ManualSection> {
+    public static FfiConverterTypeManualSection INSTANCE = new FfiConverterTypeManualSection();
+
+    public override ManualSection Read(BigEndianStream stream) {
+        return new ManualSection(
+            Anchor: FfiConverterString.INSTANCE.Read(stream),
+            Markdown: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ManualSection value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Anchor)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Markdown);
+    }
+
+    public override void Write(ManualSection value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Anchor, stream);
+            FfiConverterString.INSTANCE.Write(value.Markdown, stream);
+    }
+}
+
+
+
+/// <summary>
+/// The writing page's measurements, in pixels (at 96 to the inch).
+/// </summary>
+/// <param name="ColumnWidth">
+/// The widest the text column gets (the reading page uses it too).
+/// </param>
+/// <param name="WrapGap">
+/// Space between the wrapped rows of one paragraph line.
+/// </param>
+/// <param name="LineGap">
+/// Space below each line.
+/// </param>
+/// <param name="FontPx">
+/// The writing size.
+/// </param>
+public record PageLayout (
+    /// <summary>
+    /// The widest the text column gets (the reading page uses it too).
+    /// </summary>
+    int ColumnWidth, 
+    /// <summary>
+    /// Space between the wrapped rows of one paragraph line.
+    /// </summary>
+    int WrapGap, 
+    /// <summary>
+    /// Space below each line.
+    /// </summary>
+    int LineGap, 
+    /// <summary>
+    /// The writing size.
+    /// </summary>
+    double FontPx
+) {
+}
+
+class FfiConverterTypePageLayout: FfiConverterRustBuffer<PageLayout> {
+    public static FfiConverterTypePageLayout INSTANCE = new FfiConverterTypePageLayout();
+
+    public override PageLayout Read(BigEndianStream stream) {
+        return new PageLayout(
+            ColumnWidth: FfiConverterInt32.INSTANCE.Read(stream),
+            WrapGap: FfiConverterInt32.INSTANCE.Read(stream),
+            LineGap: FfiConverterInt32.INSTANCE.Read(stream),
+            FontPx: FfiConverterDouble.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(PageLayout value) {
+        return 0
+            + FfiConverterInt32.INSTANCE.AllocationSize(value.ColumnWidth)
+            + FfiConverterInt32.INSTANCE.AllocationSize(value.WrapGap)
+            + FfiConverterInt32.INSTANCE.AllocationSize(value.LineGap)
+            + FfiConverterDouble.INSTANCE.AllocationSize(value.FontPx);
+    }
+
+    public override void Write(PageLayout value, BigEndianStream stream) {
+            FfiConverterInt32.INSTANCE.Write(value.ColumnWidth, stream);
+            FfiConverterInt32.INSTANCE.Write(value.WrapGap, stream);
+            FfiConverterInt32.INSTANCE.Write(value.LineGap, stream);
+            FfiConverterDouble.INSTANCE.Write(value.FontPx, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A profile: one person's shelves.
+/// </summary>
+/// <param name="Id">
+/// The profile's id.
+/// </param>
+/// <param name="Name">
+/// The name on the "Who's reading?" page. Unique.
+/// </param>
+/// <param name="Email">
+/// Optional contact sent to Open Library with searches, as it asks of
+/// API users. Always a valid address when set.
+/// </param>
+public record Profile (
+    /// <summary>
+    /// The profile's id.
+    /// </summary>
+    string Id, 
+    /// <summary>
+    /// The name on the "Who's reading?" page. Unique.
+    /// </summary>
+    string Name, 
+    /// <summary>
+    /// Optional contact sent to Open Library with searches, as it asks of
+    /// API users. Always a valid address when set.
+    /// </summary>
     string? Email
 ) {
 }
@@ -1837,11 +4828,660 @@ class FfiConverterTypeProfile: FfiConverterRustBuffer<Profile> {
 
 
 /// <summary>
+/// One profile's settings. Read them with `Journal::settings`, change any
+/// field and pass the whole record to `Journal::update_settings`.
+/// </summary>
+/// <param name="UserId">
+/// Whose settings these are.
+/// </param>
+/// <param name="Theme">
+/// Light, dark or the system's.
+/// </param>
+/// <param name="Accent">
+/// The accent color, `#rrggbb` (one of `accents()`, or any color).
+/// </param>
+/// <param name="HeadingFont">
+/// The typeface of titles and headings.
+/// </param>
+/// <param name="WritingFont">
+/// The typeface of the writing page.
+/// </param>
+/// <param name="WritingSize">
+/// The writing size in points, 10 to 28.
+/// </param>
+/// <param name="LineSpacing">
+/// Space between lines on the writing page.
+/// </param>
+/// <param name="PageWidth">
+/// How wide the writing column gets.
+/// </param>
+/// <param name="FocusDefault">
+/// Whether the writing page opens in focus mode.
+/// </param>
+/// <param name="DateFormat">
+/// How dates are written.
+/// </param>
+/// <param name="WeekStart">
+/// The first day of the week in date pickers.
+/// </param>
+/// <param name="StartShelf">
+/// The shelf the home page opens on.
+/// </param>
+public record ProfileSettings (
+    /// <summary>
+    /// Whose settings these are.
+    /// </summary>
+    string UserId, 
+    /// <summary>
+    /// Light, dark or the system's.
+    /// </summary>
+    Theme Theme, 
+    /// <summary>
+    /// The accent color, `#rrggbb` (one of `accents()`, or any color).
+    /// </summary>
+    string Accent, 
+    /// <summary>
+    /// The typeface of titles and headings.
+    /// </summary>
+    HeadingFont HeadingFont, 
+    /// <summary>
+    /// The typeface of the writing page.
+    /// </summary>
+    WritingFont WritingFont, 
+    /// <summary>
+    /// The writing size in points, 10 to 28.
+    /// </summary>
+    uint WritingSize, 
+    /// <summary>
+    /// Space between lines on the writing page.
+    /// </summary>
+    LineSpacing LineSpacing, 
+    /// <summary>
+    /// How wide the writing column gets.
+    /// </summary>
+    PageWidth PageWidth, 
+    /// <summary>
+    /// Whether the writing page opens in focus mode.
+    /// </summary>
+    bool FocusDefault, 
+    /// <summary>
+    /// How dates are written.
+    /// </summary>
+    DateFormat DateFormat, 
+    /// <summary>
+    /// The first day of the week in date pickers.
+    /// </summary>
+    WeekStart WeekStart, 
+    /// <summary>
+    /// The shelf the home page opens on.
+    /// </summary>
+    Shelf StartShelf
+) {
+}
+
+class FfiConverterTypeProfileSettings: FfiConverterRustBuffer<ProfileSettings> {
+    public static FfiConverterTypeProfileSettings INSTANCE = new FfiConverterTypeProfileSettings();
+
+    public override ProfileSettings Read(BigEndianStream stream) {
+        return new ProfileSettings(
+            UserId: FfiConverterString.INSTANCE.Read(stream),
+            Theme: FfiConverterTypeTheme.INSTANCE.Read(stream),
+            Accent: FfiConverterString.INSTANCE.Read(stream),
+            HeadingFont: FfiConverterTypeHeadingFont.INSTANCE.Read(stream),
+            WritingFont: FfiConverterTypeWritingFont.INSTANCE.Read(stream),
+            WritingSize: FfiConverterUInt32.INSTANCE.Read(stream),
+            LineSpacing: FfiConverterTypeLineSpacing.INSTANCE.Read(stream),
+            PageWidth: FfiConverterTypePageWidth.INSTANCE.Read(stream),
+            FocusDefault: FfiConverterBoolean.INSTANCE.Read(stream),
+            DateFormat: FfiConverterTypeDateFormat.INSTANCE.Read(stream),
+            WeekStart: FfiConverterTypeWeekStart.INSTANCE.Read(stream),
+            StartShelf: FfiConverterTypeShelf.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ProfileSettings value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.UserId)
+            + FfiConverterTypeTheme.INSTANCE.AllocationSize(value.Theme)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Accent)
+            + FfiConverterTypeHeadingFont.INSTANCE.AllocationSize(value.HeadingFont)
+            + FfiConverterTypeWritingFont.INSTANCE.AllocationSize(value.WritingFont)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.WritingSize)
+            + FfiConverterTypeLineSpacing.INSTANCE.AllocationSize(value.LineSpacing)
+            + FfiConverterTypePageWidth.INSTANCE.AllocationSize(value.PageWidth)
+            + FfiConverterBoolean.INSTANCE.AllocationSize(value.FocusDefault)
+            + FfiConverterTypeDateFormat.INSTANCE.AllocationSize(value.DateFormat)
+            + FfiConverterTypeWeekStart.INSTANCE.AllocationSize(value.WeekStart)
+            + FfiConverterTypeShelf.INSTANCE.AllocationSize(value.StartShelf);
+    }
+
+    public override void Write(ProfileSettings value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.UserId, stream);
+            FfiConverterTypeTheme.INSTANCE.Write(value.Theme, stream);
+            FfiConverterString.INSTANCE.Write(value.Accent, stream);
+            FfiConverterTypeHeadingFont.INSTANCE.Write(value.HeadingFont, stream);
+            FfiConverterTypeWritingFont.INSTANCE.Write(value.WritingFont, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.WritingSize, stream);
+            FfiConverterTypeLineSpacing.INSTANCE.Write(value.LineSpacing, stream);
+            FfiConverterTypePageWidth.INSTANCE.Write(value.PageWidth, stream);
+            FfiConverterBoolean.INSTANCE.Write(value.FocusDefault, stream);
+            FfiConverterTypeDateFormat.INSTANCE.Write(value.DateFormat, stream);
+            FfiConverterTypeWeekStart.INSTANCE.Write(value.WeekStart, stream);
+            FfiConverterTypeShelf.INSTANCE.Write(value.StartShelf, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A stretch of text with one set of styles. A `\n` in `text` is a line
+/// break the writer typed. May be empty (see `Block`).
+/// </summary>
+/// <param name="Text">
+/// The text.
+/// </param>
+/// <param name="Styles">
+/// Outermost first, in the order they were written.
+/// </param>
+public record Run (
+    /// <summary>
+    /// The text.
+    /// </summary>
+    string Text, 
+    /// <summary>
+    /// Outermost first, in the order they were written.
+    /// </summary>
+    RunStyle[] Styles
+) {
+}
+
+class FfiConverterTypeRun: FfiConverterRustBuffer<Run> {
+    public static FfiConverterTypeRun INSTANCE = new FfiConverterTypeRun();
+
+    public override Run Read(BigEndianStream stream) {
+        return new Run(
+            Text: FfiConverterString.INSTANCE.Read(stream),
+            Styles: FfiConverterSequenceTypeRunStyle.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(Run value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Text)
+            + FfiConverterSequenceTypeRunStyle.INSTANCE.AllocationSize(value.Styles);
+    }
+
+    public override void Write(Run value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Text, stream);
+            FfiConverterSequenceTypeRunStyle.INSTANCE.Write(value.Styles, stream);
+    }
+}
+
+
+
+/// <summary>
+/// What saving the writing page's text gives back.
+/// </summary>
+/// <param name="Words">
+/// The word count of what was saved, for the status line.
+/// </param>
+public record SaveResult (
+    /// <summary>
+    /// The word count of what was saved, for the status line.
+    /// </summary>
+    uint Words
+) {
+}
+
+class FfiConverterTypeSaveResult: FfiConverterRustBuffer<SaveResult> {
+    public static FfiConverterTypeSaveResult INSTANCE = new FfiConverterTypeSaveResult();
+
+    public override SaveResult Read(BigEndianStream stream) {
+        return new SaveResult(
+            Words: FfiConverterUInt32.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(SaveResult value) {
+        return 0
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.Words);
+    }
+
+    public override void Write(SaveResult value, BigEndianStream stream) {
+            FfiConverterUInt32.INSTANCE.Write(value.Words, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A book found on Open Library, not saved yet. Pass it back to
+/// `Journal::save_search_result` to keep it.
+/// </summary>
+/// <param name="ExternalId">
+/// Open Library's key, like `/works/OL45804W`.
+/// </param>
+/// <param name="Title">
+/// The title.
+/// </param>
+/// <param name="Subtitle">
+/// The subtitle, if any.
+/// </param>
+/// <param name="Author">
+/// The first author.
+/// </param>
+/// <param name="Isbn">
+/// One ISBN.
+/// </param>
+/// <param name="Publisher">
+/// The first publisher.
+/// </param>
+/// <param name="Description">
+/// The long description. Search results don't have one; it's fetched
+/// when the book is saved.
+/// </param>
+/// <param name="PublishedDate">
+/// The year it was first published, as Open Library writes it.
+/// </param>
+/// <param name="PageCount">
+/// The typical page count.
+/// </param>
+/// <param name="CoverUrl">
+/// An https link to the cover image, for showing in the results. The
+/// cover is downloaded when the book is saved.
+/// </param>
+public record SearchResult (
+    /// <summary>
+    /// Open Library's key, like `/works/OL45804W`.
+    /// </summary>
+    string ExternalId, 
+    /// <summary>
+    /// The title.
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// The subtitle, if any.
+    /// </summary>
+    string? Subtitle, 
+    /// <summary>
+    /// The first author.
+    /// </summary>
+    string? Author, 
+    /// <summary>
+    /// One ISBN.
+    /// </summary>
+    string? Isbn, 
+    /// <summary>
+    /// The first publisher.
+    /// </summary>
+    string? Publisher, 
+    /// <summary>
+    /// The long description. Search results don't have one; it's fetched
+    /// when the book is saved.
+    /// </summary>
+    string? Description, 
+    /// <summary>
+    /// The year it was first published, as Open Library writes it.
+    /// </summary>
+    string? PublishedDate, 
+    /// <summary>
+    /// The typical page count.
+    /// </summary>
+    long? PageCount, 
+    /// <summary>
+    /// An https link to the cover image, for showing in the results. The
+    /// cover is downloaded when the book is saved.
+    /// </summary>
+    string? CoverUrl
+) {
+}
+
+class FfiConverterTypeSearchResult: FfiConverterRustBuffer<SearchResult> {
+    public static FfiConverterTypeSearchResult INSTANCE = new FfiConverterTypeSearchResult();
+
+    public override SearchResult Read(BigEndianStream stream) {
+        return new SearchResult(
+            ExternalId: FfiConverterString.INSTANCE.Read(stream),
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Subtitle: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Author: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Isbn: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Publisher: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Description: FfiConverterOptionalString.INSTANCE.Read(stream),
+            PublishedDate: FfiConverterOptionalString.INSTANCE.Read(stream),
+            PageCount: FfiConverterOptionalInt64.INSTANCE.Read(stream),
+            CoverUrl: FfiConverterOptionalString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(SearchResult value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.ExternalId)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Subtitle)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Author)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Isbn)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Publisher)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Description)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.PublishedDate)
+            + FfiConverterOptionalInt64.INSTANCE.AllocationSize(value.PageCount)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.CoverUrl);
+    }
+
+    public override void Write(SearchResult value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.ExternalId, stream);
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Subtitle, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Author, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Isbn, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Publisher, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Description, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.PublishedDate, stream);
+            FfiConverterOptionalInt64.INSTANCE.Write(value.PageCount, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.CoverUrl, stream);
+    }
+}
+
+
+
+/// <summary>
+/// One book on a shelf.
+/// </summary>
+/// <param name="SummaryId">
+/// The entry's id, for `Journal::entry` and the rest.
+/// </param>
+/// <param name="BookId">
+/// The book's id.
+/// </param>
+/// <param name="Title">
+/// The book's title.
+/// </param>
+/// <param name="Author">
+/// The book's author.
+/// </param>
+/// <param name="CoverPath">
+/// The cover image's absolute path, if there is one.
+/// </param>
+/// <param name="Meta">
+/// "Finished Sep 5, 2026 · 10 days"; empty when there's nothing to say.
+/// </param>
+/// <param name="Excerpt">
+/// A plain-text taste of what was written; may be empty.
+/// </param>
+/// <param name="EmptyNote">
+/// What to show when `excerpt` is empty ("Nothing written yet."), if
+/// anything.
+/// </param>
+/// <param name="Haystack">
+/// The lowercased text the shelf search looks in: pass it to
+/// `matches` with the `query_terms` of the search.
+/// </param>
+public record ShelfEntry (
+    /// <summary>
+    /// The entry's id, for `Journal::entry` and the rest.
+    /// </summary>
+    string SummaryId, 
+    /// <summary>
+    /// The book's id.
+    /// </summary>
+    string BookId, 
+    /// <summary>
+    /// The book's title.
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// The book's author.
+    /// </summary>
+    string? Author, 
+    /// <summary>
+    /// The cover image's absolute path, if there is one.
+    /// </summary>
+    string? CoverPath, 
+    /// <summary>
+    /// "Finished Sep 5, 2026 · 10 days"; empty when there's nothing to say.
+    /// </summary>
+    string Meta, 
+    /// <summary>
+    /// A plain-text taste of what was written; may be empty.
+    /// </summary>
+    string Excerpt, 
+    /// <summary>
+    /// What to show when `excerpt` is empty ("Nothing written yet."), if
+    /// anything.
+    /// </summary>
+    string? EmptyNote, 
+    /// <summary>
+    /// The lowercased text the shelf search looks in: pass it to
+    /// `matches` with the `query_terms` of the search.
+    /// </summary>
+    string Haystack
+) {
+}
+
+class FfiConverterTypeShelfEntry: FfiConverterRustBuffer<ShelfEntry> {
+    public static FfiConverterTypeShelfEntry INSTANCE = new FfiConverterTypeShelfEntry();
+
+    public override ShelfEntry Read(BigEndianStream stream) {
+        return new ShelfEntry(
+            SummaryId: FfiConverterString.INSTANCE.Read(stream),
+            BookId: FfiConverterString.INSTANCE.Read(stream),
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Author: FfiConverterOptionalString.INSTANCE.Read(stream),
+            CoverPath: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Meta: FfiConverterString.INSTANCE.Read(stream),
+            Excerpt: FfiConverterString.INSTANCE.Read(stream),
+            EmptyNote: FfiConverterOptionalString.INSTANCE.Read(stream),
+            Haystack: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ShelfEntry value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.SummaryId)
+            + FfiConverterString.INSTANCE.AllocationSize(value.BookId)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Author)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.CoverPath)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Meta)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Excerpt)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.EmptyNote)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Haystack);
+    }
+
+    public override void Write(ShelfEntry value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.SummaryId, stream);
+            FfiConverterString.INSTANCE.Write(value.BookId, stream);
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.Author, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.CoverPath, stream);
+            FfiConverterString.INSTANCE.Write(value.Meta, stream);
+            FfiConverterString.INSTANCE.Write(value.Excerpt, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.EmptyNote, stream);
+            FfiConverterString.INSTANCE.Write(value.Haystack, stream);
+    }
+}
+
+
+
+/// <summary>
+/// One shelf of the home page, ready to draw, in display order.
+/// </summary>
+/// <param name="Rows">
+/// Year headings (Finished shelf only) and entries, in order.
+/// </param>
+/// <param name="Total">
+/// Books on the shelf.
+/// </param>
+/// <param name="ThisYear">
+/// Books finished this calendar year (Finished shelf only, else 0).
+/// </param>
+/// <param name="CountLine">
+/// "12 books · 3 this year", under the shelf's heading.
+/// </param>
+public record ShelfView (
+    /// <summary>
+    /// Year headings (Finished shelf only) and entries, in order.
+    /// </summary>
+    ShelfRow[] Rows, 
+    /// <summary>
+    /// Books on the shelf.
+    /// </summary>
+    uint Total, 
+    /// <summary>
+    /// Books finished this calendar year (Finished shelf only, else 0).
+    /// </summary>
+    uint ThisYear, 
+    /// <summary>
+    /// "12 books · 3 this year", under the shelf's heading.
+    /// </summary>
+    string CountLine
+) {
+}
+
+class FfiConverterTypeShelfView: FfiConverterRustBuffer<ShelfView> {
+    public static FfiConverterTypeShelfView INSTANCE = new FfiConverterTypeShelfView();
+
+    public override ShelfView Read(BigEndianStream stream) {
+        return new ShelfView(
+            Rows: FfiConverterSequenceTypeShelfRow.INSTANCE.Read(stream),
+            Total: FfiConverterUInt32.INSTANCE.Read(stream),
+            ThisYear: FfiConverterUInt32.INSTANCE.Read(stream),
+            CountLine: FfiConverterString.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ShelfView value) {
+        return 0
+            + FfiConverterSequenceTypeShelfRow.INSTANCE.AllocationSize(value.Rows)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.Total)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.ThisYear)
+            + FfiConverterString.INSTANCE.AllocationSize(value.CountLine);
+    }
+
+    public override void Write(ShelfView value, BigEndianStream stream) {
+            FfiConverterSequenceTypeShelfRow.INSTANCE.Write(value.Rows, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.Total, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.ThisYear, stream);
+            FfiConverterString.INSTANCE.Write(value.CountLine, stream);
+    }
+}
+
+
+
+/// <summary>
+/// One action and its keys.
+/// </summary>
+/// <param name="Title">
+/// What it does ("Bold").
+/// </param>
+/// <param name="Accel">
+/// The keys.
+/// </param>
+public record Shortcut (
+    /// <summary>
+    /// What it does ("Bold").
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// The keys.
+    /// </summary>
+    Accel Accel
+) {
+}
+
+class FfiConverterTypeShortcut: FfiConverterRustBuffer<Shortcut> {
+    public static FfiConverterTypeShortcut INSTANCE = new FfiConverterTypeShortcut();
+
+    public override Shortcut Read(BigEndianStream stream) {
+        return new Shortcut(
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Accel: FfiConverterTypeAccel.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(Shortcut value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterTypeAccel.INSTANCE.AllocationSize(value.Accel);
+    }
+
+    public override void Write(Shortcut value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterTypeAccel.INSTANCE.Write(value.Accel, stream);
+    }
+}
+
+
+
+/// <summary>
+/// A titled group of shortcuts ("Writing").
+/// </summary>
+/// <param name="Title">
+/// The group's title.
+/// </param>
+/// <param name="Items">
+/// Its shortcuts, in the order shown.
+/// </param>
+public record ShortcutGroup (
+    /// <summary>
+    /// The group's title.
+    /// </summary>
+    string Title, 
+    /// <summary>
+    /// Its shortcuts, in the order shown.
+    /// </summary>
+    Shortcut[] Items
+) {
+}
+
+class FfiConverterTypeShortcutGroup: FfiConverterRustBuffer<ShortcutGroup> {
+    public static FfiConverterTypeShortcutGroup INSTANCE = new FfiConverterTypeShortcutGroup();
+
+    public override ShortcutGroup Read(BigEndianStream stream) {
+        return new ShortcutGroup(
+            Title: FfiConverterString.INSTANCE.Read(stream),
+            Items: FfiConverterSequenceTypeShortcut.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(ShortcutGroup value) {
+        return 0
+            + FfiConverterString.INSTANCE.AllocationSize(value.Title)
+            + FfiConverterSequenceTypeShortcut.INSTANCE.AllocationSize(value.Items);
+    }
+
+    public override void Write(ShortcutGroup value, BigEndianStream stream) {
+            FfiConverterString.INSTANCE.Write(value.Title, stream);
+            FfiConverterSequenceTypeShortcut.INSTANCE.Write(value.Items, stream);
+    }
+}
+
+
+
+/// <summary>
 /// `start..end` in UTF-16 code units, as NSTextView and RichEditBox count.
 /// </summary>
+/// <param name="Kind">
+/// What the text is.
+/// </param>
+/// <param name="Start">
+/// Where it starts.
+/// </param>
+/// <param name="End">
+/// Where it ends (exclusive).
+/// </param>
 public record StyleSpan (
+    /// <summary>
+    /// What the text is.
+    /// </summary>
     StyleKind Kind, 
+    /// <summary>
+    /// Where it starts.
+    /// </summary>
     uint Start, 
+    /// <summary>
+    /// Where it ends (exclusive).
+    /// </summary>
     uint End
 ) {
 }
@@ -1873,10 +5513,411 @@ class FfiConverterTypeStyleSpan: FfiConverterRustBuffer<StyleSpan> {
 
 
 
+/// <summary>
+/// One formatting button press: replace `start..end` with `replacement`
+/// (as one undo step), then select `new_sel_start..new_sel_end` in the
+/// edited text (equal: just place the caret). UTF-16 code units.
+/// </summary>
+/// <param name="Start">
+/// Start of the text to replace.
+/// </param>
+/// <param name="End">
+/// End of the text to replace (exclusive).
+/// </param>
+/// <param name="Replacement">
+/// What goes there.
+/// </param>
+/// <param name="NewSelStart">
+/// The new selection's start, in the edited text.
+/// </param>
+/// <param name="NewSelEnd">
+/// The new selection's end, in the edited text.
+/// </param>
+public record TextEdit (
+    /// <summary>
+    /// Start of the text to replace.
+    /// </summary>
+    uint Start, 
+    /// <summary>
+    /// End of the text to replace (exclusive).
+    /// </summary>
+    uint End, 
+    /// <summary>
+    /// What goes there.
+    /// </summary>
+    string Replacement, 
+    /// <summary>
+    /// The new selection's start, in the edited text.
+    /// </summary>
+    uint NewSelStart, 
+    /// <summary>
+    /// The new selection's end, in the edited text.
+    /// </summary>
+    uint NewSelEnd
+) {
+}
+
+class FfiConverterTypeTextEdit: FfiConverterRustBuffer<TextEdit> {
+    public static FfiConverterTypeTextEdit INSTANCE = new FfiConverterTypeTextEdit();
+
+    public override TextEdit Read(BigEndianStream stream) {
+        return new TextEdit(
+            Start: FfiConverterUInt32.INSTANCE.Read(stream),
+            End: FfiConverterUInt32.INSTANCE.Read(stream),
+            Replacement: FfiConverterString.INSTANCE.Read(stream),
+            NewSelStart: FfiConverterUInt32.INSTANCE.Read(stream),
+            NewSelEnd: FfiConverterUInt32.INSTANCE.Read(stream)
+        );
+    }
+
+    public override int AllocationSize(TextEdit value) {
+        return 0
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.Start)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.End)
+            + FfiConverterString.INSTANCE.AllocationSize(value.Replacement)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.NewSelStart)
+            + FfiConverterUInt32.INSTANCE.AllocationSize(value.NewSelEnd);
+    }
+
+    public override void Write(TextEdit value, BigEndianStream stream) {
+            FfiConverterUInt32.INSTANCE.Write(value.Start, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.End, stream);
+            FfiConverterString.INSTANCE.Write(value.Replacement, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.NewSelStart, stream);
+            FfiConverterUInt32.INSTANCE.Write(value.NewSelEnd, stream);
+    }
+}
+
+
+
 
 
 /// <summary>
-/// Errors as the apps see them. Messages are written for people.
+/// The keys for a shortcut.
+/// </summary>
+public record Accel {
+    
+    /// <summary>
+    /// A GTK accelerator string (Linux), like `<Control>n`.
+    /// </summary>
+    public record Gtk (
+        string Accelerator
+    ) : Accel {}
+    
+    /// <summary>
+    /// A key and its modifiers (Mac and Windows).
+    /// </summary>
+    public record Keys (
+        KeyCombo Combo
+    ) : Accel {}
+    
+
+    
+}
+
+class FfiConverterTypeAccel : FfiConverterRustBuffer<Accel>{
+    public static FfiConverterRustBuffer<Accel> INSTANCE = new FfiConverterTypeAccel();
+
+    public override Accel Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new Accel.Gtk(
+                    FfiConverterString.INSTANCE.Read(stream)
+                );
+            case 2:
+                return new Accel.Keys(
+                    FfiConverterTypeKeyCombo.INSTANCE.Read(stream)
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeAccel.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Accel value) {
+        switch (value) {
+            case Accel.Gtk variant_value:
+                return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.Accelerator);
+            case Accel.Keys variant_value:
+                return 4
+                    + FfiConverterTypeKeyCombo.INSTANCE.AllocationSize(variant_value.Combo);
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeAccel.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(Accel value, BigEndianStream stream) {
+        switch (value) {
+            case Accel.Gtk variant_value:
+                stream.WriteInt(1);
+                FfiConverterString.INSTANCE.Write(variant_value.Accelerator, stream);
+                break;
+            case Accel.Keys variant_value:
+                stream.WriteInt(2);
+                FfiConverterTypeKeyCombo.INSTANCE.Write(variant_value.Combo, stream);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeAccel.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A block of Markdown laid out for reading. The model is flat: lists are
+/// items with a depth. `ListEnd`, `ItemText` and empty runs exist for the
+/// GTK app's exact spacing; other apps may ignore them.
+/// </summary>
+public record Block {
+    
+    /// <summary>
+    /// `#` to `######`.
+    /// </summary>
+    public record Heading (
+        byte Level,
+        Run[] Runs
+    ) : Block {}
+    
+    /// <summary>
+    /// A paragraph. A blank line follows it.
+    /// </summary>
+    public record Paragraph (
+        Run[] Runs
+    ) : Block {}
+    
+    /// <summary>
+    /// A list item, its marker indented `depth` levels (0 = top level).
+    /// In a loose list (blank lines between items) a blank line follows.
+    /// </summary>
+    public record ListItem (
+        uint Depth,
+        ListMarker Marker,
+        Run[] Runs,
+        bool Loose
+    ) : Block {}
+    
+    /// <summary>
+    /// More of a list item's text, after a block inside the item. Rare.
+    /// </summary>
+    public record ItemText (
+        Run[] Runs
+    ) : Block {}
+    
+    /// <summary>
+    /// A list ended; `depth` 0 means the whole list is over.
+    /// </summary>
+    public record ListEnd (
+        uint Depth
+    ) : Block {}
+    
+    /// <summary>
+    /// A code block, as written (usually ending in `\n`).
+    /// </summary>
+    public record CodeBlock (
+        string Text
+    ) : Block {}
+    
+    /// <summary>
+    /// Raw HTML, as written. Shown as text, never as HTML.
+    /// </summary>
+    public record Html (
+        string Text
+    ) : Block {}
+    
+    /// <summary>
+    /// `---` on its own line.
+    /// </summary>
+    public record Rule: Block {}
+    
+    
+
+    
+}
+
+class FfiConverterTypeBlock : FfiConverterRustBuffer<Block>{
+    public static FfiConverterRustBuffer<Block> INSTANCE = new FfiConverterTypeBlock();
+
+    public override Block Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new Block.Heading(
+                    FfiConverterUInt8.INSTANCE.Read(stream),
+                    FfiConverterSequenceTypeRun.INSTANCE.Read(stream)
+                );
+            case 2:
+                return new Block.Paragraph(
+                    FfiConverterSequenceTypeRun.INSTANCE.Read(stream)
+                );
+            case 3:
+                return new Block.ListItem(
+                    FfiConverterUInt32.INSTANCE.Read(stream),
+                    FfiConverterTypeListMarker.INSTANCE.Read(stream),
+                    FfiConverterSequenceTypeRun.INSTANCE.Read(stream),
+                    FfiConverterBoolean.INSTANCE.Read(stream)
+                );
+            case 4:
+                return new Block.ItemText(
+                    FfiConverterSequenceTypeRun.INSTANCE.Read(stream)
+                );
+            case 5:
+                return new Block.ListEnd(
+                    FfiConverterUInt32.INSTANCE.Read(stream)
+                );
+            case 6:
+                return new Block.CodeBlock(
+                    FfiConverterString.INSTANCE.Read(stream)
+                );
+            case 7:
+                return new Block.Html(
+                    FfiConverterString.INSTANCE.Read(stream)
+                );
+            case 8:
+                return new Block.Rule(
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeBlock.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Block value) {
+        switch (value) {
+            case Block.Heading variant_value:
+                return 4
+                    + FfiConverterUInt8.INSTANCE.AllocationSize(variant_value.Level)
+                    + FfiConverterSequenceTypeRun.INSTANCE.AllocationSize(variant_value.Runs);
+            case Block.Paragraph variant_value:
+                return 4
+                    + FfiConverterSequenceTypeRun.INSTANCE.AllocationSize(variant_value.Runs);
+            case Block.ListItem variant_value:
+                return 4
+                    + FfiConverterUInt32.INSTANCE.AllocationSize(variant_value.Depth)
+                    + FfiConverterTypeListMarker.INSTANCE.AllocationSize(variant_value.Marker)
+                    + FfiConverterSequenceTypeRun.INSTANCE.AllocationSize(variant_value.Runs)
+                    + FfiConverterBoolean.INSTANCE.AllocationSize(variant_value.Loose);
+            case Block.ItemText variant_value:
+                return 4
+                    + FfiConverterSequenceTypeRun.INSTANCE.AllocationSize(variant_value.Runs);
+            case Block.ListEnd variant_value:
+                return 4
+                    + FfiConverterUInt32.INSTANCE.AllocationSize(variant_value.Depth);
+            case Block.CodeBlock variant_value:
+                return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.Text);
+            case Block.Html variant_value:
+                return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.Text);
+            case Block.Rule variant_value:
+                return 4;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeBlock.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(Block value, BigEndianStream stream) {
+        switch (value) {
+            case Block.Heading variant_value:
+                stream.WriteInt(1);
+                FfiConverterUInt8.INSTANCE.Write(variant_value.Level, stream);
+                FfiConverterSequenceTypeRun.INSTANCE.Write(variant_value.Runs, stream);
+                break;
+            case Block.Paragraph variant_value:
+                stream.WriteInt(2);
+                FfiConverterSequenceTypeRun.INSTANCE.Write(variant_value.Runs, stream);
+                break;
+            case Block.ListItem variant_value:
+                stream.WriteInt(3);
+                FfiConverterUInt32.INSTANCE.Write(variant_value.Depth, stream);
+                FfiConverterTypeListMarker.INSTANCE.Write(variant_value.Marker, stream);
+                FfiConverterSequenceTypeRun.INSTANCE.Write(variant_value.Runs, stream);
+                FfiConverterBoolean.INSTANCE.Write(variant_value.Loose, stream);
+                break;
+            case Block.ItemText variant_value:
+                stream.WriteInt(4);
+                FfiConverterSequenceTypeRun.INSTANCE.Write(variant_value.Runs, stream);
+                break;
+            case Block.ListEnd variant_value:
+                stream.WriteInt(5);
+                FfiConverterUInt32.INSTANCE.Write(variant_value.Depth, stream);
+                break;
+            case Block.CodeBlock variant_value:
+                stream.WriteInt(6);
+                FfiConverterString.INSTANCE.Write(variant_value.Text, stream);
+                break;
+            case Block.Html variant_value:
+                stream.WriteInt(7);
+                FfiConverterString.INSTANCE.Write(variant_value.Text, stream);
+                break;
+            case Block.Rule variant_value:
+                stream.WriteInt(8);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeBlock.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// Which build is running. A preview keeps its journal in its own folder,
+/// so trying one out never touches the real one.
+/// </summary>
+public enum Channel: int {
+    /// <summary>
+    /// The released app.
+    /// </summary>
+    Stable,
+    /// <summary>
+    /// A test build, with a journal of its own.
+    /// </summary>
+    Preview
+}
+
+class FfiConverterTypeChannel: FfiConverterRustBuffer<Channel> {
+    public static FfiConverterTypeChannel INSTANCE = new FfiConverterTypeChannel();
+
+    public override Channel Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return Channel.Stable;
+            case 2: return Channel.Preview;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeChannel.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Channel value) {
+        return 4;
+    }
+
+    public override void Write(Channel value, BigEndianStream stream) {
+        switch (value) {
+            case Channel.Stable: stream.WriteInt(1); break;
+            case Channel.Preview: stream.WriteInt(2); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeChannel.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// Errors as the apps see them. Every `message` is a sentence for people,
+/// ready to show as is ("That name is already taken.").
 /// </summary>
 public class CoreException: UniffiException {
     CoreException() : base() {}
@@ -1884,6 +5925,9 @@ public class CoreException: UniffiException {
 
     // Each variant is a nested class
     
+    /// <summary>
+    /// The journal file couldn't be read or written.
+    /// </summary>
     
     public class Database : CoreException {
         // Members
@@ -1898,6 +5942,9 @@ public class CoreException: UniffiException {
         }
     }
     
+    /// <summary>
+    /// Open Library couldn't be reached, or answered with an error.
+    /// </summary>
     
     public class Network : CoreException {
         // Members
@@ -1912,6 +5959,9 @@ public class CoreException: UniffiException {
         }
     }
     
+    /// <summary>
+    /// A file or folder couldn't be read or written.
+    /// </summary>
     
     public class Io : CoreException {
         // Members
@@ -1926,11 +5976,27 @@ public class CoreException: UniffiException {
         }
     }
     
+    /// <summary>
+    /// No such profile, entry or book (it may have just been deleted).
+    /// </summary>
+    
     public class NotFound : CoreException {
-        public NotFound() : base() {}
+        // Members
+        public string @message;
+
+        // Constructor
+        public NotFound(
+                string @message) : base(
+                "@message" + "=" + @message) {
+
+            this.@message = @message;
+        }
     }
     
-    
+    /// <summary>
+    /// Something passed in was refused: a blank or taken name, a bad
+    /// email or date, a folder that isn't one.
+    /// </summary>
     
     public class Invalid : CoreException {
         // Members
@@ -1940,6 +6006,34 @@ public class CoreException: UniffiException {
         public Invalid(
                 string @message) : base(
                 "@message" + "=" + @message) {
+
+            this.@message = @message;
+        }
+    }
+    
+    /// <summary>
+    /// The journal was made by a newer Bookshelf, with a format (`found`)
+    /// newer than this one understands (`supported`). Ask for an update.
+    /// </summary>
+    
+    public class NewerJournal : CoreException {
+        // Members
+        public uint @found;
+        public uint @supported;
+        public string @message;
+
+        // Constructor
+        public NewerJournal(
+                uint @found, 
+                uint @supported, 
+                string @message) : base(
+                "@found" + "=" + @found+ ", " +
+                "@supported" + "=" + @supported+ ", " +
+                "@message" + "=" + @message) {
+
+            this.@found = @found;
+
+            this.@supported = @supported;
 
             this.@message = @message;
         }
@@ -1965,9 +6059,15 @@ class FfiConverterTypeCoreError : FfiConverterRustBuffer<CoreException>, CallSta
                 return new CoreException.Io(
                     FfiConverterString.INSTANCE.Read(stream));
             case 4:
-                return new CoreException.NotFound();
+                return new CoreException.NotFound(
+                    FfiConverterString.INSTANCE.Read(stream));
             case 5:
                 return new CoreException.Invalid(
+                    FfiConverterString.INSTANCE.Read(stream));
+            case 6:
+                return new CoreException.NewerJournal(
+                    FfiConverterUInt32.INSTANCE.Read(stream),
+                    FfiConverterUInt32.INSTANCE.Read(stream),
                     FfiConverterString.INSTANCE.Read(stream));
             default:
                 throw new InternalException(String.Format("invalid error value '{0}' in FfiConverterTypeCoreError.Read()", value));
@@ -1990,10 +6090,17 @@ class FfiConverterTypeCoreError : FfiConverterRustBuffer<CoreException>, CallSta
                     + FfiConverterString.INSTANCE.AllocationSize(variant_value.@message);
 
             case CoreException.NotFound variant_value:
-                return 4;
+                return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.@message);
 
             case CoreException.Invalid variant_value:
                 return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.@message);
+
+            case CoreException.NewerJournal variant_value:
+                return 4
+                    + FfiConverterUInt32.INSTANCE.AllocationSize(variant_value.@found)
+                    + FfiConverterUInt32.INSTANCE.AllocationSize(variant_value.@supported)
                     + FfiConverterString.INSTANCE.AllocationSize(variant_value.@message);
             default:
                 throw new InternalException(String.Format("invalid error value '{0}' in FfiConverterTypeCoreError.AllocationSize()", value));
@@ -2016,9 +6123,16 @@ class FfiConverterTypeCoreError : FfiConverterRustBuffer<CoreException>, CallSta
                 break;
             case CoreException.NotFound variant_value:
                 stream.WriteInt(4);
+                FfiConverterString.INSTANCE.Write(variant_value.@message, stream);
                 break;
             case CoreException.Invalid variant_value:
                 stream.WriteInt(5);
+                FfiConverterString.INSTANCE.Write(variant_value.@message, stream);
+                break;
+            case CoreException.NewerJournal variant_value:
+                stream.WriteInt(6);
+                FfiConverterUInt32.INSTANCE.Write(variant_value.@found, stream);
+                FfiConverterUInt32.INSTANCE.Write(variant_value.@supported, stream);
                 FfiConverterString.INSTANCE.Write(variant_value.@message, stream);
                 break;
             default:
@@ -2031,13 +6145,892 @@ class FfiConverterTypeCoreError : FfiConverterRustBuffer<CoreException>, CallSta
 
 
 
-public enum StyleKind: int {
-    Heading,
+/// <summary>
+/// How dates are written in the app. The core writes them (in meta
+/// lines, for one); the apps use it for their date pickers.
+/// </summary>
+public enum DateFormat: int {
+    /// <summary>
+    /// "Sep 20, 2026".
+    /// </summary>
+    Long,
+    /// <summary>
+    /// "09/20/2026".
+    /// </summary>
+    MonthDayYear,
+    /// <summary>
+    /// "20/09/2026".
+    /// </summary>
+    DayMonthYear,
+    /// <summary>
+    /// "2026-09-20".
+    /// </summary>
+    YearMonthDay
+}
+
+class FfiConverterTypeDateFormat: FfiConverterRustBuffer<DateFormat> {
+    public static FfiConverterTypeDateFormat INSTANCE = new FfiConverterTypeDateFormat();
+
+    public override DateFormat Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return DateFormat.Long;
+            case 2: return DateFormat.MonthDayYear;
+            case 3: return DateFormat.DayMonthYear;
+            case 4: return DateFormat.YearMonthDay;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeDateFormat.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(DateFormat value) {
+        return 4;
+    }
+
+    public override void Write(DateFormat value, BigEndianStream stream) {
+        switch (value) {
+            case DateFormat.Long: stream.WriteInt(1); break;
+            case DateFormat.MonthDayYear: stream.WriteInt(2); break;
+            case DateFormat.DayMonthYear: stream.WriteInt(3); break;
+            case DateFormat.YearMonthDay: stream.WriteInt(4); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeDateFormat.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A button on the formatting bar.
+/// </summary>
+public record FormatAction {
+    
+    /// <summary>
+    /// `**bold**`.
+    /// </summary>
+    public record Bold: FormatAction {}
+    
+    
+    /// <summary>
+    /// `*italic*`.
+    /// </summary>
+    public record Italic: FormatAction {}
+    
+    
+    /// <summary>
+    /// `~~struck~~`.
+    /// </summary>
+    public record Strike: FormatAction {}
+    
+    
+    /// <summary>
+    /// `` `code` ``.
+    /// </summary>
+    public record Code: FormatAction {}
+    
+    
+    /// <summary>
+    /// `[text](url)`.
+    /// </summary>
+    public record Link: FormatAction {}
+    
+    
+    /// <summary>
+    /// `#` to `######`; pressing the same level again removes it. Levels
+    /// outside 1 to 6 are taken as the nearest one.
+    /// </summary>
+    public record Heading (
+        byte Level
+    ) : FormatAction {}
+    
+    /// <summary>
+    /// `> quote` lines.
+    /// </summary>
+    public record Quote: FormatAction {}
+    
+    
+    /// <summary>
+    /// `- ` bullet lines.
+    /// </summary>
+    public record Bullets: FormatAction {}
+    
+    
+    /// <summary>
+    /// `1. ` numbered lines.
+    /// </summary>
+    public record Numbered: FormatAction {}
+    
+    
+
+    
+}
+
+class FfiConverterTypeFormatAction : FfiConverterRustBuffer<FormatAction>{
+    public static FfiConverterRustBuffer<FormatAction> INSTANCE = new FfiConverterTypeFormatAction();
+
+    public override FormatAction Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new FormatAction.Bold(
+                );
+            case 2:
+                return new FormatAction.Italic(
+                );
+            case 3:
+                return new FormatAction.Strike(
+                );
+            case 4:
+                return new FormatAction.Code(
+                );
+            case 5:
+                return new FormatAction.Link(
+                );
+            case 6:
+                return new FormatAction.Heading(
+                    FfiConverterUInt8.INSTANCE.Read(stream)
+                );
+            case 7:
+                return new FormatAction.Quote(
+                );
+            case 8:
+                return new FormatAction.Bullets(
+                );
+            case 9:
+                return new FormatAction.Numbered(
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeFormatAction.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(FormatAction value) {
+        switch (value) {
+            case FormatAction.Bold variant_value:
+                return 4;
+            case FormatAction.Italic variant_value:
+                return 4;
+            case FormatAction.Strike variant_value:
+                return 4;
+            case FormatAction.Code variant_value:
+                return 4;
+            case FormatAction.Link variant_value:
+                return 4;
+            case FormatAction.Heading variant_value:
+                return 4
+                    + FfiConverterUInt8.INSTANCE.AllocationSize(variant_value.Level);
+            case FormatAction.Quote variant_value:
+                return 4;
+            case FormatAction.Bullets variant_value:
+                return 4;
+            case FormatAction.Numbered variant_value:
+                return 4;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeFormatAction.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(FormatAction value, BigEndianStream stream) {
+        switch (value) {
+            case FormatAction.Bold variant_value:
+                stream.WriteInt(1);
+                break;
+            case FormatAction.Italic variant_value:
+                stream.WriteInt(2);
+                break;
+            case FormatAction.Strike variant_value:
+                stream.WriteInt(3);
+                break;
+            case FormatAction.Code variant_value:
+                stream.WriteInt(4);
+                break;
+            case FormatAction.Link variant_value:
+                stream.WriteInt(5);
+                break;
+            case FormatAction.Heading variant_value:
+                stream.WriteInt(6);
+                FfiConverterUInt8.INSTANCE.Write(variant_value.Level, stream);
+                break;
+            case FormatAction.Quote variant_value:
+                stream.WriteInt(7);
+                break;
+            case FormatAction.Bullets variant_value:
+                stream.WriteInt(8);
+                break;
+            case FormatAction.Numbered variant_value:
+                stream.WriteInt(9);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeFormatAction.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// The typeface of titles and headings.
+/// </summary>
+public enum HeadingFont: int {
+    /// <summary>
+    /// Source Serif.
+    /// </summary>
+    Serif,
+    /// <summary>
+    /// The system's sans-serif.
+    /// </summary>
+    Sans
+}
+
+class FfiConverterTypeHeadingFont: FfiConverterRustBuffer<HeadingFont> {
+    public static FfiConverterTypeHeadingFont INSTANCE = new FfiConverterTypeHeadingFont();
+
+    public override HeadingFont Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return HeadingFont.Serif;
+            case 2: return HeadingFont.Sans;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeHeadingFont.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(HeadingFont value) {
+        return 4;
+    }
+
+    public override void Write(HeadingFont value, BigEndianStream stream) {
+        switch (value) {
+            case HeadingFont.Serif: stream.WriteInt(1); break;
+            case HeadingFont.Sans: stream.WriteInt(2); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeHeadingFont.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// Space between lines on the writing page (see [`PageLayout`]).
+/// </summary>
+public enum LineSpacing: int {
+    /// <summary>
+    /// Close together.
+    /// </summary>
+    Tight,
+    /// <summary>
+    /// "Comfortable".
+    /// </summary>
+    Normal,
+    /// <summary>
+    /// Generous.
+    /// </summary>
+    Airy
+}
+
+class FfiConverterTypeLineSpacing: FfiConverterRustBuffer<LineSpacing> {
+    public static FfiConverterTypeLineSpacing INSTANCE = new FfiConverterTypeLineSpacing();
+
+    public override LineSpacing Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return LineSpacing.Tight;
+            case 2: return LineSpacing.Normal;
+            case 3: return LineSpacing.Airy;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeLineSpacing.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(LineSpacing value) {
+        return 4;
+    }
+
+    public override void Write(LineSpacing value, BigEndianStream stream) {
+        switch (value) {
+            case LineSpacing.Tight: stream.WriteInt(1); break;
+            case LineSpacing.Normal: stream.WriteInt(2); break;
+            case LineSpacing.Airy: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeLineSpacing.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A list item's marker.
+/// </summary>
+public record ListMarker {
+    
+    /// <summary>
+    /// `•`.
+    /// </summary>
+    public record Bullet: ListMarker {}
+    
+    
+    /// <summary>
+    /// `3.`: a numbered list counts up from its first number.
+    /// </summary>
+    public record Number (
+        ulong Value
+    ) : ListMarker {}
+    
+
+    
+}
+
+class FfiConverterTypeListMarker : FfiConverterRustBuffer<ListMarker>{
+    public static FfiConverterRustBuffer<ListMarker> INSTANCE = new FfiConverterTypeListMarker();
+
+    public override ListMarker Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new ListMarker.Bullet(
+                );
+            case 2:
+                return new ListMarker.Number(
+                    FfiConverterUInt64.INSTANCE.Read(stream)
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeListMarker.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(ListMarker value) {
+        switch (value) {
+            case ListMarker.Bullet variant_value:
+                return 4;
+            case ListMarker.Number variant_value:
+                return 4
+                    + FfiConverterUInt64.INSTANCE.AllocationSize(variant_value.Value);
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeListMarker.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(ListMarker value, BigEndianStream stream) {
+        switch (value) {
+            case ListMarker.Bullet variant_value:
+                stream.WriteInt(1);
+                break;
+            case ListMarker.Number variant_value:
+                stream.WriteInt(2);
+                FfiConverterUInt64.INSTANCE.Write(variant_value.Value, stream);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeListMarker.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// How serious a log message is.
+/// </summary>
+public enum LogLevel: int {
+    /// <summary>
+    /// Something failed.
+    /// </summary>
+    Error,
+    /// <summary>
+    /// Something went wrong but was worked around (a cover that didn't
+    /// download, say).
+    /// </summary>
+    Warn,
+    /// <summary>
+    /// A note.
+    /// </summary>
+    Info
+}
+
+class FfiConverterTypeLogLevel: FfiConverterRustBuffer<LogLevel> {
+    public static FfiConverterTypeLogLevel INSTANCE = new FfiConverterTypeLogLevel();
+
+    public override LogLevel Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return LogLevel.Error;
+            case 2: return LogLevel.Warn;
+            case 3: return LogLevel.Info;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeLogLevel.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(LogLevel value) {
+        return 4;
+    }
+
+    public override void Write(LogLevel value, BigEndianStream stream) {
+        switch (value) {
+            case LogLevel.Error: stream.WriteInt(1); break;
+            case LogLevel.Warn: stream.WriteInt(2); break;
+            case LogLevel.Info: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeLogLevel.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// How wide the writing and reading column gets (see [`PageLayout`]).
+/// </summary>
+public enum PageWidth: int {
+    /// <summary>
+    /// 600 px.
+    /// </summary>
+    Narrow,
+    /// <summary>
+    /// 720 px.
+    /// </summary>
+    Medium,
+    /// <summary>
+    /// 900 px.
+    /// </summary>
+    Wide
+}
+
+class FfiConverterTypePageWidth: FfiConverterRustBuffer<PageWidth> {
+    public static FfiConverterTypePageWidth INSTANCE = new FfiConverterTypePageWidth();
+
+    public override PageWidth Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return PageWidth.Narrow;
+            case 2: return PageWidth.Medium;
+            case 3: return PageWidth.Wide;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypePageWidth.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(PageWidth value) {
+        return 4;
+    }
+
+    public override void Write(PageWidth value, BigEndianStream stream) {
+        switch (value) {
+            case PageWidth.Narrow: stream.WriteInt(1); break;
+            case PageWidth.Medium: stream.WriteInt(2); break;
+            case PageWidth.Wide: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypePageWidth.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// Which app's shortcuts to list.
+/// </summary>
+public enum Platform: int {
+    /// <summary>
+    /// GTK accelerators.
+    /// </summary>
+    Linux,
+    /// <summary>
+    /// Key combos with ⌘.
+    /// </summary>
+    Mac,
+    /// <summary>
+    /// Key combos with Ctrl.
+    /// </summary>
+    Windows
+}
+
+class FfiConverterTypePlatform: FfiConverterRustBuffer<Platform> {
+    public static FfiConverterTypePlatform INSTANCE = new FfiConverterTypePlatform();
+
+    public override Platform Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return Platform.Linux;
+            case 2: return Platform.Mac;
+            case 3: return Platform.Windows;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypePlatform.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Platform value) {
+        return 4;
+    }
+
+    public override void Write(Platform value, BigEndianStream stream) {
+        switch (value) {
+            case Platform.Linux: stream.WriteInt(1); break;
+            case Platform.Mac: stream.WriteInt(2); break;
+            case Platform.Windows: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypePlatform.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// An inline style. (Not `Style`, which WinUI already uses.)
+/// </summary>
+public enum RunStyle: int {
+    /// <summary>
+    /// Bold.
+    /// </summary>
     Bold,
+    /// <summary>
+    /// Italic.
+    /// </summary>
     Italic,
-    Quote,
-    Code,
+    /// <summary>
+    /// Struck through.
+    /// </summary>
     Strike,
+    /// <summary>
+    /// Inline code. Always innermost.
+    /// </summary>
+    Code
+}
+
+class FfiConverterTypeRunStyle: FfiConverterRustBuffer<RunStyle> {
+    public static FfiConverterTypeRunStyle INSTANCE = new FfiConverterTypeRunStyle();
+
+    public override RunStyle Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return RunStyle.Bold;
+            case 2: return RunStyle.Italic;
+            case 3: return RunStyle.Strike;
+            case 4: return RunStyle.Code;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeRunStyle.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(RunStyle value) {
+        return 4;
+    }
+
+    public override void Write(RunStyle value, BigEndianStream stream) {
+        switch (value) {
+            case RunStyle.Bold: stream.WriteInt(1); break;
+            case RunStyle.Italic: stream.WriteInt(2); break;
+            case RunStyle.Strike: stream.WriteInt(3); break;
+            case RunStyle.Code: stream.WriteInt(4); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeRunStyle.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// One of the three shelves on the home page. A book's shelf follows
+/// from its dates: finished, started, or neither.
+/// </summary>
+public enum Shelf: int {
+    /// <summary>
+    /// Started, not finished.
+    /// </summary>
+    Reading,
+    /// <summary>
+    /// Finished.
+    /// </summary>
+    Finished,
+    /// <summary>
+    /// Not started yet ("Someday").
+    /// </summary>
+    Eventually
+}
+
+class FfiConverterTypeShelf: FfiConverterRustBuffer<Shelf> {
+    public static FfiConverterTypeShelf INSTANCE = new FfiConverterTypeShelf();
+
+    public override Shelf Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return Shelf.Reading;
+            case 2: return Shelf.Finished;
+            case 3: return Shelf.Eventually;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShelf.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Shelf value) {
+        return 4;
+    }
+
+    public override void Write(Shelf value, BigEndianStream stream) {
+        switch (value) {
+            case Shelf.Reading: stream.WriteInt(1); break;
+            case Shelf.Finished: stream.WriteInt(2); break;
+            case Shelf.Eventually: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShelf.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A row on a shelf.
+/// </summary>
+public record ShelfRow {
+    
+    /// <summary>
+    /// "2026 · 12 books" between the Finished shelf's entries.
+    /// </summary>
+    public record YearHeading (
+        int Year,
+        uint Count,
+        string Label
+    ) : ShelfRow {}
+    
+    /// <summary>
+    /// One book on the shelf.
+    /// </summary>
+    public record Entry (
+        ShelfEntry Item
+    ) : ShelfRow {}
+    
+
+    
+}
+
+class FfiConverterTypeShelfRow : FfiConverterRustBuffer<ShelfRow>{
+    public static FfiConverterRustBuffer<ShelfRow> INSTANCE = new FfiConverterTypeShelfRow();
+
+    public override ShelfRow Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new ShelfRow.YearHeading(
+                    FfiConverterInt32.INSTANCE.Read(stream),
+                    FfiConverterUInt32.INSTANCE.Read(stream),
+                    FfiConverterString.INSTANCE.Read(stream)
+                );
+            case 2:
+                return new ShelfRow.Entry(
+                    FfiConverterTypeShelfEntry.INSTANCE.Read(stream)
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShelfRow.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(ShelfRow value) {
+        switch (value) {
+            case ShelfRow.YearHeading variant_value:
+                return 4
+                    + FfiConverterInt32.INSTANCE.AllocationSize(variant_value.Year)
+                    + FfiConverterUInt32.INSTANCE.AllocationSize(variant_value.Count)
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.Label);
+            case ShelfRow.Entry variant_value:
+                return 4
+                    + FfiConverterTypeShelfEntry.INSTANCE.AllocationSize(variant_value.Item);
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShelfRow.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(ShelfRow value, BigEndianStream stream) {
+        switch (value) {
+            case ShelfRow.YearHeading variant_value:
+                stream.WriteInt(1);
+                FfiConverterInt32.INSTANCE.Write(variant_value.Year, stream);
+                FfiConverterUInt32.INSTANCE.Write(variant_value.Count, stream);
+                FfiConverterString.INSTANCE.Write(variant_value.Label, stream);
+                break;
+            case ShelfRow.Entry variant_value:
+                stream.WriteInt(2);
+                FfiConverterTypeShelfEntry.INSTANCE.Write(variant_value.Item, stream);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShelfRow.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A key on the keyboard.
+/// </summary>
+public record ShortcutKey {
+    
+    /// <summary>
+    /// The key that types this character: a lowercase letter, a digit or
+    /// punctuation (`,`, `?`). For `?` the Shift it takes is implied, not
+    /// in `shift`: AppKit takes "?" as the key equivalent as is; on
+    /// Windows it's Shift + the `/` key (VK_OEM_2) on most layouts.
+    /// </summary>
+    public record Character (
+        string Text
+    ) : ShortcutKey {}
+    
+    /// <summary>
+    /// Return (Enter).
+    /// </summary>
+    public record Return: ShortcutKey {}
+    
+    
+    /// <summary>
+    /// Escape.
+    /// </summary>
+    public record Escape: ShortcutKey {}
+    
+    
+    /// <summary>
+    /// F1 to F12.
+    /// </summary>
+    public record Function (
+        byte Number
+    ) : ShortcutKey {}
+    
+
+    
+}
+
+class FfiConverterTypeShortcutKey : FfiConverterRustBuffer<ShortcutKey>{
+    public static FfiConverterRustBuffer<ShortcutKey> INSTANCE = new FfiConverterTypeShortcutKey();
+
+    public override ShortcutKey Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1:
+                return new ShortcutKey.Character(
+                    FfiConverterString.INSTANCE.Read(stream)
+                );
+            case 2:
+                return new ShortcutKey.Return(
+                );
+            case 3:
+                return new ShortcutKey.Escape(
+                );
+            case 4:
+                return new ShortcutKey.Function(
+                    FfiConverterUInt8.INSTANCE.Read(stream)
+                );
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShortcutKey.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(ShortcutKey value) {
+        switch (value) {
+            case ShortcutKey.Character variant_value:
+                return 4
+                    + FfiConverterString.INSTANCE.AllocationSize(variant_value.Text);
+            case ShortcutKey.Return variant_value:
+                return 4;
+            case ShortcutKey.Escape variant_value:
+                return 4;
+            case ShortcutKey.Function variant_value:
+                return 4
+                    + FfiConverterUInt8.INSTANCE.AllocationSize(variant_value.Number);
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShortcutKey.AllocationSize()", value));
+        }
+    }
+
+    public override void Write(ShortcutKey value, BigEndianStream stream) {
+        switch (value) {
+            case ShortcutKey.Character variant_value:
+                stream.WriteInt(1);
+                FfiConverterString.INSTANCE.Write(variant_value.Text, stream);
+                break;
+            case ShortcutKey.Return variant_value:
+                stream.WriteInt(2);
+                break;
+            case ShortcutKey.Escape variant_value:
+                stream.WriteInt(3);
+                break;
+            case ShortcutKey.Function variant_value:
+                stream.WriteInt(4);
+                FfiConverterUInt8.INSTANCE.Write(variant_value.Number, stream);
+                break;
+            default:
+                throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeShortcutKey.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// What a highlighted span of text is.
+/// </summary>
+public enum StyleKind: int {
+    /// <summary>
+    /// A whole `# Heading` line.
+    /// </summary>
+    Heading,
+    /// <summary>
+    /// `**bold**`.
+    /// </summary>
+    Bold,
+    /// <summary>
+    /// `*italic*`.
+    /// </summary>
+    Italic,
+    /// <summary>
+    /// A whole `> quote` line.
+    /// </summary>
+    Quote,
+    /// <summary>
+    /// `` `code` ``.
+    /// </summary>
+    Code,
+    /// <summary>
+    /// `~~struck~~`.
+    /// </summary>
+    Strike,
+    /// <summary>
+    /// The Markdown marks themselves (`**`, `#`, `- `...), shown dimmed.
+    /// </summary>
     Syntax
 }
 
@@ -2081,6 +7074,343 @@ class FfiConverterTypeStyleKind: FfiConverterRustBuffer<StyleKind> {
 
 
 
+
+/// <summary>
+/// Light or dark, or whatever the system uses.
+/// </summary>
+public enum Theme: int {
+    /// <summary>
+    /// Follow the system's appearance.
+    /// </summary>
+    System,
+    /// <summary>
+    /// Always light.
+    /// </summary>
+    Light,
+    /// <summary>
+    /// Always dark.
+    /// </summary>
+    Dark
+}
+
+class FfiConverterTypeTheme: FfiConverterRustBuffer<Theme> {
+    public static FfiConverterTypeTheme INSTANCE = new FfiConverterTypeTheme();
+
+    public override Theme Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return Theme.System;
+            case 2: return Theme.Light;
+            case 3: return Theme.Dark;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeTheme.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(Theme value) {
+        return 4;
+    }
+
+    public override void Write(Theme value, BigEndianStream stream) {
+        switch (value) {
+            case Theme.System: stream.WriteInt(1); break;
+            case Theme.Light: stream.WriteInt(2); break;
+            case Theme.Dark: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeTheme.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// The first day of the week in date pickers.
+/// </summary>
+public enum WeekStart: int {
+    /// <summary>
+    /// Sunday first.
+    /// </summary>
+    Sunday,
+    /// <summary>
+    /// Monday first.
+    /// </summary>
+    Monday
+}
+
+class FfiConverterTypeWeekStart: FfiConverterRustBuffer<WeekStart> {
+    public static FfiConverterTypeWeekStart INSTANCE = new FfiConverterTypeWeekStart();
+
+    public override WeekStart Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return WeekStart.Sunday;
+            case 2: return WeekStart.Monday;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeWeekStart.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(WeekStart value) {
+        return 4;
+    }
+
+    public override void Write(WeekStart value, BigEndianStream stream) {
+        switch (value) {
+            case WeekStart.Sunday: stream.WriteInt(1); break;
+            case WeekStart.Monday: stream.WriteInt(2); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeWeekStart.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// The typeface of the writing page.
+/// </summary>
+public enum WritingFont: int {
+    /// <summary>
+    /// iA Writer Duo (monospace), bundled with the app.
+    /// </summary>
+    IaDuo,
+    /// <summary>
+    /// Source Serif.
+    /// </summary>
+    Serif,
+    /// <summary>
+    /// The system's sans-serif.
+    /// </summary>
+    Sans,
+    /// <summary>
+    /// The system's monospace.
+    /// </summary>
+    Mono
+}
+
+class FfiConverterTypeWritingFont: FfiConverterRustBuffer<WritingFont> {
+    public static FfiConverterTypeWritingFont INSTANCE = new FfiConverterTypeWritingFont();
+
+    public override WritingFont Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return WritingFont.IaDuo;
+            case 2: return WritingFont.Serif;
+            case 3: return WritingFont.Sans;
+            case 4: return WritingFont.Mono;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeWritingFont.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(WritingFont value) {
+        return 4;
+    }
+
+    public override void Write(WritingFont value, BigEndianStream stream) {
+        switch (value) {
+            case WritingFont.IaDuo: stream.WriteInt(1); break;
+            case WritingFont.Serif: stream.WriteInt(2); break;
+            case WritingFont.Sans: stream.WriteInt(3); break;
+            case WritingFont.Mono: stream.WriteInt(4); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeWritingFont.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+/// <summary>
+/// Where the core's log messages go. Implemented by the app.
+///
+/// `log` is called on whatever thread the core is working on, sometimes
+/// while the journal is busy, so it must be quick and must never call back
+/// into the journal.
+/// </summary>
+public interface Logger {
+    /// <summary>
+    /// One message. `target` is the part of the core it came from
+    /// (`bookshelf_core::backup`). Messages never hold what anyone wrote.
+    /// </summary>
+    void Log(LogLevel @level, string @target, string @message);
+}
+
+class UniffiCallbackInterfaceLogger {
+    static void Log(ulong @uniffiHandle,RustBuffer @level,RustBuffer @target,RustBuffer @message,IntPtr @uniffiOutReturn,ref UniffiRustCallStatus _uniffi_out_err) {
+        var handle = @uniffiHandle;
+        try {
+            if (!FfiConverterTypeLogger.INSTANCE.handleMap.TryGet(handle, out var uniffiObject)) {
+                throw new InternalException($"No callback in handlemap '{handle}'");
+            }
+            uniffiObject.Log(
+                FfiConverterTypeLogLevel.INSTANCE.Lift(@level), 
+                FfiConverterString.INSTANCE.Lift(@target), 
+                FfiConverterString.INSTANCE.Lift(@message));
+
+            _uniffi_out_err.code = UniffiCallbackResponseStatus.SUCCESS;
+        }
+        catch (System.Exception e){
+            _uniffi_out_err.code = UniffiCallbackResponseStatus.UNEXPECTED_ERROR;
+            try {
+                _uniffi_out_err.error_buf = FfiConverterString.INSTANCE.Lower(e.Message);
+            }
+            catch {
+            }
+        }
+    }
+
+    static void UniffiFree(ulong @handle) {
+        FfiConverterTypeLogger.INSTANCE.handleMap.Remove(@handle);
+    }
+
+    static ulong UniffiClone(ulong @handle) {
+        try {
+            if (!FfiConverterTypeLogger.INSTANCE.handleMap.TryGet(@handle, out var obj)) {
+                throw new InternalException($"No callback in handlemap '{@handle}'");
+            }
+            return FfiConverterTypeLogger.INSTANCE.handleMap.Insert(obj);
+        } catch (System.Exception) {
+            return 0; // 0 is never a valid handle; ConcurrentHandleMap starts at 1
+        }
+    }
+    static _UniFFILib.UniffiCallbackInterfaceLoggerMethod0 _m0 = new _UniFFILib.UniffiCallbackInterfaceLoggerMethod0(Log);
+    static _UniFFILib.UniffiCallbackInterfaceFree _callback_interface_free = new _UniFFILib.UniffiCallbackInterfaceFree(UniffiFree);
+    static _UniFFILib.UniffiCallbackInterfaceClone _callback_interface_clone = new _UniFFILib.UniffiCallbackInterfaceClone(UniffiClone);
+
+    private static GCHandle? _vtablePin;
+
+    public static void Register() {
+        if (_vtablePin.HasValue) return;
+        _UniFFILib.UniffiVTableCallbackInterfaceLogger _vtable = new _UniFFILib.UniffiVTableCallbackInterfaceLogger {
+            @log = Marshal.GetFunctionPointerForDelegate(_m0),
+            @uniffiFree = Marshal.GetFunctionPointerForDelegate(_callback_interface_free),
+            @uniffiClone = Marshal.GetFunctionPointerForDelegate(_callback_interface_clone),
+        };
+
+        // Pin the vtable so the GC never moves it. The GCHandle is intentionally never freed —
+        // this pin must remain valid for the process lifetime.
+        _vtablePin = GCHandle.Alloc(_vtable, GCHandleType.Pinned);
+        _UniFFILib.uniffi_bookshelf_ffi_fn_init_callback_vtable_logger(_vtablePin.Value.AddrOfPinnedObject());
+    }
+}
+
+
+
+class ConcurrentHandleMap<T> where T: notnull {
+    readonly ConcurrentDictionary<ulong, T> _map = new();
+
+    // Handles are odd numbers (1, 3, 5, ...) — the lowest bit must always be set.
+    // Rust uses (handle & 1) to distinguish foreign-language handles from Rust Arc
+    // pointers, which are always even due to memory alignment. See uniffi_core/src/ffi/handle.rs.
+    const long HANDLE_INITIAL = 1;
+    const long HANDLE_DELTA = 2;
+    long _currentHandle = HANDLE_INITIAL - HANDLE_DELTA;
+
+    public ulong Insert(T obj) {
+        var handle = (ulong)Interlocked.Add(ref _currentHandle, HANDLE_DELTA);
+        if (!_map.TryAdd(handle, obj)) {
+            throw new InternalException("ConcurrentHandleMap: Duplicate handle");
+        }
+        return handle;
+    }
+
+    public bool TryGet(ulong handle, [NotNullWhen(true)] out T? result) {
+        return _map.TryGetValue(handle, out result);
+    }
+
+    public T Get(ulong handle) {
+        if (_map.TryGetValue(handle, out var result)) {
+            return result;
+        } else {
+            throw new InternalException("ConcurrentHandleMap: Invalid handle");
+        }
+    }
+
+    public bool Remove(ulong handle) {
+        return _map.TryRemove(handle, out _);
+    }
+
+    public bool Remove(ulong handle, [NotNullWhen(true)] out T? result) {
+        return _map.TryRemove(handle, out result);
+    }
+}
+static class UniffiCallbackResponseStatus {
+    public static sbyte SUCCESS = 0;
+    public static sbyte ERROR = 1;
+    public static sbyte UNEXPECTED_ERROR = 2;
+}
+
+// The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+class FfiConverterTypeLogger: FfiConverter<Logger, ulong> {
+    public static FfiConverterTypeLogger INSTANCE = new FfiConverterTypeLogger();
+
+    public ConcurrentHandleMap<Logger> handleMap = new ConcurrentHandleMap<Logger>();
+
+    public override ulong Lower(Logger value) {
+        return handleMap.Insert(value);
+    }
+
+    public override Logger Lift(ulong value) {
+        if (handleMap.TryGet(value, out var uniffiCallback)) {
+            return uniffiCallback;
+        } else {
+            throw new InternalException($"No callback in handlemap '{value}'");
+        }
+    }
+
+    public override Logger Read(BigEndianStream stream) {
+        return Lift(stream.ReadULong());
+    }
+
+    public override int AllocationSize(Logger value) {
+        return 8;
+    }
+
+    public override void Write(Logger value, BigEndianStream stream) {
+        stream.WriteULong(Lower(value));
+    }
+}
+
+
+
+
+class FfiConverterOptionalInt64: FfiConverterRustBuffer<long?> {
+    public static FfiConverterOptionalInt64 INSTANCE = new FfiConverterOptionalInt64();
+
+    public override long? Read(BigEndianStream stream) {
+        if (stream.ReadByte() == 0) {
+            return null;
+        }
+        return FfiConverterInt64.INSTANCE.Read(stream);
+    }
+
+    public override int AllocationSize(long? value) {
+        if (value == null) {
+            return 1;
+        } else {
+            return 1 + FfiConverterInt64.INSTANCE.AllocationSize((long)value);
+        }
+    }
+
+    public override void Write(long? value, BigEndianStream stream) {
+        if (value == null) {
+            stream.WriteByte(0);
+        } else {
+            stream.WriteByte(1);
+            FfiConverterInt64.INSTANCE.Write((long)value, stream);
+        }
+    }
+}
+
+
+
+
 class FfiConverterOptionalString: FfiConverterRustBuffer<string?> {
     public static FfiConverterOptionalString INSTANCE = new FfiConverterOptionalString();
 
@@ -2106,6 +7436,221 @@ class FfiConverterOptionalString: FfiConverterRustBuffer<string?> {
             stream.WriteByte(1);
             FfiConverterString.INSTANCE.Write((string)value, stream);
         }
+    }
+}
+
+
+
+
+class FfiConverterOptionalTypeTextEdit: FfiConverterRustBuffer<TextEdit?> {
+    public static FfiConverterOptionalTypeTextEdit INSTANCE = new FfiConverterOptionalTypeTextEdit();
+
+    public override TextEdit? Read(BigEndianStream stream) {
+        if (stream.ReadByte() == 0) {
+            return null;
+        }
+        return FfiConverterTypeTextEdit.INSTANCE.Read(stream);
+    }
+
+    public override int AllocationSize(TextEdit? value) {
+        if (value == null) {
+            return 1;
+        } else {
+            return 1 + FfiConverterTypeTextEdit.INSTANCE.AllocationSize((TextEdit)value);
+        }
+    }
+
+    public override void Write(TextEdit? value, BigEndianStream stream) {
+        if (value == null) {
+            stream.WriteByte(0);
+        } else {
+            stream.WriteByte(1);
+            FfiConverterTypeTextEdit.INSTANCE.Write((TextEdit)value, stream);
+        }
+    }
+}
+
+
+
+
+class FfiConverterSequenceString: FfiConverterRustBuffer<string[]> {
+    public static FfiConverterSequenceString INSTANCE = new FfiConverterSequenceString();
+
+    public override string[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new string[length];
+        var readFn = FfiConverterString.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(string[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterString.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(string[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterString.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeAccent: FfiConverterRustBuffer<Accent[]> {
+    public static FfiConverterSequenceTypeAccent INSTANCE = new FfiConverterSequenceTypeAccent();
+
+    public override Accent[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new Accent[length];
+        var readFn = FfiConverterTypeAccent.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(Accent[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeAccent.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(Accent[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeAccent.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeManualEntry: FfiConverterRustBuffer<ManualEntry[]> {
+    public static FfiConverterSequenceTypeManualEntry INSTANCE = new FfiConverterSequenceTypeManualEntry();
+
+    public override ManualEntry[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new ManualEntry[length];
+        var readFn = FfiConverterTypeManualEntry.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(ManualEntry[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeManualEntry.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(ManualEntry[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeManualEntry.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeManualSection: FfiConverterRustBuffer<ManualSection[]> {
+    public static FfiConverterSequenceTypeManualSection INSTANCE = new FfiConverterSequenceTypeManualSection();
+
+    public override ManualSection[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new ManualSection[length];
+        var readFn = FfiConverterTypeManualSection.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(ManualSection[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeManualSection.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(ManualSection[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeManualSection.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
     }
 }
 
@@ -2158,6 +7703,190 @@ class FfiConverterSequenceTypeProfile: FfiConverterRustBuffer<Profile[]> {
 
 
 
+class FfiConverterSequenceTypeRun: FfiConverterRustBuffer<Run[]> {
+    public static FfiConverterSequenceTypeRun INSTANCE = new FfiConverterSequenceTypeRun();
+
+    public override Run[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new Run[length];
+        var readFn = FfiConverterTypeRun.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(Run[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeRun.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(Run[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeRun.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer<SearchResult[]> {
+    public static FfiConverterSequenceTypeSearchResult INSTANCE = new FfiConverterSequenceTypeSearchResult();
+
+    public override SearchResult[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new SearchResult[length];
+        var readFn = FfiConverterTypeSearchResult.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(SearchResult[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeSearchResult.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(SearchResult[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeSearchResult.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeShortcut: FfiConverterRustBuffer<Shortcut[]> {
+    public static FfiConverterSequenceTypeShortcut INSTANCE = new FfiConverterSequenceTypeShortcut();
+
+    public override Shortcut[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new Shortcut[length];
+        var readFn = FfiConverterTypeShortcut.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(Shortcut[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeShortcut.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(Shortcut[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeShortcut.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeShortcutGroup: FfiConverterRustBuffer<ShortcutGroup[]> {
+    public static FfiConverterSequenceTypeShortcutGroup INSTANCE = new FfiConverterSequenceTypeShortcutGroup();
+
+    public override ShortcutGroup[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new ShortcutGroup[length];
+        var readFn = FfiConverterTypeShortcutGroup.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(ShortcutGroup[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeShortcutGroup.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(ShortcutGroup[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeShortcutGroup.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
 class FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer<StyleSpan[]> {
     public static FfiConverterSequenceTypeStyleSpan INSTANCE = new FfiConverterSequenceTypeStyleSpan();
 
@@ -2200,6 +7929,144 @@ class FfiConverterSequenceTypeStyleSpan: FfiConverterRustBuffer<StyleSpan[]> {
         value.ForEach(item => writerFn(item, stream));
     }
 }
+
+
+
+
+class FfiConverterSequenceTypeBlock: FfiConverterRustBuffer<Block[]> {
+    public static FfiConverterSequenceTypeBlock INSTANCE = new FfiConverterSequenceTypeBlock();
+
+    public override Block[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new Block[length];
+        var readFn = FfiConverterTypeBlock.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(Block[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeBlock.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(Block[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeBlock.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeRunStyle: FfiConverterRustBuffer<RunStyle[]> {
+    public static FfiConverterSequenceTypeRunStyle INSTANCE = new FfiConverterSequenceTypeRunStyle();
+
+    public override RunStyle[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new RunStyle[length];
+        var readFn = FfiConverterTypeRunStyle.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(RunStyle[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeRunStyle.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(RunStyle[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeRunStyle.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
+
+
+
+
+class FfiConverterSequenceTypeShelfRow: FfiConverterRustBuffer<ShelfRow[]> {
+    public static FfiConverterSequenceTypeShelfRow INSTANCE = new FfiConverterSequenceTypeShelfRow();
+
+    public override ShelfRow[]  Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        if (length == 0) {
+            return [];
+        }
+
+        var result = new ShelfRow[length];
+        var readFn = FfiConverterTypeShelfRow.INSTANCE.Read;
+        for (int i = 0; i < length; i++) {
+            result[i] = readFn(stream);
+        }
+        return result;
+    }
+
+    public override int AllocationSize(ShelfRow[]  value) {
+        var sizeForLength = 4;
+
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            return sizeForLength;
+        }
+
+        var allocationSizeFn = FfiConverterTypeShelfRow.INSTANCE.AllocationSize;
+        var sizeForItems = value.Sum(item => allocationSizeFn(item));
+        return sizeForLength + sizeForItems;
+    }
+
+    public override void Write(ShelfRow[] value, BigEndianStream stream) {
+        // details/1-empty-list-as-default-method-parameter.md
+        if (value == null) {
+            stream.WriteInt(0);
+            return;
+        }
+
+        stream.WriteInt(value.Length);
+        var writerFn = FfiConverterTypeShelfRow.INSTANCE.Write;
+        value.ForEach(item => writerFn(item, stream));
+    }
+}
 #pragma warning restore 8625
 public static class BookshelfFfiMethods {
     /// <summary>
@@ -2214,12 +8081,204 @@ public static class BookshelfFfiMethods {
 
 
     /// <summary>
-    /// Markdown highlighting for the writing page (see `core::text::highlight`).
+    /// A path for people, with the home folder shown as `~` (`home` is the
+    /// user's home folder, if the app wants that).
+    /// </summary>
+    public static string DisplayPath(string @path, string? @home) {
+        return FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_display_path(FfiConverterString.INSTANCE.Lower(@path), FfiConverterOptionalString.INSTANCE.Lower(@home), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Whether a shelf entry matches a search: every word of `terms` (from
+    /// `query_terms`) appears somewhere in its `haystack`, in any order.
+    /// </summary>
+    public static bool Matches(string @haystack, string[] @terms) {
+        return FfiConverterBoolean.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_matches(FfiConverterString.INSTANCE.Lower(@haystack), FfiConverterSequenceString.INSTANCE.Lower(@terms), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The words of a shelf search, lowercased. No words means no search.
+    /// </summary>
+    public static string[] QueryTerms(string @query) {
+        return FfiConverterSequenceString.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_query_terms(FfiConverterString.INSTANCE.Lower(@query), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Checks an email address as typed: `None` for blank, the trimmed address
+    /// if it's usable, or an `Invalid` error to show under the field.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public static string? ValidateEmail(string @email) {
+        return FfiConverterOptionalString.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_validate_email(FfiConverterString.INSTANCE.Lower(@email), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The user manual.
+    /// </summary>
+    public static Manual Manual() {
+        return FfiConverterTypeManual.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_manual( ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The keyboard shortcuts list for one platform, in the order it's shown.
+    /// </summary>
+    public static ShortcutGroup[] Shortcuts(Platform @platform) {
+        return FfiConverterSequenceTypeShortcutGroup.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_shortcuts(FfiConverterTypePlatform.INSTANCE.Lower(@platform), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Sends the core's log messages to `logger` from now on. Call once at
+    /// startup; calling again replaces the logger.
+    /// </summary>
+    public static void SetLogger(Logger @logger) {
+        
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_set_logger(FfiConverterTypeLogger.INSTANCE.Lower(@logger), ref _status)
+);
+    }
+
+
+    /// <summary>
+    /// The shades of accent `hex` for a light or dark window. Anything that
+    /// isn't a `#rrggbb` color gets the default blue's.
+    /// </summary>
+    public static AccentPalette AccentColors(string @hex, bool @dark) {
+        return FfiConverterTypeAccentPalette.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_accent_colors(FfiConverterString.INSTANCE.Lower(@hex), FfiConverterBoolean.INSTANCE.Lower(@dark), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The accent colors offered in Settings, the default (blue) first.
+    /// </summary>
+    public static Accent[] Accents() {
+        return FfiConverterSequenceTypeAccent.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_accents( ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// How long typing has to pause, in milliseconds, before the writing page
+    /// saves.
+    /// </summary>
+    public static uint AutosaveMs() {
+        return FfiConverterUInt32.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_autosave_ms( ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Questions shown on an empty writing page, one per line, depending on
+    /// the entry's shelf.
+    /// </summary>
+    public static string Prompts(Shelf @shelf) {
+        return FfiConverterString.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_prompts(FfiConverterTypeShelf.INSTANCE.Lower(@shelf), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Words are whatever sits between spaces, Markdown marks included. The
+    /// same count as `SaveResult.words`.
+    /// </summary>
+    public static uint WordCount(string @text) {
+        return FfiConverterUInt32.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_word_count(FfiConverterString.INSTANCE.Lower(@text), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The writing page's measurements for a profile's settings.
+    /// </summary>
+    public static PageLayout WriterLayout(ProfileSettings @settings) {
+        return FfiConverterTypePageLayout.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_writer_layout(FfiConverterTypeProfileSettings.INSTANCE.Lower(@settings), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// What pressing `action` does to `text` with `sel_start..sel_end`
+    /// selected (equal: just the caret), in UTF-16 code units. `None` means
+    /// leave the text and selection alone. Offsets past the end count as the
+    /// end.
+    /// </summary>
+    public static TextEdit? FormatEdit(string @text, uint @selStart, uint @selEnd, FormatAction @action) {
+        return FfiConverterOptionalTypeTextEdit.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_format_edit(FfiConverterString.INSTANCE.Lower(@text), FfiConverterUInt32.INSTANCE.Lower(@selStart), FfiConverterUInt32.INSTANCE.Lower(@selEnd), FfiConverterTypeFormatAction.INSTANCE.Lower(@action), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Whether, with nothing selected, `action` acts on the word around the
+    /// caret. The app finds that word with its own word rules and passes it
+    /// in as the selection. Line actions just take the caret's line.
+    /// </summary>
+    public static bool FormatExpandsToWord(FormatAction @action) {
+        return FfiConverterBoolean.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_format_expands_to_word(FfiConverterTypeFormatAction.INSTANCE.Lower(@action), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Markdown highlighting for the writing page. Each line is highlighted on
+    /// its own, so after an edit only the lines it touched need restyling.
     /// </summary>
     public static StyleSpan[] MarkdownSpans(string @text) {
         return FfiConverterSequenceTypeStyleSpan.INSTANCE.Lift(
     _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
     _UniFFILib.uniffi_bookshelf_ffi_fn_func_markdown_spans(FfiConverterString.INSTANCE.Lower(@text), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// Markdown laid out as blocks, for the reading page. HTML is never
+    /// interpreted: it comes through as the text that was typed.
+    /// </summary>
+    public static Block[] RenderMarkdown(string @text) {
+        return FfiConverterSequenceTypeBlock.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_render_markdown(FfiConverterString.INSTANCE.Lower(@text), ref _status)
 ));
     }
 
