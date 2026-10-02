@@ -203,8 +203,10 @@ final class ScreenshotTests: XCTestCase {
         func checkToolbar(_ screen: String) {
             let toolbar = app.toolbars.firstMatch
             let fields = toolbar.searchFields.allElementsBoundByIndex.map(\.frame)
-            let controls = toolbar.buttons.allElementsBoundByIndex + toolbar.menuButtons.allElementsBoundByIndex
-                + toolbar.popUpButtons.allElementsBoundByIndex + toolbar.checkBoxes.allElementsBoundByIndex
+            var controls: [XCUIElement] = toolbar.buttons.allElementsBoundByIndex
+            controls.append(contentsOf: toolbar.menuButtons.allElementsBoundByIndex)
+            controls.append(contentsOf: toolbar.popUpButtons.allElementsBoundByIndex)
+            controls.append(contentsOf: toolbar.checkBoxes.allElementsBoundByIndex)
             var names: [String] = []
             for control in controls {
                 // The search field's own buttons are the system's.
@@ -256,10 +258,15 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(writing.waitForExistence(timeout: 5))
         try audit("writer, empty")
 
-        let text = (found.lines.isEmpty ? ["No issues."] : found.lines)
-            + ["", "Contrast measured from the pixels (4.5:1 needed):"] + found.measured
-            + ["", "Toolbar controls, by name:"] + found.toolbars
-            + (found.allowed.isEmpty ? [] : ["", "Allowed:"] + found.allowed)
+        var text: [String] = found.lines.isEmpty ? ["No issues."] : found.lines
+        text.append(contentsOf: ["", "Contrast measured from the pixels (4.5:1 needed):"])
+        text.append(contentsOf: found.measured)
+        text.append(contentsOf: ["", "Toolbar controls, by name:"])
+        text.append(contentsOf: found.toolbars)
+        if !found.allowed.isEmpty {
+            text.append(contentsOf: ["", "Allowed:"])
+            text.append(contentsOf: found.allowed)
+        }
         let report = XCTAttachment(string: text.joined(separator: "\n"))
         report.name = "accessibility-audit"
         report.lifetime = .keepAlways
