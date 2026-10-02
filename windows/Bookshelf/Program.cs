@@ -37,12 +37,12 @@ public static class Program
         StartupLog.Step("Starting the Windows App SDK (COM wrappers)");
         WinRT.ComWrappersSupport.InitializeComWrappers();
         StartupLog.Step("Starting XAML");
-        Application.Start(_ =>
+        Application.Start(p =>
         {
             StartupLog.Step("XAML started");
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(context);
-            _ = new App();
+            new App();
         });
         StartupLog.Step("Closed");
     }
