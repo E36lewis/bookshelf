@@ -264,9 +264,10 @@ mod tests {
 
     #[test]
     fn matches_the_old_renderer_on_the_manual() {
-        let manual = crate::help::MANUAL;
-        assert_eq!(to_pango(manual), old_to_pango(manual));
-        let parsed = bookshelf_core::manual::parse_manual(manual);
+        use bookshelf_core::{manual, shortcuts::Platform};
+        let linux = manual::platform_text(crate::help::MANUAL, Platform::Linux);
+        assert_eq!(to_pango(&linux), old_to_pango(&linux));
+        let parsed = manual::manual_for(crate::help::MANUAL, Platform::Linux);
         for section in &parsed.sections {
             assert_eq!(
                 to_pango(&section.markdown),

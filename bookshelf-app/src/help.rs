@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use adw::prelude::*;
-use bookshelf_core::manual::{parse_manual, Entry};
+use bookshelf_core::manual::{manual_for, Entry};
 use bookshelf_core::shortcuts::{shortcuts, Accel, Platform};
 
 use crate::{markdown, Ctx};
@@ -22,7 +22,7 @@ pub fn open_manual(ctx: &Rc<Ctx>) {
 }
 
 fn manual_page() -> adw::NavigationPage {
-    let manual = parse_manual(MANUAL);
+    let manual = manual_for(MANUAL, Platform::Linux);
 
     // One label per section, so the Contents can scroll to each of them.
     let column = gtk::Box::builder()
@@ -218,7 +218,10 @@ mod tests {
     /// A markup mistake would make the whole manual page blank.
     #[test]
     fn the_manual_renders_as_valid_markup() {
-        let markup = markdown::to_pango(MANUAL);
+        let markup = markdown::to_pango(&bookshelf_core::manual::platform_text(
+            MANUAL,
+            Platform::Linux,
+        ));
         gtk::pango::parse_markup(&markup, '\0').expect("valid Pango markup");
         assert!(markup.len() > 1000, "the manual is all there");
     }
@@ -228,7 +231,7 @@ mod tests {
     /// bookshelf-core, next to the parser.)
     #[test]
     fn every_section_renders_as_valid_markup() {
-        let manual = parse_manual(MANUAL);
+        let manual = manual_for(MANUAL, Platform::Linux);
         assert!(manual.contents.len() > 10);
         for section in &manual.sections {
             let markup = markdown::to_pango(&section.markdown);

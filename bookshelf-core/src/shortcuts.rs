@@ -84,6 +84,68 @@ pub fn shortcuts(platform: Platform) -> Vec<ShortcutGroup> {
         .collect()
 }
 
+/// How a shortcut is written for people on that platform: "⇧⌘F" on the
+/// Mac (modifiers in Apple's ⌃⌥⇧⌘ order), "Ctrl+Shift+F" on Windows and
+/// Linux. The manual's shortcuts list is written with these.
+pub fn key_label(platform: Platform, accel: &Accel) -> String {
+    match accel {
+        Accel::Gtk(gtk) => gtk_label(gtk),
+        Accel::Keys(k) if platform == Platform::Mac => {
+            let mut s = String::new();
+            for (on, mark) in [(k.control, '⌃'), (k.shift, '⇧'), (k.command, '⌘')] {
+                if on {
+                    s.push(mark);
+                }
+            }
+            s + &key_name(k.key, "↩")
+        }
+        Accel::Keys(k) => {
+            let mut s = String::new();
+            for (on, name) in [(k.control, "Ctrl+"), (k.shift, "Shift+")] {
+                if on {
+                    s.push_str(name);
+                }
+            }
+            s + &key_name(k.key, "Enter")
+        }
+    }
+}
+
+fn key_name(key: Key, enter: &str) -> String {
+    match key {
+        Key::Char(c) => c.to_uppercase().collect(),
+        Key::Return => enter.to_string(),
+        Key::Escape => "Esc".to_string(),
+        Key::F(n) => format!("F{n}"),
+    }
+}
+
+/// "<Control>comma" → "Ctrl+,". Only the names the table uses need a
+/// spelling of their own; a letter is shown uppercase, as on the key.
+fn gtk_label(accel: &str) -> String {
+    let mut rest = accel;
+    let mut s = String::new();
+    while let Some((modifier, after)) = rest.strip_prefix('<').and_then(|r| r.split_once('>')) {
+        s.push_str(match modifier {
+            "Control" | "Primary" => "Ctrl+",
+            "Shift" => "Shift+",
+            "Alt" => "Alt+",
+            other => other,
+        });
+        rest = after;
+    }
+    let key = match rest {
+        "comma" => ",".to_string(),
+        "question" => "?".to_string(),
+        "slash" => "/".to_string(),
+        "Escape" => "Esc".to_string(),
+        "Return" => "Enter".to_string(),
+        k if k.chars().count() == 1 => k.to_uppercase(),
+        k => k.to_string(),
+    };
+    s + &key
+}
+
 /// One action; `None` where a platform has no shortcut for it (or doesn't
 /// list it).
 struct Row {
@@ -323,6 +385,48 @@ mod tests {
                 item.title
             );
         }
+    }
+
+    #[test]
+    fn labels_read_as_each_platform_writes_keys() {
+        let label = |p, title| key_label(p, &find(p, title).unwrap());
+        assert_eq!(label(Platform::Mac, "Reading"), "⌘1");
+        assert_eq!(label(Platform::Mac, "Write or edit your summary"), "⌘↩");
+        assert_eq!(label(Platform::Mac, "Settings"), "⌘,");
+        assert_eq!(label(Platform::Mac, "Focus mode"), "⇧⌘F");
+        assert_eq!(label(Platform::Mac, "Full screen"), "⌃⌘F");
+        assert_eq!(label(Platform::Mac, "Leave full screen"), "Esc");
+        assert_eq!(label(Platform::Mac, "User manual"), "⌘?");
+        assert_eq!(label(Platform::Windows, "Reading"), "Ctrl+1");
+        assert_eq!(
+            label(Platform::Windows, "Write or edit your summary"),
+            "Ctrl+E"
+        );
+        assert_eq!(label(Platform::Windows, "Focus mode"), "Ctrl+Shift+F");
+        assert_eq!(label(Platform::Windows, "Full screen"), "F11");
+        assert_eq!(label(Platform::Windows, "Keyboard shortcuts"), "Ctrl+?");
+        assert_eq!(label(Platform::Linux, "Reading"), "1");
+        assert_eq!(label(Platform::Linux, "Write or edit your summary"), "E");
+        assert_eq!(label(Platform::Linux, "Add a book"), "Ctrl+N");
+        assert_eq!(label(Platform::Linux, "Settings"), "Ctrl+,");
+        assert_eq!(label(Platform::Linux, "Keyboard shortcuts"), "Ctrl+?");
+        assert_eq!(label(Platform::Linux, "Leave full screen"), "Esc");
+        assert_eq!(label(Platform::Linux, "Full screen"), "F11");
+        // Spellings the table doesn't use yet.
+        assert_eq!(
+            key_label(
+                Platform::Linux,
+                &Accel::Gtk("<Control><Shift>Return".into())
+            ),
+            "Ctrl+Shift+Enter"
+        );
+        assert_eq!(
+            key_label(
+                Platform::Windows,
+                &Accel::Keys(combo(Key::Return, false, true, true))
+            ),
+            "Ctrl+Shift+Enter"
+        );
     }
 
     #[test]
