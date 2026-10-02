@@ -56,7 +56,9 @@ public class SentenceBoundsTests
     [InlineData("One. Two.", 5, 5, 9)]
     [InlineData("One. Two.", 9, 5, 9)]  // the end of the text
     [InlineData("One.  Two", 5, 0, 4)]  // in the spaces after a sentence
-    [InlineData("One. ", 5, 5, 5)]      // about to start the next one
+    [InlineData("One. ", 5, 0, 4)]      // about to start the next one: the last stays bright
+    [InlineData("One. Two.  ", 11, 5, 9)]
+    [InlineData("One. T", 6, 5, 6)]     // the next one started
     [InlineData("No stop at all", 3, 0, 14)]
     [InlineData("Pi is 3.14 today. Yes", 2, 0, 17)]
     [InlineData("Really?! Yes.", 2, 0, 8)]

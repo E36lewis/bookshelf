@@ -11,9 +11,10 @@ public static class SentenceBounds
 {
     /// <summary>
     /// The sentence around <paramref name="caret"/>, without the spaces after
-    /// it. The caret in those spaces belongs to the sentence before them;
-    /// at the end of a line that ends in spaces it's an empty sentence (the
-    /// next one, not written yet).
+    /// it. The caret in those spaces belongs to the sentence before them,
+    /// at the end of a line too: having typed "It ended. ", the sentence
+    /// just written stays at full strength until the next one starts, as in
+    /// the GTK and Mac apps. Only an empty line has an empty sentence.
     /// </summary>
     public static (int Start, int End) Around(string text, int caret)
     {
@@ -37,7 +38,7 @@ public static class SentenceBounds
             }
             var next = end;
             while (next < lineEnd && char.IsWhiteSpace(text[next])) next++;
-            if (caret < next || (next == lineEnd && caret == lineEnd && next == end))
+            if (caret < next || next == lineEnd)
             {
                 return (start, end);
             }
