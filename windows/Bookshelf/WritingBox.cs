@@ -594,17 +594,17 @@ public sealed class WritingBox
 
     /// <summary>
     /// The formatting for one look, made once and kept until the colors or
-    /// the size change. It starts from the text's own formatting, for its
-    /// font: the box's FontFamily (a bundled font) reaches the text that way,
-    /// not through the document's default format, whose font is the system's.
+    /// the size change. A run's font name is what RichEdit draws it in, so
+    /// each format names the writing font itself, as the box's FontFamily
+    /// gives it to RichEdit (for a bundled font, its ms-appx source): a
+    /// format copied from elsewhere could carry the theme's font instead.
     /// </summary>
     private ITextCharacterFormat FormatFor(TextStyle style)
     {
         if (_formats.TryGetValue(style, out var format)) return format;
         var c = _colors;
-        // A real character (the first, or the final paragraph mark of an empty text): an empty
-        // range gives the insertion point's format, which has the theme's font.
         format = _box.Document.GetRange(0, 1).CharacterFormat.GetClone();
+        if (!string.IsNullOrEmpty(_box.FontFamily?.Source)) format.Name = _box.FontFamily.Source;
         format.Bold = (style & (TextStyle.Heading | TextStyle.Bold)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Italic = (style & (TextStyle.Italic | TextStyle.Quote)) != 0 ? FormatEffect.On : FormatEffect.Off;
         format.Strikethrough = (style & TextStyle.Strike) != 0 ? FormatEffect.On : FormatEffect.Off;
