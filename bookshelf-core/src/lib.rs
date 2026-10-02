@@ -10,12 +10,14 @@ pub mod covers;
 pub mod db;
 pub mod error;
 pub mod export;
+pub mod manual;
 pub mod mdedit;
 pub mod models;
 pub mod openlibrary;
 pub mod paths;
 pub mod present;
 pub mod service;
+pub mod shortcuts;
 pub mod text;
 pub mod writer;
 

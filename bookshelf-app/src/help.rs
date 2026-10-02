@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use adw::prelude::*;
+use bookshelf_core::manual::{parse_manual, Entry};
+use bookshelf_core::shortcuts::{shortcuts, Accel, Platform};
 
 use crate::{markdown, Ctx};
 
@@ -151,104 +153,10 @@ fn text_label(markdown: &str) -> gtk::Label {
     label
 }
 
-/// The manual, split up for the in-app page.
-struct Manual {
-    /// The title and opening paragraphs.
-    intro: String,
-    /// The "Contents" list, read from the manual itself.
-    contents: Vec<Entry>,
-    /// Every `##`/`###` heading with the text under it (Contents left out).
-    sections: Vec<Section>,
-}
-
-struct Entry {
-    title: String,
-    anchor: String,
-    nested: bool,
-}
-
-struct Section {
-    anchor: String,
-    markdown: String,
-}
-
-fn parse_manual(md: &str) -> Manual {
-    let mut intro = String::new();
-    let mut contents_md = String::new();
-    let mut sections: Vec<Section> = vec![];
-    let mut seen: HashMap<String, usize> = HashMap::new();
-    let mut in_contents = false;
-
-    for line in md.lines() {
-        let heading = line
-            .strip_prefix("## ")
-            .or_else(|| line.strip_prefix("### "));
-        if let Some(title) = heading {
-            let anchor = github_anchor(title, &mut seen);
-            in_contents = line.starts_with("## ") && title.trim() == "Contents";
-            if in_contents {
-                continue;
-            }
-            sections.push(Section {
-                anchor,
-                markdown: String::new(),
-            });
-        }
-        let target = if in_contents {
-            &mut contents_md
-        } else if let Some(section) = sections.last_mut() {
-            &mut section.markdown
-        } else {
-            &mut intro
-        };
-        target.push_str(line);
-        target.push('\n');
-    }
-
-    // "- [Title](#anchor)", indented when it's a subsection.
-    let contents = contents_md
-        .lines()
-        .filter_map(|line| {
-            let item = line.trim_start();
-            let (title, rest) = item.strip_prefix("- [")?.split_once("](#")?;
-            Some(Entry {
-                title: title.to_string(),
-                anchor: rest.strip_suffix(')')?.to_string(),
-                nested: item.len() < line.len(),
-            })
-        })
-        .collect();
-    Manual {
-        intro,
-        contents,
-        sections,
-    }
-}
-
-/// The anchor GitHub gives a heading: lowercase, spaces to dashes,
-/// punctuation dropped, and "-1", "-2", ... on repeats. Using the same rule
-/// means one Contents list works on GitHub and in the app.
-fn github_anchor(title: &str, seen: &mut HashMap<String, usize>) -> String {
-    let base: String = title
-        .trim()
-        .to_lowercase()
-        .chars()
-        .filter_map(|c| match c {
-            ' ' => Some('-'),
-            c if c.is_alphanumeric() || c == '-' || c == '_' => Some(c),
-            _ => None,
-        })
-        .collect();
-    let n = seen.entry(base.clone()).or_insert(0);
-    let anchor = if *n == 0 { base } else { format!("{base}-{n}") };
-    *n += 1;
-    anchor
-}
-
-/// The standard GNOME "Keyboard Shortcuts" window. Keep it in step with the
-/// handlers in main.rs (home, help), editor.rs, writer.rs and reader.rs.
+/// The standard GNOME "Keyboard Shortcuts" window, listing bookshelf-core's
+/// Linux shortcuts.
 pub fn show_shortcuts(parent: Option<&gtk::Window>) {
-    let builder = gtk::Builder::from_string(SHORTCUTS_UI);
+    let builder = gtk::Builder::from_string(&shortcuts_ui());
     let Some(window) = builder.object::<gtk::ShortcutsWindow>("shortcuts") else {
         return;
     };
@@ -256,7 +164,109 @@ pub fn show_shortcuts(parent: Option<&gtk::Window>) {
     window.present();
 }
 
-const SHORTCUTS_UI: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+/// The window's GtkBuilder XML, built from the shared Linux list.
+fn shortcuts_ui() -> String {
+    let mut xml = String::from(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+         <interface>\n  \
+         <object class=\"GtkShortcutsWindow\" id=\"shortcuts\">\n    \
+         <property name=\"modal\">1</property>\n    \
+         <child>\n      \
+         <object class=\"GtkShortcutsSection\">\n        \
+         <property name=\"section-name\">bookshelf</property>\n        \
+         <property name=\"max-height\">10</property>\n",
+    );
+    for group in shortcuts(Platform::Linux) {
+        xml.push_str(&format!(
+            "        <child>\n          \
+             <object class=\"GtkShortcutsGroup\">\n            \
+             <property name=\"title\">{}</property>\n",
+            xml_escape(&group.title)
+        ));
+        for item in &group.items {
+            let Accel::Gtk(accel) = &item.accel else {
+                continue;
+            };
+            xml.push_str(&format!(
+                "            <child>\n              \
+                 <object class=\"GtkShortcutsShortcut\">\n                \
+                 <property name=\"title\">{}</property>\n                \
+                 <property name=\"accelerator\">{}</property>\n              \
+                 </object>\n            \
+                 </child>\n",
+                xml_escape(&item.title),
+                xml_escape(accel)
+            ));
+        }
+        xml.push_str("          </object>\n        </child>\n");
+    }
+    xml.push_str("      </object>\n    </child>\n  </object>\n</interface>\n");
+    xml
+}
+
+/// Escapes text inside an XML element. Quotes may stay as they are there.
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A markup mistake would make the whole manual page blank.
+    #[test]
+    fn the_manual_renders_as_valid_markup() {
+        let markup = markdown::to_pango(MANUAL);
+        gtk::pango::parse_markup(&markup, '\0').expect("valid Pango markup");
+        assert!(markup.len() > 1000, "the manual is all there");
+    }
+
+    /// Each section is its own label, so each must be valid on its own.
+    /// (That every Contents entry finds its section is tested in
+    /// bookshelf-core, next to the parser.)
+    #[test]
+    fn every_section_renders_as_valid_markup() {
+        let manual = parse_manual(MANUAL);
+        assert!(manual.contents.len() > 10);
+        for section in &manual.sections {
+            let markup = markdown::to_pango(&section.markdown);
+            gtk::pango::parse_markup(&markup, '\0').expect(&section.anchor);
+        }
+    }
+
+    #[test]
+    fn the_shortcuts_list_is_well_formed() {
+        // Every accelerator in the window must parse, or GTK shows a blank key.
+        let ui = shortcuts_ui();
+        let mut count = 0;
+        for line in ui.lines() {
+            let Some(rest) = line.trim().strip_prefix(r#"<property name="accelerator">"#) else {
+                continue;
+            };
+            let accel = rest.trim_end_matches("</property>");
+            let name = accel.strip_prefix("&lt;Control&gt;").unwrap_or(accel);
+            assert!(!name.contains("&lt;"), "only Ctrl is used: {accel}");
+            assert!(
+                gtk::gdk::Key::from_name(name).is_some(),
+                "unknown key {name:?}"
+            );
+            count += 1;
+        }
+        assert!(count > 10, "the accelerators are all there");
+    }
+
+    /// The window is generated from bookshelf-core's table now; it must be
+    /// exactly the XML that used to be written out by hand.
+    #[test]
+    fn the_shortcuts_window_is_unchanged() {
+        assert_eq!(shortcuts_ui(), OLD_SHORTCUTS_UI);
+    }
+
+    /// The hand-written window as it was before the table moved to
+    /// bookshelf-core, frozen. Don't edit it.
+    const OLD_SHORTCUTS_UI: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <object class="GtkShortcutsWindow" id="shortcuts">
     <property name="modal">1</property>
@@ -390,87 +400,4 @@ const SHORTCUTS_UI: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
   </object>
 </interface>
 "#;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A markup mistake would make the whole manual page blank.
-    #[test]
-    fn the_manual_renders_as_valid_markup() {
-        let markup = markdown::to_pango(MANUAL);
-        gtk::pango::parse_markup(&markup, '\0').expect("valid Pango markup");
-        assert!(markup.len() > 1000, "the manual is all there");
-    }
-
-    #[test]
-    fn every_contents_entry_leads_to_its_section() {
-        let manual = parse_manual(MANUAL);
-        assert!(manual.contents.len() > 10);
-        assert!(manual.intro.starts_with("# Bookshelf"));
-        let anchors: Vec<&str> = manual.sections.iter().map(|s| s.anchor.as_str()).collect();
-        for entry in &manual.contents {
-            assert!(
-                anchors.contains(&entry.anchor.as_str()),
-                "no section for {:?}",
-                entry.anchor
-            );
-            // and it's the heading the entry names, not a same-named one elsewhere
-            let section = manual
-                .sections
-                .iter()
-                .find(|s| s.anchor == entry.anchor)
-                .unwrap();
-            assert!(
-                section
-                    .markdown
-                    .lines()
-                    .next()
-                    .unwrap()
-                    .ends_with(&entry.title),
-                "{}",
-                entry.title
-            );
-        }
-        // Contents itself isn't repeated in the sections, and nothing is lost.
-        assert!(!anchors.contains(&"contents"));
-        let headings = MANUAL
-            .lines()
-            .filter(|l| l.starts_with("## ") || l.starts_with("### "))
-            .count();
-        assert_eq!(manual.sections.len(), headings - 1);
-        for section in &manual.sections {
-            let markup = markdown::to_pango(&section.markdown);
-            gtk::pango::parse_markup(&markup, '\0').expect(&section.anchor);
-        }
-    }
-
-    #[test]
-    fn anchors_match_github() {
-        let mut seen = HashMap::new();
-        assert_eq!(github_anchor("A book's page", &mut seen), "a-books-page");
-        assert_eq!(
-            github_anchor("Your data, backups and privacy", &mut seen),
-            "your-data-backups-and-privacy"
-        );
-        assert_eq!(github_anchor("Writing", &mut seen), "writing");
-        assert_eq!(github_anchor("Writing", &mut seen), "writing-1");
-    }
-
-    #[test]
-    fn the_shortcuts_list_is_well_formed() {
-        // Every accelerator in the window must parse, or GTK shows a blank key.
-        for line in SHORTCUTS_UI.lines() {
-            let Some(rest) = line.trim().strip_prefix(r#"<property name="accelerator">"#) else {
-                continue;
-            };
-            let accel = rest.trim_end_matches("</property>");
-            let name = accel.strip_prefix("&lt;Control&gt;").unwrap_or(accel);
-            assert!(!name.contains("&lt;"), "only Ctrl is used: {accel}");
-            assert!(
-                gtk::gdk::Key::from_name(name).is_some(),
-                "unknown key {name:?}"
-            );
-        }
-    }
 }
