@@ -39,10 +39,26 @@ pub struct ManualSection {
     pub markdown: String,
 }
 
-/// The user manual.
+/// The user manual for the platform this library was built for: the
+/// Mac's in the macOS build, Windows' in the Windows build. Prefer
+/// `manual_for`, which says which one it wants.
 #[uniffi::export]
 pub fn manual() -> Manual {
-    let m = core_manual::parse_manual(MANUAL_MD);
+    let platform = if cfg!(target_os = "macos") {
+        Platform::Mac
+    } else if cfg!(windows) {
+        Platform::Windows
+    } else {
+        Platform::Linux
+    };
+    manual_for(platform)
+}
+
+/// The user manual as one platform's app shows it: the text every app
+/// shares plus that platform's own (its keys, menus and folders).
+#[uniffi::export]
+pub fn manual_for(platform: Platform) -> Manual {
+    let m = core_manual::manual_for(MANUAL_MD, platform.into());
     Manual {
         intro: m.intro,
         contents: m
@@ -65,7 +81,7 @@ pub fn manual() -> Manual {
     }
 }
 
-/// Which app's shortcuts to list.
+/// Which app's shortcuts to list, or manual to show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum Platform {
     /// GTK accelerators.
@@ -74,6 +90,16 @@ pub enum Platform {
     Mac,
     /// Key combos with Ctrl.
     Windows,
+}
+
+impl From<Platform> for core_shortcuts::Platform {
+    fn from(p: Platform) -> Self {
+        match p {
+            Platform::Linux => Self::Linux,
+            Platform::Mac => Self::Mac,
+            Platform::Windows => Self::Windows,
+        }
+    }
 }
 
 /// A titled group of shortcuts ("Writing").
@@ -172,12 +198,7 @@ impl From<core_shortcuts::Accel> for Accel {
 /// The keyboard shortcuts list for one platform, in the order it's shown.
 #[uniffi::export]
 pub fn shortcuts(platform: Platform) -> Vec<ShortcutGroup> {
-    let platform = match platform {
-        Platform::Linux => core_shortcuts::Platform::Linux,
-        Platform::Mac => core_shortcuts::Platform::Mac,
-        Platform::Windows => core_shortcuts::Platform::Windows,
-    };
-    core_shortcuts::shortcuts(platform)
+    core_shortcuts::shortcuts(platform.into())
         .into_iter()
         .map(|g| ShortcutGroup {
             title: g.title,
@@ -210,6 +231,39 @@ mod tests {
             );
         }
         assert!(m.contents.iter().any(|e| e.nested));
+    }
+
+    #[test]
+    fn each_platform_has_its_own_manual() {
+        let text = |m: &Manual| {
+            let mut all = m.intro.clone();
+            for s in &m.sections {
+                all.push_str(&s.markdown);
+            }
+            all
+        };
+        let mac = manual_for(Platform::Mac);
+        let windows = manual_for(Platform::Windows);
+        let linux = manual_for(Platform::Linux);
+        for m in [&mac, &windows, &linux] {
+            assert!(m.intro.starts_with("# Bookshelf"));
+            assert!(!text(m).contains("<!--"));
+            assert_eq!(m.contents, linux.contents);
+        }
+        assert!(text(&mac).contains("**⌘N**"));
+        assert!(!text(&mac).contains("Ctrl+"));
+        assert!(text(&windows).contains("**Ctrl+E**"));
+        assert!(text(&windows).contains("%LOCALAPPDATA%"));
+        assert!(text(&linux).contains("~/.local/share/bookshelf"));
+        // manual() picks the platform it was built for (Linux, in tests here).
+        let built_for = if cfg!(target_os = "macos") {
+            mac
+        } else if cfg!(windows) {
+            windows
+        } else {
+            linux
+        };
+        assert_eq!(manual(), built_for);
     }
 
     fn find(platform: Platform, title: &str) -> Accel {

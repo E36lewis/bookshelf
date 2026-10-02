@@ -466,6 +466,11 @@ RustBuffer uniffi_bookshelf_ffi_fn_func_manual(RustCallStatus *_Nonnull out_stat
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MANUAL_FOR
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MANUAL_FOR
+RustBuffer uniffi_bookshelf_ffi_fn_func_manual_for(RustBuffer platform, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SHORTCUTS
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_SHORTCUTS
 RustBuffer uniffi_bookshelf_ffi_fn_func_shortcuts(RustBuffer platform, RustCallStatus *_Nonnull out_status
@@ -821,6 +826,12 @@ uint16_t uniffi_bookshelf_ffi_checksum_func_validate_email(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL
 uint16_t uniffi_bookshelf_ffi_checksum_func_manual(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL_FOR
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_MANUAL_FOR
+uint16_t uniffi_bookshelf_ffi_checksum_func_manual_for(void
     
 );
 #endif

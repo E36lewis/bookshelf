@@ -4772,7 +4772,7 @@ public func FfiConverterTypePageWidth_lower(_ value: PageWidth) -> RustBuffer {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
- * Which app's shortcuts to list.
+ * Which app's shortcuts to list, or manual to show.
  */
 
 public enum Platform: Equatable, Hashable {
@@ -6219,11 +6219,24 @@ public func validateEmail(email: String)throws  -> String?  {
 })
 }
 /**
- * The user manual.
+ * The user manual for the platform this library was built for: the
+ * Mac's in the macOS build, Windows' in the Windows build. Prefer
+ * `manual_for`, which says which one it wants.
  */
 public func manual() -> Manual  {
     return try!  FfiConverterTypeManual_lift(try! rustCall() {
     uniffi_bookshelf_ffi_fn_func_manual($0
+    )
+})
+}
+/**
+ * The user manual as one platform's app shows it: the text every app
+ * shares plus that platform's own (its keys, menus and folders).
+ */
+public func manualFor(platform: Platform) -> Manual  {
+    return try!  FfiConverterTypeManual_lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_manual_for(
+        FfiConverterTypePlatform_lower(platform),$0
     )
 })
 }
@@ -6391,7 +6404,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_bookshelf_ffi_checksum_func_validate_email() != 17322) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_bookshelf_ffi_checksum_func_manual() != 4467) {
+    if (uniffi_bookshelf_ffi_checksum_func_manual() != 52123) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_manual_for() != 55133) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_bookshelf_ffi_checksum_func_shortcuts() != 44278) {

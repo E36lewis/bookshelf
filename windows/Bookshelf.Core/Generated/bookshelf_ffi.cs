@@ -855,6 +855,8 @@ static class _UniFFILib {
     
     
     
+    
+    
 
     static _UniFFILib() {
         _UniFFILib.uniffiCheckContractApiVersion();
@@ -1312,6 +1314,17 @@ static class _UniFFILib {
     public static extern
 #endif
      RustBuffer uniffi_bookshelf_ffi_fn_func_manual(ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_manual_for(RustBuffer @platform,ref UniffiRustCallStatus _uniffi_out_err
     );
 
     #if NET8_0_OR_GREATER
@@ -2092,6 +2105,17 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_func_manual_for(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_func_shortcuts(
     );
 
@@ -2609,8 +2633,14 @@ static class _UniFFILib {
         }
         {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_manual();
-            if (checksum != 4467) {
-                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_manual` checksum `4467`, library returned `{checksum}`");
+            if (checksum != 52123) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_manual` checksum `52123`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_manual_for();
+            if (checksum != 55133) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_manual_for` checksum `55133`, library returned `{checksum}`");
             }
         }
         {
@@ -6648,7 +6678,7 @@ class FfiConverterTypePageWidth: FfiConverterRustBuffer<PageWidth> {
 
 
 /// <summary>
-/// Which app's shortcuts to list.
+/// Which app's shortcuts to list, or manual to show.
 /// </summary>
 public enum Platform: int {
     /// <summary>
@@ -8129,12 +8159,26 @@ public static class BookshelfFfiMethods {
 
 
     /// <summary>
-    /// The user manual.
+    /// The user manual for the platform this library was built for: the
+    /// Mac's in the macOS build, Windows' in the Windows build. Prefer
+    /// `manual_for`, which says which one it wants.
     /// </summary>
     public static Manual Manual() {
         return FfiConverterTypeManual.INSTANCE.Lift(
     _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
     _UniFFILib.uniffi_bookshelf_ffi_fn_func_manual( ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// The user manual as one platform's app shows it: the text every app
+    /// shares plus that platform's own (its keys, menus and folders).
+    /// </summary>
+    public static Manual ManualFor(Platform @platform) {
+        return FfiConverterTypeManual.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_manual_for(FfiConverterTypePlatform.INSTANCE.Lower(@platform), ref _status)
 ));
     }
 
