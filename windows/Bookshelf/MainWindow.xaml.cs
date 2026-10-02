@@ -76,7 +76,7 @@ public sealed partial class MainWindow : Window
         }
         catch (CoreException ex)
         {
-            ProfileError.Text = ex.Message;
+            ProfileError.Text = ex.UserMessage();
         }
     }
 

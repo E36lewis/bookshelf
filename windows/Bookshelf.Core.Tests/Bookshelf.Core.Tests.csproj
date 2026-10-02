@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Tests for Bookshelf.Core's plain .NET logic (runs on any OS).
-       Run with: dotnet test -project Bookshelf.Core.Tests (from windows/; see global.json). -->
+  <!-- Tests for Bookshelf.Core: its plain .NET logic, and the journal through
+       the Rust core (runs on any OS the core is built for).
+       Build the core first (cargo build -release -p bookshelf-ffi), then run
+       from windows/: dotnet test -project Bookshelf.Core.Tests/Bookshelf.Core.Tests.csproj -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -14,5 +16,19 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="..\Bookshelf.Core\Bookshelf.Core.csproj" />
+  </ItemGroup>
+  <!-- The Rust core from `cargo build -release -p bookshelf-ffi`, next to the
+       test binary as in the app: bookshelf_ffi.dll on Windows,
+       libbookshelf_ffi.so on Linux, libbookshelf_ffi.dylib on macOS. -->
+  <PropertyGroup>
+    <RustRelease>$(MSBuildThisFileDirectory)..\..\target\release\</RustRelease>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(RustRelease)bookshelf_ffi.dll" Link="bookshelf_ffi.dll"
+          CopyToOutputDirectory="PreserveNewest" Condition="Exists('$(RustRelease)bookshelf_ffi.dll')" />
+    <None Include="$(RustRelease)libbookshelf_ffi.so" Link="libbookshelf_ffi.so"
+          CopyToOutputDirectory="PreserveNewest" Condition="Exists('$(RustRelease)libbookshelf_ffi.so')" />
+    <None Include="$(RustRelease)libbookshelf_ffi.dylib" Link="libbookshelf_ffi.dylib"
+          CopyToOutputDirectory="PreserveNewest" Condition="Exists('$(RustRelease)libbookshelf_ffi.dylib')" />
   </ItemGroup>
 </Project>
