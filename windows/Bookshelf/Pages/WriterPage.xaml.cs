@@ -109,6 +109,9 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
                 Timing.Visibility = Visibility.Visible;
                 writing.Timed += () => Timing.Text = writing.Timings.Summary;
                 Timing.Text = writing.Timings.Summary;
+                LookProbe.Visibility = Visibility.Visible;
+                writing.Looked += look => LookProbe.Text = look;
+                writing.ProbeLook();
             }
             LayOut();
             _words = BookshelfFfiMethods.WordCount(entry.Body);

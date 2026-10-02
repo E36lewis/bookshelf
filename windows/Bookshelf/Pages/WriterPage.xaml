@@ -168,6 +168,17 @@
                 IsHitTestVisible="False"
                 Opacity="0"
                 Visibility="Collapsed" />
+            <!-- Demo journals only: how the text looks (focus mode's dimming,
+                 heading sizes), for the UI tour. Invisible too. -->
+            <TextBlock
+                x:Name="LookProbe"
+                Width="1"
+                Height="1"
+                HorizontalAlignment="Left"
+                AutomationProperties.AutomationId="WriterLook"
+                IsHitTestVisible="False"
+                Opacity="0"
+                Visibility="Collapsed" />
             <!-- Read out when a save finishes, not on every key. -->
             <TextBlock
                 x:Name="Status"

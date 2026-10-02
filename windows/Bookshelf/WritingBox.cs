@@ -249,6 +249,7 @@ public sealed class WritingBox
         }
         Restyle(_bright.Start, _bright.End);
         QueueCaretUpdate();
+        _restyled = true;
     }
 
     private string Read()
@@ -412,6 +413,7 @@ public sealed class WritingBox
                 var old = _bright;
                 _bright = next;
                 RestyleBoth(old, next);
+                _restyled = true;
             }
             _typewriter.CenterCaret();
         });
@@ -618,5 +620,98 @@ public sealed class WritingBox
     {
         Timings.Add(clock.Elapsed.TotalMilliseconds, lines, _text.Length);
         Timed?.Invoke();
+        _restyled = true;
+    }
+
+    // ---- demo journals: how the text looks ----------------------------------------
+
+    /// <summary>Raised with <see cref="DescribeLook"/>'s answer when it changes (see <see cref="ProbeLook"/>).</summary>
+    public event Action<string>? Looked;
+
+    private string _lastLook = "";
+    private bool _restyled; // since the last look
+
+    /// <summary>
+    /// Demo journals only, for the UI tour: a few times a second, while the
+    /// text is short and nothing is waiting to be restyled, reads back how
+    /// the text looks (<see cref="DescribeLook"/>). When that changed, it
+    /// raises <see cref="Looked"/> and notes it in startup.log, saying so
+    /// if no restyle of ours explains it (the box resetting its formatting,
+    /// say). Nobody's text is logged.
+    /// </summary>
+    public void ProbeLook()
+    {
+        var timer = _box.DispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(300);
+        timer.Tick += (_, _) =>
+        {
+            if (_text.Length > ProbedLength || _caretUpdateQueued || _backgroundQueued || Read() != _text) return;
+            var look = DescribeLook();
+            if (look == _lastLook) return;
+            StartupLog.Step(_restyled || _lastLook.Length == 0
+                ? $"Writer look: {look}"
+                : $"Writer look changed without a restyle of ours: {look} (was {_lastLook})");
+            _lastLook = look;
+            _restyled = false;
+            Looked?.Invoke(look);
+        };
+        timer.Start();
+        _box.Unloaded += (_, _) => timer.Stop();
+    }
+
+    /// <summary>Longer texts aren't probed: it reads the box's formatting run by run.</summary>
+    private const int ProbedLength = 5000;
+
+    /// <summary>
+    /// How the text looks, read back from the box's own formatting: in focus
+    /// mode, the sentence the caret is in and how many of its characters are
+    /// dimmed (none should be) and how many outside it aren't (none should
+    /// be); how many are dimmed in all; and the size of each heading level's
+    /// text and of the body. Counts only, never the text.
+    /// </summary>
+    public string DescribeLook()
+    {
+        if (_text.Length > ProbedLength) return $"long text ({_text.Length:N0} characters), not probed";
+        var doc = _box.Document;
+        var caret = CurrentSelection().Start;
+        var bright = IsFocusMode ? SentenceBounds.Around(_text, caret) : (Start: -1, End: -1);
+        int dimmed = 0, dimInBright = 0, litOutside = 0;
+        var pos = 0;
+        while (pos < _text.Length)
+        {
+            // One run of characters that look alike at a time.
+            var run = doc.GetRange(pos, pos);
+            run.MoveEnd(TextRangeUnit.CharacterFormat, 1);
+            var end = Math.Clamp(run.EndPosition, pos + 1, _text.Length);
+            var isDim = run.CharacterFormat.ForegroundColor == _colors.Dim;
+            for (var i = pos; i < end; i++)
+            {
+                if (_text[i] == '\n') continue;
+                var inBright = i >= bright.Start && i < bright.End;
+                if (isDim) dimmed++;
+                if (isDim && inBright) dimInBright++;
+                if (!isDim && IsFocusMode && !inBright) litOutside++;
+            }
+            pos = end;
+        }
+        var sizes = new SortedDictionary<int, float>();
+        for (var start = 0; start < _text.Length;)
+        {
+            var lineEnd = _text.IndexOf('\n', start);
+            if (lineEnd < 0) lineEnd = _text.Length;
+            var level = 0;
+            var i = start;
+            while (i < lineEnd && _text[i] == '#') { level++; i++; }
+            if (level > 0 && (i >= lineEnd || _text[i] != ' ')) level = 0;
+            while (i < lineEnd && _text[i] is '#' or ' ') i++;
+            if (i < lineEnd && !sizes.ContainsKey(level)) sizes[level] = doc.GetRange(i, i + 1).CharacterFormat.Size;
+            start = lineEnd + 1;
+        }
+        var focus = IsFocusMode
+            ? $"focus=on bright={bright.Start}-{bright.End} dimInBright={dimInBright} litOutside={litOutside}"
+            : "focus=off";
+        var sized = string.Join(" ", sizes.Select(s =>
+            (s.Key == 0 ? "body" : $"h{s.Key}") + "=" + s.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)));
+        return $"{focus} dimmed={dimmed} sizes {sized}";
     }
 }
