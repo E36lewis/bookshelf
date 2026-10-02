@@ -66,6 +66,8 @@ targets:
         # Previews get their own ID, so they never touch a real journal.
         PRODUCT_BUNDLE_IDENTIFIER: io.github.e36lewis.Bookshelf.Preview
         PRODUCT_NAME: Bookshelf
+        # Bookshelf/Assets.xcassets, from icon/AppIcon.svg (scripts/make-icons.sh).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   BookshelfUITests:
     type: bundle.ui-testing
     platform: macOS

@@ -112,6 +112,10 @@ jobs:
           test "$(find "$fonts" -maxdepth 1 -name '*.ttf' | wc -l)" -eq 8
           test -f "$fonts/iA Writer Duo/LICENSE.md"
           test -f "$fonts/Source Serif 4/LICENSE.md"
+          # The app icon, from the asset catalog.
+          contents=apple/build/dd/Build/Products/Release/Bookshelf.app/Contents
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$contents/Info.plist")" = AppIcon
+          test -s "$contents/Resources/AppIcon.icns"
           ditto -c -k --keepParent \
             apple/build/dd/Build/Products/Release/Bookshelf.app apple/build/Bookshelf-mac-preview.zip
 
