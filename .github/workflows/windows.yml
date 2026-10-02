@@ -44,9 +44,26 @@ jobs:
       - name: Publish the app
         run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -o windows/build/Bookshelf
 
-      - name: Check the Rust core is next to the app
+      - name: Check the build has everything the app needs
         shell: pwsh
-        run: if (-not (Test-Path windows/build/Bookshelf/bookshelf_ffi.dll)) { throw "bookshelf_ffi.dll missing from the build" }
+        run: |
+          foreach ($f in 'Bookshelf.exe', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
+            if (-not (Test-Path "windows/build/Bookshelf/$f")) { throw "$f is missing from the build" }
+          }
+
+      - name: Smoke test (the app starts and stays open)
+        shell: pwsh
+        run: |
+          $app = Start-Process windows/build/Bookshelf/Bookshelf.exe -PassThru
+          Start-Sleep -Seconds 15
+          $crashLog = Join-Path $env:LOCALAPPDATA 'Bookshelf.Preview/crash.log'
+          if ($app.HasExited) {
+            if (Test-Path $crashLog) { Get-Content $crashLog }
+            throw "Bookshelf.exe exited on its own (exit code $($app.ExitCode))"
+          }
+          if (Test-Path $crashLog) { Get-Content $crashLog; throw "crash.log was written" }
+          Stop-Process -Id $app.Id
+          Write-Host "Bookshelf.exe started and stayed open."
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
