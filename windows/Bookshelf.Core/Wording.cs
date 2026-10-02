@@ -104,3 +104,21 @@ public static class SearchText
             book.PageCount is { } n && n > 0 ? $"{n:N0} pages" : null,
         }.Where(s => !string.IsNullOrWhiteSpace(s)));
 }
+
+/// <summary>The writing page's status line.</summary>
+public static class WriterText
+{
+    /// <summary>"1 word", "1,204 words".</summary>
+    public static string Words(uint words) =>
+        words == 1 ? "1 word" : string.Format(CultureInfo.CurrentCulture, "{0:N0} words", words);
+
+    /// <summary>"89 words · Saved", or "· Saving…" while there's typing still to save.</summary>
+    public static string Status(uint words, bool saved) => $"{Words(words)} · {(saved ? "Saved" : "Saving…")}";
+
+    /// <summary>What the status line says when a save failed.</summary>
+    public static string NotSaved(string reason) => $"Not saved: {reason}";
+
+    /// <summary>The focus mode button's tooltip.</summary>
+    public static string FocusTooltip(string? key) =>
+        $"Focus mode{(key is null ? "" : $" ({key})")}: dim everything except the sentence you're writing";
+}

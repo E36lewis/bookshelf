@@ -22,6 +22,10 @@ public static class ShortcutKeys
         public const string Write = "Write or edit your summary";
         public const string Read = "Read your summary";
         public const string Save = "Save now (it also saves as you type)";
+        public const string Bold = "Bold";
+        public const string Italic = "Italic";
+        public const string Link = "Link";
+        public const string FocusMode = "Focus mode";
         public const string FullScreen = "Full screen";
         public const string LeaveFullScreen = "Leave full screen";
         public const string Manual = "User manual";
@@ -31,7 +35,7 @@ public static class ShortcutKeys
         public static readonly string[] All =
         [
             Reading, Finished, Eventually, AddBook, Search, Settings, Write, Read, Save,
-            FullScreen, LeaveFullScreen, Manual, Shortcuts,
+            Bold, Italic, Link, FocusMode, FullScreen, LeaveFullScreen, Manual, Shortcuts,
         ];
     }
 

@@ -103,7 +103,18 @@ public sealed class JournalService : IDisposable
 
     /// <summary>Saves the writing page's text. Line ends are stored as <c>\n</c>.</summary>
     public Task<SaveResult> SaveBodyAsync(string summaryId, string body) =>
-        Run(() => _journal.SaveBody(summaryId, body));
+        Run(() => _failBodySaves
+            ? throw new CoreException.Io("Saving is switched off for this test (--demo-save-fails).")
+            : _journal.SaveBody(summaryId, body));
+
+    private volatile bool _failBodySaves;
+
+    /// <summary>
+    /// For tests of the rescue path: from now on <see cref="SaveBodyAsync"/>
+    /// fails as a full or unplugged drive would, and nothing else changes.
+    /// The app only does this to a demo journal (<c>--demo-save-fails</c>).
+    /// </summary>
+    public void FailBodySavesForTesting() => _failBodySaves = true;
 
     /// <summary>
     /// When saving fails: writes the text to the recovery folder instead and

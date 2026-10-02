@@ -9,7 +9,8 @@ public sealed record EditorState(string Text, int SelectionStart, int SelectionE
 /// make Ctrl+Z undo colors instead of typing.
 ///
 /// Typing is grouped into steps the way people expect: a new step starts
-/// after a pause, at a new line, or with a paste.
+/// after a pause, at a new line, or with a paste. A formatting button is
+/// always a step of its own (<see cref="RecordStep"/>).
 /// </summary>
 public sealed class UndoHistory
 {
@@ -40,6 +41,19 @@ public sealed class UndoHistory
         }
         _redo.Clear();
         _lastEdit = now;
+    }
+
+    /// <summary>
+    /// Call after an edit that must undo on its own, whatever came just
+    /// before or comes just after (a formatting button), with the state
+    /// just before it.
+    /// </summary>
+    public void RecordStep(EditorState before)
+    {
+        _undo.AddLast(before);
+        if (_undo.Count > Limit) _undo.RemoveFirst();
+        _redo.Clear();
+        _lastEdit = DateTime.MinValue; // typing next starts a new step
     }
 
     /// <summary>The state to go back to, or null if there's nothing to undo.</summary>

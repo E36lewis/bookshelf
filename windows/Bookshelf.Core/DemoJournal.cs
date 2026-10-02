@@ -40,6 +40,39 @@ public static class DemoJournal
         "A family's summers by the sea, and the trip to the lighthouse that takes ten years.");
 
     /// <summary>
+    /// The file that marks a folder as holding a demo journal, so the app
+    /// can reopen one (<c>--demo-journal-in</c>) but never mistakes a real
+    /// journal for one.
+    /// </summary>
+    public const string MarkerFile = "bookshelf-demo-journal.txt";
+
+    /// <summary>What a folder offered for a demo journal holds.</summary>
+    public enum FolderState
+    {
+        /// <summary>Nothing (or it isn't there yet): make a new demo journal.</summary>
+        New,
+
+        /// <summary>A demo journal made earlier: open it as it is.</summary>
+        Demo,
+
+        /// <summary>Something else, maybe a real journal: leave it alone.</summary>
+        NotDemo,
+    }
+
+    /// <summary>Whether <paramref name="folder"/> can hold a demo journal.</summary>
+    public static FolderState Check(string folder)
+    {
+        if (!Directory.Exists(folder) || !Directory.EnumerateFileSystemEntries(folder).Any()) return FolderState.New;
+        return File.Exists(Path.Combine(folder, MarkerFile)) ? FolderState.Demo : FolderState.NotDemo;
+    }
+
+    /// <summary>Marks <paramref name="folder"/> (which must exist) as a demo journal's.</summary>
+    public static void Mark(string folder) =>
+        File.WriteAllText(
+            Path.Combine(folder, MarkerFile),
+            "A demo journal made by Bookshelf for tests and screenshots. Nothing here is real.\n");
+
+    /// <summary>
     /// Fills an empty journal. <paramref name="today"/> anchors every date, so
     /// "day 12" and "this year" always look the same.
     /// </summary>
@@ -134,6 +167,16 @@ public static class DemoJournal
         """;
 
     private const string LighthouseNotes = """
-        Almost nothing happens and it's completely absorbing. The middle section, "Time Passes", covers ten years in a few pages, and it hits hard.
+        # Notes so far
+
+        Almost nothing happens and it's completely **absorbing**. The middle section, "Time Passes", covers ten years in a few pages, and it hits hard.
+
+        - Mrs Ramsay holds the whole house together.
+        - Lily's painting is the real *plot*.
+        - The `[brackets]` hide the biggest events.
+
+        > For nothing was simply one thing.
+
+        ~~Skim the first part~~ Don't skim anything.
         """;
 }
