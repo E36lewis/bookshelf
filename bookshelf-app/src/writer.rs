@@ -12,11 +12,10 @@ use bookshelf_core::export;
 use bookshelf_core::models::*;
 use bookshelf_core::text::edit::FormatAction;
 use bookshelf_core::text::highlight::{self, StyleKind};
+use bookshelf_core::writer::{prompts, word_count, WriterLayout, AUTOSAVE_MS};
 use gtk::glib;
 
 use crate::{display_path, editor, format, friendly, Ctx};
-
-const AUTOSAVE_MS: u64 = 700;
 
 // Hotkeys: Ctrl+F focus mode, Ctrl+S save now, F11 full screen.
 const KEY_FOCUS: gtk::gdk::Key = gtk::gdk::Key::f;
@@ -76,16 +75,12 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
 
     let settings =
         get_settings(&ctx.conn, &summary.user_id).unwrap_or_else(|_| UserSettings::defaults());
-    let (wrap_gap, line_gap) = match settings.line_spacing.as_str() {
-        "tight" => (2, 6),
-        "airy" => (12, 20),
-        _ => (6, 12),
-    };
-    let column_width = match settings.page_width.as_str() {
-        "narrow" => 600,
-        "wide" => 900,
-        _ => 720,
-    };
+    let WriterLayout {
+        column_width,
+        wrap_gap,
+        line_gap,
+        ..
+    } = WriterLayout::from_settings(&settings);
 
     let buffer = gtk::TextBuffer::new(None);
     buffer.set_text(&summary.body);
@@ -107,7 +102,7 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
 
     // Faint prompts on an empty page, gone as soon as you type.
     let prompt = gtk::Label::builder()
-        .label(prompts_for(summary.milestone()))
+        .label(prompts(summary.milestone()))
         .wrap(true)
         .xalign(0.0)
         .valign(gtk::Align::Start)
@@ -546,30 +541,6 @@ fn full_text(buffer: &gtk::TextBuffer) -> String {
     buffer
         .text(&buffer.start_iter(), &buffer.end_iter(), false)
         .to_string()
-}
-
-/// Questions to get you started, depending on where the book is on your shelf.
-fn prompts_for(milestone: Milestone) -> &'static str {
-    match milestone {
-        Milestone::Eventually => {
-            "Why do you want to read this one?\n\
-                                  Who recommended it, and what did they say?"
-        }
-        Milestone::Reading => {
-            "Where are you in the story?\n\
-                               What has surprised you so far?\n\
-                               A line worth remembering…"
-        }
-        Milestone::Finished => {
-            "What stayed with you after the last page?\n\
-                                A line worth remembering…\n\
-                                Who would you give this book to?"
-        }
-    }
-}
-
-fn word_count(text: &str) -> usize {
-    text.split_whitespace().count()
 }
 
 fn set_status(label: &gtk::Label, words: usize, saved: bool) {

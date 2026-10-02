@@ -17,6 +17,7 @@ pub mod paths;
 pub mod present;
 pub mod service;
 pub mod text;
+pub mod writer;
 
 // The one-off import from the old Rails app. Only built with
 // `--features rails-import`, so it never ships in the app.

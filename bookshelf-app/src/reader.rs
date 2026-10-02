@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use adw::prelude::*;
 use bookshelf_core::models::*;
+use bookshelf_core::writer::WriterLayout;
 use gtk::glib;
 
 use crate::{editor, markdown, writer, Ctx};
@@ -19,11 +20,7 @@ pub fn reader_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
     };
     let settings =
         get_settings(&ctx.conn, &summary.user_id).unwrap_or_else(|_| UserSettings::defaults());
-    let column_width = match settings.page_width.as_str() {
-        "narrow" => 600,
-        "wide" => 900,
-        _ => 720,
-    };
+    let column_width = WriterLayout::from_settings(&settings).column_width;
 
     // ---- the text ---------------------------------------------------------
     let title = gtk::Label::builder()
