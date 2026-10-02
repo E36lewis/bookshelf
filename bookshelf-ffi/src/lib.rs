@@ -45,6 +45,10 @@ impl From<bookshelf_core::Error> for CoreError {
             },
             E::NotFound => CoreError::NotFound,
             E::Invalid(message) => CoreError::Invalid { message },
+            // Same text the apps got when this was an `Invalid` message.
+            e @ E::NewerJournal { .. } => CoreError::Invalid {
+                message: e.to_string(),
+            },
         }
     }
 }

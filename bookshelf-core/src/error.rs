@@ -10,6 +10,13 @@ pub enum Error {
     NotFound,
     #[error("invalid: {0}")]
     Invalid(String),
+    /// The journal's schema is newer than this build knows. Its own variant
+    /// so each app can tell it apart from a damaged file and say "update".
+    #[error(
+        "this journal was made by a newer version of Bookshelf (format {found}, \
+         this version understands up to {supported}). Please update Bookshelf to open it"
+    )]
+    NewerJournal { found: usize, supported: usize },
 }
 
 impl Error {
@@ -73,6 +80,27 @@ mod tests {
         assert_eq!(
             Error::Http(http).user_message(),
             "Network error: builder error."
+        );
+    }
+
+    #[test]
+    fn a_newer_journal_reads_as_it_always_did() {
+        // The startup screen's sentence, word for word as it was when this
+        // was an `Invalid` message.
+        let err = Error::NewerJournal {
+            found: 6,
+            supported: 5,
+        };
+        let before = Error::Invalid(
+            "this journal was made by a newer version of Bookshelf (format 6, \
+             this version understands up to 5). Please update Bookshelf to open it"
+                .into(),
+        );
+        assert_eq!(err.user_message(), before.user_message());
+        assert_eq!(
+            err.user_message(),
+            "This journal was made by a newer version of Bookshelf (format 6, \
+             this version understands up to 5). Please update Bookshelf to open it."
         );
     }
 }

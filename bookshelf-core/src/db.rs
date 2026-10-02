@@ -126,11 +126,10 @@ fn migrate(conn: &mut Connection) -> Result<()> {
     // A newer Bookshelf made this journal; running on a schema we don't
     // know could lose whatever the newer version stores.
     if current > MIGRATIONS.len() {
-        return Err(Error::Invalid(format!(
-            "this journal was made by a newer version of Bookshelf (format {current}, \
-             this version understands up to {}). Please update Bookshelf to open it",
-            MIGRATIONS.len()
-        )));
+        return Err(Error::NewerJournal {
+            found: current,
+            supported: MIGRATIONS.len(),
+        });
     }
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(current) {
         let tx = conn.transaction()?;
@@ -154,8 +153,16 @@ mod tests {
         raw.pragma_update(None, "user_version", (MIGRATIONS.len() + 1) as i64)
             .unwrap();
         drop(raw);
-        let err = open(&path).unwrap_err().to_string();
-        assert!(err.contains("newer version"), "{err}");
+        let err = open(&path).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                Error::NewerJournal { found, supported }
+                    if found == MIGRATIONS.len() + 1 && supported == MIGRATIONS.len()
+            ),
+            "{err}"
+        );
+        assert!(err.to_string().contains("newer version"), "{err}");
     }
 
     #[test]
