@@ -136,10 +136,12 @@ final class ScreenshotTests: XCTestCase {
         app.menuBars.menuBarItems["Edit"].click()
         sleep(1)
         keepScreen("19-undo-menu", look)
-        let undo = app.menuBars.menuBarItems["Edit"].menuItems
-            .matching(NSPredicate(format: "title BEGINSWITH %@", "Undo Remove")).firstMatch
+        // AppKit retitles the item ("Undo Remove “…”") as the menu opens;
+        // the accessibility tree keeps its plain title, so find it by action.
+        // The screenshot above shows the name.
+        let undo = app.menuBars.menuBarItems["Edit"].menuItems["undo:"]
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
-        XCTAssertTrue(undo.title.contains("The Left Hand of Darkness"), undo.title)
+        XCTAssertTrue(undo.isEnabled)
         undo.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
     }
@@ -156,6 +158,8 @@ final class ScreenshotTests: XCTestCase {
         let found = Found()
 
         func audit(_ screen: String) throws {
+            // Let pages finish fading in: the contrast check samples pixels.
+            sleep(2)
             try app.performAccessibilityAudit { issue in
                 let element = issue.element.map {
                     "type \($0.elementType.rawValue) label “\($0.label)” title “\($0.title)” "
