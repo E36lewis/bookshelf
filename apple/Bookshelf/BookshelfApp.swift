@@ -22,7 +22,7 @@ struct BookshelfApp: App {
             HelpView()
                 .environment(appDelegate.model)
         }
-        .defaultSize(width: 920, height: 680)
+        .defaultSize(width: 960, height: 680)
 
         Settings {
             SettingsView()
