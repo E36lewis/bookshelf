@@ -112,12 +112,30 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>A new demo journal in a temporary folder (never the real one), and the profile to open.</summary>
+    /// <summary>
+    /// A demo journal (never the real one) and the profile to open: a new one
+    /// in a temporary folder, or in the folder given, where a second run
+    /// finds it again and opens its last-used profile.
+    /// </summary>
     private async Task<(JournalService, Profile?)> OpenDemoAsync()
     {
-        var folder = Path.Combine(Path.GetTempPath(), $"Bookshelf demo {DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}"[..40]);
-        StartupLog.Step($"Demo journal in {folder}");
+        var folder = _options.DemoFolder is { } chosen
+            ? Path.GetFullPath(chosen)
+            : Path.Combine(Path.GetTempPath(), $"Bookshelf demo {DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}"[..40]);
+        var state = DemoJournal.Check(folder);
+        StartupLog.Step($"Demo journal in {folder} ({state})");
+        if (state == DemoJournal.FolderState.NotDemo)
+        {
+            throw new InvalidOperationException($"{folder} isn't empty and doesn't hold a demo journal, so it was left alone.");
+        }
         var journal = await JournalService.OpenAsync(folder);
+        if (_options.DemoSaveFails)
+        {
+            journal.FailBodySavesForTesting();
+            StartupLog.Step("Demo journal: saving the writing page will fail (--demo-save-fails)");
+        }
+        if (state == DemoJournal.FolderState.Demo) return (journal, null);
+        await Task.Run(() => DemoJournal.Mark(folder));
         if (_options.DemoEmpty) return (journal, null);
         var demo = await DemoJournal.SeedAsync(journal, DateOnly.FromDateTime(DateTime.Now));
         var open = _options.DemoProfile?.ToLowerInvariant() switch

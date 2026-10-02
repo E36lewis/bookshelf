@@ -34,8 +34,23 @@ internal sealed record LaunchOptions
     public string? DemoProfile { get; init; }
 
     /// <summary>
+    /// With <see cref="DemoJournal"/>: keep the demo journal in this folder,
+    /// so a second run opens it again (to check what the first one saved).
+    /// Only an empty folder or one holding a demo journal is used.
+    /// </summary>
+    public string? DemoFolder { get; init; }
+
+    /// <summary>
+    /// With <see cref="DemoJournal"/>: the writing page's saves fail, to test
+    /// how text is rescued. Never possible on a real journal.
+    /// </summary>
+    public bool DemoSaveFails { get; init; }
+
+    /// <summary>
     /// Reads the command line: <c>--demo-journal</c>, <c>--demo-empty</c>,
-    /// <c>--demo-profile NAME</c>. Anything else is ignored.
+    /// <c>--demo-profile NAME</c>, <c>--demo-journal-in FOLDER</c> and
+    /// <c>--demo-save-fails</c>. Each of them means a demo journal, never the
+    /// real one. Anything else is ignored.
     /// </summary>
     public static LaunchOptions Parse(IReadOnlyList<string> args)
     {
@@ -52,6 +67,12 @@ internal sealed record LaunchOptions
                     break;
                 case "--demo-profile" when i + 1 < args.Count:
                     options = options with { DemoJournal = true, DemoProfile = args[++i] };
+                    break;
+                case "--demo-journal-in" when i + 1 < args.Count:
+                    options = options with { DemoJournal = true, DemoFolder = args[++i] };
+                    break;
+                case "--demo-save-fails":
+                    options = options with { DemoJournal = true, DemoSaveFails = true };
                     break;
             }
         }

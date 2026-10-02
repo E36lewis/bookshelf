@@ -1,13 +1,17 @@
 using System.Diagnostics;
 using Bookshelf.Core.Editing;
 using Bookshelf.Ffi;
+using Bookshelf.Writing;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
 using Microsoft.UI.Text;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Windows.UI.Core;
+using Windows.UI.ViewManagement;
 
 namespace Bookshelf;
 
@@ -15,9 +19,15 @@ namespace Bookshelf;
 /// Turns a RichEditBox into the writing page's editor:
 /// <list type="bullet">
 /// <item>Markdown highlighting from the shared Rust core, redone only for the
-/// lines an edit touched, so long texts stay fast.</item>
+/// lines an edit touched, so long texts stay fast; recolored when the theme
+/// changes, and plain in High Contrast.</item>
+/// <item>The formatting bar's edits (<see cref="Format"/>), each one step
+/// of undo.</item>
+/// <item>Focus mode: everything but the current sentence dimmed, and the
+/// caret's line kept mid-page (<see cref="Typewriter"/>).</item>
 /// <item>Bookshelf's own text-only undo (Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z): the
-/// box's built-in undo also records the highlighting, so it's switched off.</item>
+/// box's built-in undo also records the highlighting, so it's switched off.
+/// Highlighting and dimming never touch it.</item>
 /// <item>Paste as plain text, so pasted words take the editor's look.</item>
 /// </list>
 /// RichEditBox separates lines with '\r'; this class works with '\n' (one
@@ -27,37 +37,55 @@ public sealed class WritingBox
 {
     private readonly RichEditBox _box;
     private readonly UndoHistory _history = new();
-    private readonly Windows.UI.Color _ink;
+    private readonly Typewriter _typewriter;
+    private readonly AccessibilitySettings _accessibility = new();
+    private WritingColors _colors;
+    private WriterSpacing? _spacing;
     private string _text = "";
     private (int Start, int End) _selection;
+    private (int Start, int End) _bright; // focus mode: the sentence shown at full strength
     private bool _applying; // true while we change the box ourselves
+    private bool _caretUpdateQueued;
 
     public bool Highlight { get; set; } = true;
 
-    /// <summary>The text size in pixels; headings are a quarter bigger. Call <see cref="RestyleAll"/> after changing it.</summary>
-    public float TextSize { get; set; } = 15;
+    /// <summary>The text size in points; headings are a quarter bigger. Call <see cref="RestyleAll"/> after changing it.</summary>
+    public float TextSize { get; set; } = 14;
 
     /// <summary>The text, with <c>\n</c> line ends.</summary>
     public string Text => _text;
 
-    /// <summary>Raised after each restyle, with a short description of the work done.</summary>
-    public event Action<string>? Restyled;
+    /// <summary>Whether focus mode is on (see <see cref="SetFocusMode"/>).</summary>
+    public bool IsFocusMode { get; private set; }
 
-    /// <summary>Raised when the person changed the text (typing, pasting, undo or redo); not by <see cref="SetText"/>.</summary>
+    /// <summary>How long each edit took to handle; see <see cref="Timed"/>.</summary>
+    public EditTimings Timings { get; } = new();
+
+    /// <summary>Raised after each edit or restyle is timed (for the demo journal's speed check).</summary>
+    public event Action? Timed;
+
+    /// <summary>Raised when the person changed the text (typing, pasting, formatting, undo or redo); not by <see cref="SetText"/>.</summary>
     public event Action? Edited;
 
     public WritingBox(RichEditBox box)
     {
         _box = box;
         _box.Document.UndoLimit = 0; // our own undo instead (see UndoHistory)
-        _ink = _box.Document.GetDefaultCharacterFormat().ForegroundColor;
+        _colors = WritingColors.For(box);
+        _typewriter = new Typewriter(box);
         _box.TextChanged += (_, _) => OnTextChanged();
         _box.SelectionChanged += (_, _) =>
         {
-            if (!_applying) _selection = CurrentSelection();
+            if (_applying) return;
+            _selection = CurrentSelection();
+            QueueCaretUpdate();
         };
         _box.PreviewKeyDown += OnPreviewKeyDown;
         _box.Paste += OnPaste;
+        // Light, dark and High Contrast each have their own colors.
+        _box.ActualThemeChanged += (_, _) => Recolor();
+        _accessibility.HighContrastChanged += OnHighContrastChanged;
+        _box.Unloaded += (_, _) => _accessibility.HighContrastChanged -= OnHighContrastChanged;
     }
 
     /// <summary>Replaces everything (e.g. when a summary is opened); clears undo.</summary>
@@ -69,10 +97,83 @@ public sealed class WritingBox
         _text = Read();
         _history.Clear();
         _selection = CurrentSelection();
+        ApplySpacing();
         RestyleAll();
     }
 
-    public void RestyleAll() => Restyle(0, _text.Length);
+    /// <summary>
+    /// Takes in any typing the box has but hasn't reported yet (RichEditBox
+    /// raises TextChanged a moment later), so a save right now has every
+    /// key. Saving calls this first.
+    /// </summary>
+    public void CatchUp() => OnTextChanged();
+
+    /// <summary>The page's line spacing (see <see cref="WriterSpacing"/>), for the text there is and all that's typed later.</summary>
+    public void SetSpacing(WriterSpacing spacing)
+    {
+        _spacing = spacing;
+        ApplySpacing();
+    }
+
+    public void RestyleAll()
+    {
+        var clock = Stopwatch.StartNew();
+        var lines = Restyle(0, _text.Length);
+        Note(clock, lines);
+    }
+
+    /// <summary>
+    /// Runs a formatting button (or Ctrl+B, I, K) on the selection, or on the
+    /// word around the caret. One replacement, one step of undo. False if it
+    /// did nothing (Italic on a selection of only spaces, say).
+    /// </summary>
+    public bool Format(FormatAction action)
+    {
+        var clock = Stopwatch.StartNew();
+        var (start, end) = CurrentSelection();
+        if (FormatCommands.Apply(_text, start, end, action) is not { } result) return false;
+        var before = new EditorState(_text, start, end);
+        var oldBright = _bright;
+        var change = Replace(result.Change, result.Inserted, result.Text);
+        _history.RecordStep(before);
+        Select(result.SelectionStart, result.SelectionEnd);
+        var lines = RestyleEdit(change, oldBright);
+        Note(clock, lines);
+        Edited?.Invoke();
+        QueueCaretUpdate();
+        return true;
+    }
+
+    /// <summary>
+    /// Focus mode on or off. On: everything but the sentence being written is
+    /// dimmed, and typing keeps its line mid-page. Only colors change, never
+    /// the text, so undo doesn't see it.
+    /// </summary>
+    public void SetFocusMode(bool on)
+    {
+        if (on == IsFocusMode) return;
+        IsFocusMode = on;
+        if (!on)
+        {
+            RestyleAll();
+            return;
+        }
+        _bright = SentenceBounds.Around(_text, CurrentSelection().Start);
+        var doc = _box.Document;
+        _applying = true;
+        doc.BatchDisplayUpdates();
+        try
+        {
+            doc.GetRange(0, _text.Length).CharacterFormat.ForegroundColor = _colors.Dim;
+        }
+        finally
+        {
+            doc.ApplyDisplayUpdates();
+            _applying = false;
+        }
+        Restyle(_bright.Start, _bright.End);
+        QueueCaretUpdate();
+    }
 
     private string Read()
     {
@@ -80,15 +181,22 @@ public sealed class WritingBox
         return raw.Replace('\r', '\n');
     }
 
-    private (int, int) CurrentSelection()
+    private (int Start, int End) CurrentSelection()
     {
         var s = _box.Document.Selection;
         return (s.StartPosition, s.EndPosition);
     }
 
+    private void Select(int start, int end)
+    {
+        _box.Document.Selection.SetRange(start, end);
+        _selection = (start, end);
+    }
+
     private void OnTextChanged()
     {
         if (_applying) return;
+        var clock = Stopwatch.StartNew();
         var now = Read();
         if (now == _text) return; // only formatting changed (our highlighting)
 
@@ -96,14 +204,17 @@ public sealed class WritingBox
         var inserted = now.Substring(change.Start, change.NewEnd - change.Start);
         _history.Record(new EditorState(_text, _selection.Start, _selection.End), inserted, DateTime.UtcNow);
         _text = now;
-        Restyle(change.Start, change.NewEnd);
+        var oldBright = _bright;
         _selection = CurrentSelection();
+        var lines = RestyleEdit(change, oldBright);
+        Note(clock, lines);
         Edited?.Invoke();
+        QueueCaretUpdate();
     }
 
     private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (!IsDown(VirtualKey.Control)) return;
+        if (!IsDown(VirtualKey.Control) || IsDown(VirtualKey.Menu)) return;
         var shift = IsDown(VirtualKey.Shift);
         if (e.Key == VirtualKey.Z && !shift)
         {
@@ -129,31 +240,50 @@ public sealed class WritingBox
     private void Apply(EditorState? target)
     {
         if (target is null) return;
-        var change = TextDiff.Between(_text, target.Text);
+        var clock = Stopwatch.StartNew();
+        var diff = TextDiff.Between(_text, target.Text);
+        var oldBright = _bright;
+        var change = Replace(diff, target.Text.Substring(diff.Start, diff.NewEnd - diff.Start), target.Text);
+        Select(target.SelectionStart, target.SelectionEnd);
+        var lines = RestyleEdit(change, oldBright);
+        Note(clock, lines);
+        Edited?.Invoke();
+        QueueCaretUpdate();
+    }
+
+    /// <summary>
+    /// Makes the box hold <paramref name="expected"/> by putting
+    /// <paramref name="inserted"/> in place of <c>[change.Start, change.OldEnd)</c>.
+    /// Returns the change made: all of it, if RichEdit adjusted something and
+    /// everything had to be replaced (it shouldn't).
+    /// </summary>
+    private TextChange Replace(TextChange change, string inserted, string expected)
+    {
+        var oldLength = _text.Length;
         _applying = true;
         try
         {
-            var replacement = target.Text.Substring(change.Start, change.NewEnd - change.Start).Replace('\n', '\r');
-            _box.Document.GetRange(change.Start, change.OldEnd).SetText(TextSetOptions.None, replacement);
+            _box.Document.GetRange(change.Start, change.OldEnd).SetText(TextSetOptions.None, inserted.Replace('\n', '\r'));
         }
         finally
         {
             _applying = false;
         }
         _text = Read();
-        if (_text != target.Text)
+        if (_text == expected) return change;
+
+        _applying = true;
+        try
         {
-            // Shouldn't happen; if RichEdit adjusted something, fall back to replacing everything.
-            _applying = true;
-            _box.Document.SetText(TextSetOptions.None, target.Text.Replace('\n', '\r'));
-            _applying = false;
-            _text = Read();
-            change = new TextChange(0, 0, _text.Length);
+            _box.Document.SetText(TextSetOptions.None, expected.Replace('\n', '\r'));
         }
-        Restyle(change.Start, change.NewEnd);
-        _box.Document.Selection.SetRange(target.SelectionStart, target.SelectionEnd);
-        _selection = (target.SelectionStart, target.SelectionEnd);
-        Edited?.Invoke();
+        finally
+        {
+            _applying = false;
+        }
+        _text = Read();
+        ApplySpacing();
+        return new TextChange(0, oldLength, _text.Length);
     }
 
     private async void OnPaste(object sender, TextControlPasteEventArgs e)
@@ -167,42 +297,138 @@ public sealed class WritingBox
         selection.Collapse(false); // caret after the pasted text
     }
 
-    /// <summary>Restyles the whole lines around <c>[start, end)</c>.</summary>
-    private void Restyle(int start, int end)
+    // ---- focus mode -------------------------------------------------------------
+
+    /// <summary>
+    /// After the caret moves (and any typing has landed): in focus mode,
+    /// brightens the sentence it's now in and keeps its line mid-page. Done
+    /// once per burst of events, when the dispatcher is idle.
+    /// </summary>
+    private void QueueCaretUpdate()
+    {
+        if (!IsFocusMode || _caretUpdateQueued) return;
+        _caretUpdateQueued = true;
+        _box.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _caretUpdateQueued = false;
+            if (!IsFocusMode) return;
+            var next = SentenceBounds.Around(_text, CurrentSelection().Start);
+            if (next != _bright)
+            {
+                var old = _bright;
+                _bright = next;
+                RestyleBoth(old, next);
+            }
+            _typewriter.CenterCaret();
+        });
+    }
+
+    /// <summary>
+    /// Restyles after an edit: the lines it touched, and in focus mode the
+    /// lines of the sentence that was bright before (moved along by the edit)
+    /// and of the one that's bright now. Returns how many lines it restyled.
+    /// </summary>
+    private int RestyleEdit(TextChange change, (int Start, int End) oldBright)
+    {
+        if (!IsFocusMode) return Restyle(change.Start, change.NewEnd);
+        _bright = SentenceBounds.Around(_text, _selection.Start);
+        var edited = (Math.Min(change.Start, _bright.Start), Math.Max(change.NewEnd, _bright.End));
+        return RestyleBoth(TextDiff.Moved(oldBright, change), edited);
+    }
+
+    /// <summary>Restyles the lines of two ranges, once if they share lines.</summary>
+    private int RestyleBoth((int Start, int End) a, (int Start, int End) b)
+    {
+        var la = TextDiff.WholeLines(_text, a.Start, a.End);
+        var lb = TextDiff.WholeLines(_text, b.Start, b.End);
+        if (la.End < lb.Start || lb.End < la.Start) return Restyle(la.Start, la.End) + Restyle(lb.Start, lb.End);
+        return Restyle(Math.Min(la.Start, lb.Start), Math.Max(la.End, lb.End));
+    }
+
+    // ---- styling ----------------------------------------------------------------
+
+    private void OnHighContrastChanged(AccessibilitySettings sender, object args) =>
+        _box.DispatcherQueue.TryEnqueue(Recolor);
+
+    /// <summary>Picks the colors for the theme the editor has now, and restyles everything in them.</summary>
+    private void Recolor()
+    {
+        _colors = WritingColors.For(_box);
+        RestyleAll(); // focus mode's dimming included
+    }
+
+    /// <summary>The page's spacing on every line there is, and as the default for new ones.</summary>
+    private void ApplySpacing()
+    {
+        if (_spacing is not { } spacing) return;
+        var doc = _box.Document;
+        var lineSpacing = (float)spacing.RowPoints;
+        var after = (float)spacing.SpaceAfterPoints;
+        var defaults = doc.GetDefaultParagraphFormat();
+        defaults.SetLineSpacing(LineSpacingRule.AtLeast, lineSpacing);
+        defaults.SpaceBefore = 0;
+        defaults.SpaceAfter = after;
+        doc.SetDefaultParagraphFormat(defaults);
+        _applying = true;
+        try
+        {
+            var all = doc.GetRange(0, _text.Length + 1).ParagraphFormat;
+            all.SetLineSpacing(LineSpacingRule.AtLeast, lineSpacing);
+            all.SpaceBefore = 0;
+            all.SpaceAfter = after;
+        }
+        finally
+        {
+            _applying = false;
+        }
+    }
+
+    /// <summary>Restyles the whole lines around <c>[start, end)</c>. Returns how many lines.</summary>
+    private int Restyle(int start, int end)
     {
         var (from, to) = TextDiff.WholeLines(_text, start, end);
-        var clock = Stopwatch.StartNew();
         var doc = _box.Document;
+        var c = _colors;
         _applying = true;
         doc.BatchDisplayUpdates();
         try
         {
-            var all = doc.GetRange(from, to).CharacterFormat;
+            // The line break too, so a blank line left by a heading isn't heading-sized.
+            var all = doc.GetRange(from, to + 1).CharacterFormat;
             all.Bold = FormatEffect.Off;
             all.Italic = FormatEffect.Off;
             all.Strikethrough = FormatEffect.Off;
             all.Size = TextSize;
-            all.ForegroundColor = _ink;
+            all.ForegroundColor = c.Ink;
             all.BackgroundColor = Microsoft.UI.Colors.Transparent;
 
             if (Highlight && to > from)
             {
-                var dim = Windows.UI.Color.FromArgb(110, _ink.R, _ink.G, _ink.B);
-                var codeBack = Windows.UI.Color.FromArgb(28, _ink.R, _ink.G, _ink.B);
-                foreach (var span in BookshelfFfiMethods.MarkdownSpans(_text.Substring(from, to - from)))
+                var spans = BookshelfFfiMethods.MarkdownSpans(_text.Substring(from, to - from));
+                // Marks last, so they stay dimmed inside a quote or a heading.
+                foreach (var span in spans.Where(s => s.Kind != StyleKind.Syntax).Concat(spans.Where(s => s.Kind == StyleKind.Syntax)))
                 {
                     var f = doc.GetRange(from + (int)span.Start, from + (int)span.End).CharacterFormat;
                     switch (span.Kind)
                     {
                         case StyleKind.Heading: f.Bold = FormatEffect.On; f.Size = TextSize * 1.25f; break;
                         case StyleKind.Bold: f.Bold = FormatEffect.On; break;
-                        case StyleKind.Italic:
-                        case StyleKind.Quote: f.Italic = FormatEffect.On; break;
-                        case StyleKind.Code: f.BackgroundColor = codeBack; break;
+                        case StyleKind.Italic: f.Italic = FormatEffect.On; break;
+                        case StyleKind.Quote: f.Italic = FormatEffect.On; f.ForegroundColor = c.Quote; break;
+                        case StyleKind.Code: f.BackgroundColor = c.CodeBackground; break;
                         case StyleKind.Strike: f.Strikethrough = FormatEffect.On; break;
-                        case StyleKind.Syntax: f.ForegroundColor = dim; break;
+                        case StyleKind.Syntax: f.ForegroundColor = c.Syntax; break;
                     }
                 }
+            }
+
+            if (IsFocusMode)
+            {
+                // Everything on these lines but the bright sentence.
+                var brightStart = Math.Clamp(_bright.Start, from, to);
+                var brightEnd = Math.Clamp(_bright.End, brightStart, to);
+                if (from < brightStart) doc.GetRange(from, brightStart).CharacterFormat.ForegroundColor = c.Dim;
+                if (brightEnd < to) doc.GetRange(brightEnd, to).CharacterFormat.ForegroundColor = c.Dim;
             }
         }
         finally
@@ -210,7 +436,12 @@ public sealed class WritingBox
             doc.ApplyDisplayUpdates();
             _applying = false;
         }
-        var lines = to - from == 0 ? 1 : _text.AsSpan(from, to - from).Count('\n') + 1;
-        Restyled?.Invoke($"{_text.Length:N0} characters · restyled {lines:N0} line{(lines == 1 ? "" : "s")} in {clock.Elapsed.TotalMilliseconds:F1} ms");
+        return to - from == 0 ? 1 : _text.AsSpan(from, to - from).Count('\n') + 1;
+    }
+
+    private void Note(Stopwatch clock, int lines)
+    {
+        Timings.Add(clock.Elapsed.TotalMilliseconds, lines, _text.Length);
+        Timed?.Invoke();
     }
 }

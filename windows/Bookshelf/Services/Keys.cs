@@ -80,6 +80,20 @@ internal static class Keys
     private static bool IsDown(VirtualKey key) =>
         InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(CoreVirtualKeyStates.Down);
 
+    /// <summary>
+    /// Whether <paramref name="key"/> with exactly <paramref name="modifiers"/>
+    /// is the shortcut titled <paramref name="title"/>: for pages that handle
+    /// keys themselves because the RichEditBox keeps them from accelerators.
+    /// </summary>
+    public static bool Is(string title, VirtualKey key, VirtualKeyModifiers modifiers)
+    {
+        if (!Looked.TryGetValue(title, out var combo)) Looked[title] = combo = Combo(title);
+        return combo is { } c && c.Key == key && c.Modifiers == modifiers;
+    }
+
+    // UI thread only, like everything here.
+    private static readonly Dictionary<string, (VirtualKey Key, VirtualKeyModifiers Modifiers)?> Looked = [];
+
     /// <summary>The key and modifiers for a title in the core's Windows table.</summary>
     private static (VirtualKey Key, VirtualKeyModifiers Modifiers)? Combo(string title)
     {

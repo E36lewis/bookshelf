@@ -4,21 +4,112 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:pages="using:Bookshelf.Pages">
 
-    <!-- The writing page, simple for now: one column of text that saves as
-         you type. The formatting bar and focus mode come in Phase 4. -->
+    <!-- The writing page: a quiet formatting bar, one centered column of
+         text with its Markdown marks dimmed, and a status line. The text
+         area fills the page, so it scrolls from anywhere and its scroll bar
+         sits at the window's edge; its padding centers the column. -->
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid
-            x:Name="Column"
-            Padding="32,40,32,0"
-            HorizontalAlignment="Stretch">
+        <!-- Tab reaches the bar once; arrow keys move along it, Esc goes back
+             to the text. Buttons don't take the focus when clicked, so the
+             selection they act on stays put. -->
+        <CommandBar
+            x:Name="FormatBar"
+            Margin="0,4,0,0"
+            HorizontalAlignment="Center"
+            AutomationProperties.AutomationId="FormatBar"
+            AutomationProperties.Name="Formatting"
+            Background="Transparent"
+            DefaultLabelPosition="Right"
+            IsDynamicOverflowEnabled="True"
+            OverflowButtonVisibility="Auto"
+            PreviewKeyDown="OnFormatBarKeyDown"
+            TabFocusNavigation="Once"
+            XYFocusKeyboardNavigation="Enabled">
+            <AppBarButton x:Name="BoldButton" Tag="Bold" Label="Bold" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatBold">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE8DD;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Italic" Label="Italic" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatItalic">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE8DB;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Strike" Label="Strikethrough" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatStrike">
+                <AppBarButton.Icon><FontIcon Glyph="&#xEDE0;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Code" Label="Code" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatCode">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE943;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton Tag="Heading1" Label="Heading 1" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatHeading1">
+                <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H1" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Heading2" Label="Heading 2" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatHeading2">
+                <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H2" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Heading3" Label="Heading 3" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatHeading3">
+                <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H3" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton Tag="Quote" Label="Quote" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatQuote">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE9B2;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Bullets" Label="Bulleted list" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatBullets">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE8FD;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Numbered" Label="Numbered list" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatNumbered">
+                <!-- Neither icon font has a numbered list: 1, 2, 3 and three lines. -->
+                <AppBarButton.Icon>
+                    <PathIcon Data="F1 M2.4,1 H3.6 V6 H2.4 V2.4 L1.3,3 V1.9 Z
+                                    M1,7.5 H4 V8.7 H1 Z M2.8,7.5 H4 V10.6 H2.8 Z M1,9.4 H4 V10.6 H1 Z M1,9.4 H2.2 V12.5 H1 Z M1,11.3 H4 V12.5 H1 Z
+                                    M1,14 H4 V15.2 H1 Z M2.8,14 H4 V19 H2.8 Z M1.6,15.9 H4 V17.1 H1.6 Z M1,17.8 H4 V19 H1 Z
+                                    M7,2.75 H19 V4.25 H7 Z M7,9.25 H19 V10.75 H7 Z M7,15.75 H19 V17.25 H7 Z" />
+                </AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Tag="Link" Label="Link" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFormat"
+                          AutomationProperties.AutomationId="FormatLink">
+                <AppBarButton.Icon><FontIcon Glyph="&#xE71B;" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarToggleButton x:Name="FocusButton" Label="Focus"
+                                AllowFocusOnInteraction="False" Click="OnFocusClicked"
+                                AutomationProperties.AutomationId="FocusModeButton">
+                <AppBarToggleButton.Icon><FontIcon Glyph="&#xE890;" /></AppBarToggleButton.Icon>
+            </AppBarToggleButton>
+            <AppBarButton x:Name="FullScreenButton" Label="Full screen" LabelPosition="Collapsed"
+                          AllowFocusOnInteraction="False" Click="OnFullScreen"
+                          AutomationProperties.AutomationId="WriterFullScreenButton">
+                <AppBarButton.Icon><FontIcon x:Name="FullScreenIcon" Glyph="&#xE740;" /></AppBarButton.Icon>
+            </AppBarButton>
+        </CommandBar>
+
+        <Grid x:Name="PageArea" Grid.Row="1" SizeChanged="OnPageSizeChanged">
             <RichEditBox
                 x:Name="Editor"
-                Padding="0,0,0,240"
                 AutomationProperties.AutomationId="Editor"
                 AutomationProperties.Name="Your summary"
                 BorderThickness="0"
@@ -36,16 +127,22 @@
                     <Thickness x:Key="TextControlBorderThemeThicknessFocused">0</Thickness>
                 </RichEditBox.Resources>
             </RichEditBox>
-            <!-- Questions on an empty page, gone as soon as you type. -->
+            <!-- Questions on an empty page, where the writing starts; gone as
+                 soon as you type. (Narrator hears them as the editor's help text.) -->
             <TextBlock
                 x:Name="Prompt"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top"
+                AutomationProperties.AutomationId="WriterPrompt"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                 IsHitTestVisible="False"
-                TextWrapping="Wrap" />
+                LineStackingStrategy="BlockLineHeight"
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
         </Grid>
 
         <Grid
-            Grid.Row="1"
+            Grid.Row="2"
             Padding="24,6,12,6"
             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,1,0,0"
@@ -54,13 +151,24 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
                 x:Name="WriterTitle"
                 VerticalAlignment="Center"
                 Style="{StaticResource CaptionSecondaryStyle}"
                 TextTrimming="CharacterEllipsis" />
+            <!-- Demo journals only: how long edits take, for the UI tour's
+                 speed check. Invisible, but readable through UI Automation. -->
+            <TextBlock
+                x:Name="Timing"
+                Width="1"
+                Height="1"
+                HorizontalAlignment="Right"
+                AutomationProperties.AutomationId="WriterTiming"
+                IsHitTestVisible="False"
+                Opacity="0"
+                Visibility="Collapsed" />
+            <!-- Read out when a save finishes, not on every key. -->
             <TextBlock
                 x:Name="Status"
                 Grid.Column="1"
@@ -71,25 +179,21 @@
             <TextBlock
                 x:Name="Problem"
                 Grid.Column="1"
+                MaxWidth="560"
                 VerticalAlignment="Center"
+                AutomationProperties.AutomationId="WriterProblem"
                 AutomationProperties.LiveSetting="Assertive"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}"
                 Style="{StaticResource CaptionTextBlockStyle}"
+                TextWrapping="Wrap"
                 Visibility="Collapsed" />
             <Button
                 x:Name="SaveButton"
                 Grid.Column="2"
+                AutomationProperties.AutomationId="WriterSaveButton"
                 Click="OnSave"
                 Content="Save"
                 Style="{StaticResource SubtleButtonStyle}" />
-            <Button
-                x:Name="FullScreenButton"
-                Grid.Column="3"
-                AutomationProperties.Name="Full screen"
-                Click="OnFullScreen"
-                Style="{StaticResource SubtleButtonStyle}">
-                <FontIcon x:Name="FullScreenIcon" FontSize="14" Glyph="&#xE740;" />
-            </Button>
         </Grid>
     </Grid>
 </pages:BookshelfPage>
