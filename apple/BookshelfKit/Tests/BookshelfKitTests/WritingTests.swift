@@ -167,16 +167,6 @@ final class WritingTests: XCTestCase {
             XCTAssertLessThan(try whiteness(color, .aqua), 0.5)
             XCTAssertGreaterThan(try whiteness(color, .darkAqua), 0.5)
         }
-        // More contrast asked for: marks are less faint.
-        var normal: CGFloat = 0
-        var high: CGFloat = 0
-        try XCTUnwrap(NSAppearance(named: .aqua)).performAsCurrentDrawingAppearance {
-            normal = palette.marks.usingColorSpace(.sRGB)?.alphaComponent ?? 0
-        }
-        try XCTUnwrap(NSAppearance(named: .accessibilityHighContrastAqua)).performAsCurrentDrawingAppearance {
-            high = palette.marks.usingColorSpace(.sRGB)?.alphaComponent ?? 0
-        }
-        XCTAssertGreaterThan(high, normal)
     }
 
     func testFontsWithoutVariantsAreSynthesized() throws {

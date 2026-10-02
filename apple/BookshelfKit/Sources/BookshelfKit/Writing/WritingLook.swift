@@ -107,10 +107,8 @@ public struct WritingPalette {
     /// asked for more contrast.
     public static func ink(_ alpha: CGFloat, highContrast: CGFloat) -> NSColor {
         NSColor(name: nil) { appearance in
-            // A high-contrast appearance, or Increase Contrast turned on with
-            // the app's own light or dark look.
-            let high = appearance.name.rawValue.contains("HighContrast")
-                || NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+            // Accessibility › Display › Increase Contrast.
+            let high = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
             var ink = NSColor.black
             appearance.performAsCurrentDrawingAppearance {
                 ink = NSColor.textColor.usingColorSpace(.sRGB) ?? .black
