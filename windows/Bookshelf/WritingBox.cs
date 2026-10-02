@@ -108,6 +108,11 @@ public sealed class WritingBox
         // desktop app can't watch AccessibilitySettings; Windows' colors
         // changing covers High Contrast going on or off.)
         _box.ActualThemeChanged += (_, _) => Recolor();
+        // Loading the box gives all its text the box's own size and color
+        // (seen in CI: headings back to the text's size, focus mode's
+        // dimming and the dimmed marks gone), so the highlighting waits for
+        // it; see SetText.
+        _box.Loaded += (_, _) => RestyleAll();
         _system.ColorValuesChanged += OnSystemColorsChanged;
         _box.Unloaded += (_, _) => _system.ColorValuesChanged -= OnSystemColorsChanged;
     }
@@ -131,11 +136,13 @@ public sealed class WritingBox
         _selection = CurrentSelection();
         var loaded = clock.Elapsed.TotalMilliseconds;
         ApplySpacing();
-        RestyleAll();
+        // Not loaded yet (a page opening): loading would undo the
+        // highlighting, so it's done once the box has loaded.
+        if (_box.IsLoaded) RestyleAll();
         if (LogTimings)
         {
             StartupLog.Step($"Writer: opened {_text.Length:N0} characters in {clock.Elapsed.TotalMilliseconds:F0} ms " +
-                $"(the text {loaded:F0}, spacing and highlighting {clock.Elapsed.TotalMilliseconds - loaded:F0})");
+                $"(the text {loaded:F0}, spacing{(_box.IsLoaded ? " and highlighting" : "")} {clock.Elapsed.TotalMilliseconds - loaded:F0})");
         }
     }
 
