@@ -18,9 +18,9 @@ use adw::prelude::*;
 use bookshelf_core::models::*;
 use bookshelf_core::openlibrary::OpenLibrary;
 use bookshelf_core::paths::AppPaths;
+use bookshelf_core::present::{self, ShelfEntry, ShelfRow, YearHeading};
 use bookshelf_core::rusqlite::Connection;
 use bookshelf_core::{backup, db};
-use chrono::Datelike;
 use gtk::{gdk, gio, glib};
 
 /// Debug builds get their own id, so a development copy can run next to the
@@ -276,14 +276,6 @@ fn flat_toolbar() -> adw::ToolbarView {
     let toolbar = adw::ToolbarView::new();
     toolbar.set_top_bar_style(adw::ToolbarStyle::Flat);
     toolbar
-}
-
-fn books(n: usize) -> String {
-    if n == 1 {
-        "1 book".to_string()
-    } else {
-        format!("{n} books")
-    }
 }
 
 // ------------------------------------------------------------ profiles
@@ -559,9 +551,11 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let user = user.clone();
         Rc::new(move || ctx.nav.push(&search::search_page(&ctx, &user)))
     };
-    // Search state shared by every tab: the query, and per summary the
-    // lowercased text it can be found by (title, author, what you wrote).
+    // Search state shared by every tab: the query (trimmed and lowercased,
+    // for the "no matches" text), its words, and per summary the lowercased
+    // text it can be found by (title, author, what you wrote).
     let query: Rc<RefCell<String>> = Rc::default();
+    let terms: Rc<RefCell<Vec<String>>> = Rc::default();
     let haystacks: Rc<RefCell<HashMap<String, String>>> = Rc::default();
 
     let stack = adw::ViewStack::new();
@@ -587,18 +581,18 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         list.set_placeholder(Some(&empty));
 
         {
-            let query = query.clone();
+            let terms = terms.clone();
             let haystacks = haystacks.clone();
             list.set_filter_func(move |row| {
-                let query = query.borrow();
-                if query.is_empty() {
+                let terms = terms.borrow();
+                if terms.is_empty() {
                     return true;
                 }
                 // Year headings have no entry, so they step aside while searching.
                 haystacks
                     .borrow()
                     .get(row.widget_name().as_str())
-                    .is_some_and(|text| query.split_whitespace().all(|word| text.contains(word)))
+                    .is_some_and(|text| present::matches(text, &terms))
             });
         }
         {
@@ -725,6 +719,7 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let tabs = tabs.clone();
         search_entry.connect_search_changed(move |entry| {
             *query.borrow_mut() = entry.text().trim().to_lowercase();
+            *terms.borrow_mut() = present::query_terms(&query.borrow());
             for tab in tabs.iter() {
                 tab.list.invalidate_filter();
                 tab.show_empty_state(&query.borrow());
@@ -809,11 +804,8 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
                 .conn
                 .query_row("PRAGMA data_version", [], |r| r.get::<_, i64>(0))
                 .unwrap_or(-1);
-            let now = (
-                ctx.conn.total_changes(),
-                others,
-                chrono::Local::now().date_naive(),
-            );
+            let today = chrono::Local::now().date_naive();
+            let now = (ctx.conn.total_changes(), others, today);
             if others >= 0 && built_from.get() == Some(now) {
                 return;
             }
@@ -821,13 +813,15 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
 
             haystacks.borrow_mut().clear();
             for tab in tabs.iter() {
-                let (n, this_year) =
-                    populate_list(&ctx, &user_id, tab, &settings.date_format, &haystacks);
-                tab.count.set_label(&if this_year > 0 {
-                    format!("{} · {this_year} this year", books(n))
-                } else {
-                    books(n)
-                });
+                let count = populate_list(
+                    &ctx,
+                    &user_id,
+                    tab,
+                    &settings.date_format,
+                    today,
+                    &haystacks,
+                );
+                tab.count.set_label(&count);
                 tab.show_empty_state(&query.borrow());
             }
         })
@@ -837,15 +831,16 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     page
 }
 
-/// Fills one tab. Finished books are grouped under year headings. Returns
-/// (books on the shelf, books finished this calendar year).
+/// Fills one tab from the core's layout of it (finished books grouped under
+/// year headings). Returns the count line for the tab's heading.
 fn populate_list(
     ctx: &Rc<Ctx>,
     user_id: &str,
     tab: &Tab,
     date_format: &str,
+    today: chrono::NaiveDate,
     haystacks: &RefCell<HashMap<String, String>>,
-) -> (usize, usize) {
+) -> String {
     let rows = match list_summaries(&ctx.conn, user_id, tab.milestone) {
         Ok(rows) => rows,
         Err(e) => {
@@ -854,46 +849,31 @@ fn populate_list(
                 "Couldn't read your shelf: {}",
                 friendly(&e)
             )));
-            return (tab.list.observe_children().n_items() as usize, 0);
+            return present::count_line(tab.list.observe_children().n_items() as usize, 0);
         }
     };
     tab.list.remove_all();
 
-    let by_year = tab.milestone == Milestone::Finished;
-    let year_of = |item: &SummaryWithBook| item.summary.finished_on.map(|d| d.year());
-    let mut per_year: HashMap<i32, usize> = HashMap::new();
-    if by_year {
-        for year in rows.iter().filter_map(year_of) {
-            *per_year.entry(year).or_default() += 1;
-        }
-    }
-
-    let mut current = None;
-    for item in &rows {
-        if by_year && year_of(item) != current {
-            current = year_of(item);
-            if let Some(year) = current {
-                tab.list.append(&year_row(year, per_year[&year]));
+    let view = present::shelf_view(&rows, tab.milestone, date_format, today, &chrono::Local);
+    for row in view.rows {
+        match row {
+            ShelfRow::Year(heading) => tab.list.append(&year_row(&heading)),
+            ShelfRow::Entry(mut entry) => {
+                // Before appending: the list filters a row as it's added,
+                // so a search in progress needs the text already there.
+                let haystack = std::mem::take(&mut entry.haystack);
+                haystacks
+                    .borrow_mut()
+                    .insert(entry.item.summary.id.clone(), haystack);
+                tab.list.append(&summary_row(ctx, &entry));
             }
         }
-        let text = format!(
-            "{} {} {}",
-            item.book.title,
-            item.book.author.as_deref().unwrap_or(""),
-            item.summary.body
-        );
-        haystacks
-            .borrow_mut()
-            .insert(item.summary.id.clone(), text.to_lowercase());
-        tab.list
-            .append(&summary_row(ctx, item, tab.milestone, date_format));
     }
-    let this_year = chrono::Local::now().year();
-    (rows.len(), per_year.get(&this_year).copied().unwrap_or(0))
+    view.count_line
 }
 
 /// "2026 · 12 books" between the finished entries.
-fn year_row(year: i32, count: usize) -> gtk::ListBoxRow {
+fn year_row(heading: &YearHeading) -> gtk::ListBoxRow {
     let line = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
         .spacing(10)
@@ -902,14 +882,14 @@ fn year_row(year: i32, count: usize) -> gtk::ListBoxRow {
         .build();
     line.append(
         &gtk::Label::builder()
-            .label(year.to_string())
+            .label(heading.year.to_string())
             .xalign(0.0)
             .css_classes(["section-title"])
             .build(),
     );
     line.append(
         &gtk::Label::builder()
-            .label(books(count))
+            .label(&heading.count_label)
             .xalign(0.0)
             .valign(gtk::Align::Baseline)
             .css_classes(["page-count"])
@@ -937,12 +917,8 @@ fn wrapped_label(text: &str, class: &str, lines: i32) -> gtk::Label {
 
 /// One journal entry: cover, title, author, a dated line, and a taste of
 /// what you wrote. The row's widget name carries the summary id.
-fn summary_row(
-    ctx: &Rc<Ctx>,
-    item: &SummaryWithBook,
-    milestone: Milestone,
-    date_format: &str,
-) -> gtk::ListBoxRow {
+fn summary_row(ctx: &Rc<Ctx>, entry: &ShelfEntry) -> gtk::ListBoxRow {
+    let item = entry.item;
     let cover = cover_picture(ctx, &item.book, 64, 96);
 
     let text = gtk::Box::builder()
@@ -955,19 +931,13 @@ fn summary_row(
     if let Some(author) = &item.book.author {
         text.append(&wrapped_label(author, "entry-byline", 1));
     }
-    let meta = meta_line(item, milestone, date_format);
-    if !meta.is_empty() {
-        text.append(&wrapped_label(&meta, "entry-meta", 1));
+    if !entry.meta.is_empty() {
+        text.append(&wrapped_label(&entry.meta, "entry-meta", 1));
     }
-    let taste = excerpt(&item.summary.body);
-    if !taste.is_empty() {
-        text.append(&wrapped_label(&taste, "entry-excerpt", 3));
-    } else if milestone != Milestone::Eventually {
-        text.append(&wrapped_label(
-            "Nothing written yet.",
-            "entry-excerpt-empty",
-            1,
-        ));
+    if !entry.excerpt.is_empty() {
+        text.append(&wrapped_label(&entry.excerpt, "entry-excerpt", 3));
+    } else if let Some(note) = entry.empty_note {
+        text.append(&wrapped_label(note, "entry-excerpt-empty", 1));
     }
 
     let card = gtk::Box::builder()
@@ -1045,53 +1015,4 @@ fn load_cover(path: &Path, width: i32, height: i32) -> Option<gdk::Texture> {
     }
     let pixbuf = gtk::gdk_pixbuf::Pixbuf::from_file_at_scale(path, width, height, true).ok()?;
     Some(gdk::Texture::for_pixbuf(&pixbuf))
-}
-
-fn meta_line(item: &SummaryWithBook, milestone: Milestone, date_format: &str) -> String {
-    let s = &item.summary;
-    let mut parts: Vec<String> = vec![];
-    match milestone {
-        Milestone::Finished => {
-            if let Some(d) = s.finished_on {
-                parts.push(format!("Finished {}", format_date(date_format, d)));
-            }
-            if let Some(n) = s.days_to_complete {
-                parts.push(if n == 1 {
-                    "1 day".into()
-                } else {
-                    format!("{n} days")
-                });
-            }
-        }
-        Milestone::Reading => {
-            if let Some(d) = s.started_on {
-                parts.push(format!("Started {}", format_date(date_format, d)));
-                let day = (chrono::Local::now().date_naive() - d).num_days() + 1;
-                if day >= 1 {
-                    parts.push(format!("day {day}"));
-                }
-            }
-        }
-        Milestone::Eventually => {
-            let added = s.created_at.with_timezone(&chrono::Local).date_naive();
-            parts.push(format!("Added {}", format_date(date_format, added)));
-        }
-    }
-    parts.join(" · ")
-}
-
-/// A plain-text taste of the summary for the list: markdown marks removed,
-/// whitespace flattened, trimmed to about two sentences' worth.
-fn excerpt(body: &str) -> String {
-    let cleaned: String = body
-        .chars()
-        .filter(|c| !matches!(c, '*' | '#' | '>' | '`' | '\\'))
-        .collect();
-    let flat = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
-    if flat.chars().count() > 160 {
-        let cut: String = flat.chars().take(160).collect();
-        format!("{}…", cut.trim_end())
-    } else {
-        flat
-    }
 }
