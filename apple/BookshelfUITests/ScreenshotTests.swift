@@ -94,6 +94,7 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.textFields["addBook.query"].waitForExistence(timeout: 5))
         keep(app, "11-add-book", look)
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(app.textFields["addBook.query"].waitForNonExistence(timeout: 5))
 
         // Settings (⌘,), every tab.
         app.typeKey(",", modifierFlags: .command)
@@ -109,8 +110,9 @@ final class ScreenshotTests: XCTestCase {
         settingsWindow(app).typeKey("w", modifierFlags: .command)
 
         // Help › Bookshelf Help.
-        app.menuBars.menuBarItems["Help"].click()
-        app.menuItems["Bookshelf Help"].click()
+        let helpMenu = app.menuBars.menuBarItems["Help"]
+        helpMenu.click()
+        helpMenu.menuItems["Bookshelf Help"].click()
         let help = app.windows.matching(NSPredicate(format: "title == %@", "Bookshelf Help")).firstMatch
         XCTAssertTrue(help.waitForExistence(timeout: 10))
         XCTAssertTrue(help.staticTexts["Make a profile"].waitForExistence(timeout: 10))
@@ -149,9 +151,14 @@ final class ScreenshotTests: XCTestCase {
         func audit(_ screen: String) throws {
             try app.performAccessibilityAudit { issue in
                 let element = issue.element.map { "\($0.elementType.rawValue) “\($0.label)” \($0.identifier)" }
-                found.lines.append(
-                    "\(screen): [\(issue.auditType.rawValue)] \(issue.compactDescription) — \(element ?? "no element")")
-                return Self.allowed(issue)
+                let line = "\(screen): [\(issue.auditType.rawValue)] \(issue.compactDescription) — \(element ?? "no element")"
+                if Self.allowed(issue) {
+                    found.allowed.append(line)
+                } else {
+                    found.lines.append(line)
+                }
+                // Collected, and failed below, so one run reports them all.
+                return true
             }
         }
 
@@ -163,10 +170,13 @@ final class ScreenshotTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["reader.title"].waitForExistence(timeout: 5))
         try audit("reader")
 
-        let report = XCTAttachment(string: found.lines.isEmpty ? "No issues." : found.lines.joined(separator: "\n"))
+        let text = (found.lines.isEmpty ? ["No issues."] : found.lines)
+            + (found.allowed.isEmpty ? [] : ["", "Allowed:"] + found.allowed)
+        let report = XCTAttachment(string: text.joined(separator: "\n"))
         report.name = "accessibility-audit"
         report.lifetime = .keepAlways
         add(report)
+        XCTAssertTrue(found.lines.isEmpty, found.lines.joined(separator: "\n"))
     }
 
     /// Issues that aren't ours to fix. Each needs a reason.
@@ -179,6 +189,7 @@ final class ScreenshotTests: XCTestCase {
     /// The audit's findings, collected from its issue handler.
     private final class Found {
         var lines: [String] = []
+        var allowed: [String] = []
     }
 
     /// The Settings window: the one with the Appearance tab.

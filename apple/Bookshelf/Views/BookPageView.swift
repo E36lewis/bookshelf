@@ -17,6 +17,9 @@ struct DetailView: View {
                 Button("Undo") { model.undoLastRemoval() }
                     .accessibilityIdentifier("removed.undo")
             }
+        } else if model.visibleSections.isEmpty {
+            // The list already says the shelf is empty.
+            Color.clear
         } else if model.selectedEntryID == nil {
             ContentUnavailableView(
                 "No Book Selected", systemImage: "books.vertical",

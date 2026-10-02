@@ -41,7 +41,7 @@ struct ReaderView: View {
                             .foregroundStyle(.tertiary)
                     } else {
                         // Generous leading: the reading page is for reading.
-                        BlocksView(blocks: model.summaryBlocks, font: model.headingFont, size: size, lineSpacing: size * 0.7)
+                        BlocksView(blocks: model.summaryBlocks, font: model.headingFont, size: size, lineSpacing: size * 0.4)
                     }
                 }
                 .padding(.top, 28)

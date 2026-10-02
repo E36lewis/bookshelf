@@ -95,18 +95,17 @@ struct ProfileSettingsTab: View {
                 if let nameProblem {
                     Label(nameProblem, systemImage: "exclamationmark.circle.fill").foregroundStyle(.red)
                 }
-                LabeledContent {
+                LabeledContent("Email (optional)") {
                     HStack {
                         TextField("Email (optional)", text: $email, prompt: Text("you@example.com"))
                             .labelsHidden()
                             .onSubmit(saveEmail)
                             .accessibilityLabel("Email (optional)")
+                            .accessibilityHint(Wording.emailWhy)
                             .accessibilityIdentifier("settings.email")
                         Button("Save", action: saveEmail)
                             .disabled(email == (profile.email ?? ""))
                     }
-                } label: {
-                    SettingLabel("Email (optional)", detail: Wording.emailWhy)
                 }
                 if let emailProblem {
                     Label(emailProblem, systemImage: "exclamationmark.circle.fill").foregroundStyle(.red)
@@ -114,6 +113,12 @@ struct ProfileSettingsTab: View {
                 if let saved {
                     Label(saved, systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
                 }
+            } footer: {
+                Text(Wording.emailWhy)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
             }
             Section {
                 LabeledContent {

@@ -118,8 +118,9 @@ struct EntryRow: View {
 
     var body: some View {
         // On a selected row the text sits on the accent: plain colors read
-        // better there than accent-colored ones.
-        let selected = prominence == .increased
+        // there, accent-colored ones don't. (The list's prominence doesn't
+        // reach the row on macOS 15, so ask the selection too.)
+        let selected = prominence == .increased || model.selectedEntryID == entry.summaryId
         HStack(alignment: .top, spacing: 12) {
             CoverView(path: entry.coverPath, title: entry.title, width: 44)
                 .padding(.top, 2)
