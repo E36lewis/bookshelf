@@ -7,7 +7,20 @@ extension View {
     /// other writing apps. Elsewhere (the shelves, with their search field)
     /// it stays put.
     func toolbarHidesInFullScreen() -> some View {
-        background(FullScreenToolbar())
+        modifier(FullScreenToolbarHiding())
+    }
+}
+
+/// SwiftUI's own setting on macOS 15; on macOS 14, the system's
+/// presentation options (SwiftUI owns the window's delegate, where this
+/// would otherwise go).
+private struct FullScreenToolbarHiding: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.windowToolbarFullScreenVisibility(.onHover)
+        } else {
+            content.background(FullScreenToolbar())
+        }
     }
 }
 
