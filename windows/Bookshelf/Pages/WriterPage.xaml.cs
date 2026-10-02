@@ -98,7 +98,7 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             Prompt.Text = BookshelfFfiMethods.Prompts(entry.Shelf);
             LayOut();
 
-            var writing = new WritingBox(Editor) { TextSize = (float)(layout.FontPx * 0.75) };
+            var writing = new WritingBox(Editor) { TextSize = (float)(layout.FontPx * 0.75), LogTimings = App.Options.DemoJournal };
             _writing = writing;
             writing.SetSpacing(spacing);
             writing.SetText(entry.Body);

@@ -44,8 +44,18 @@ public sealed class WritingBox
     private string _text = "";
     private (int Start, int End) _selection;
     private (int Start, int End) _bright; // focus mode: the sentence shown at full strength
+    private readonly PendingLines _pending = new(); // lines of a long text still to highlight
     private bool _applying; // true while we change the box ourselves
     private bool _caretUpdateQueued;
+    private bool _backgroundQueued;
+    private bool _endsWithOwnBreak; // RichEdit's GetText gives its final paragraph mark too
+
+    /// <summary>A long text's lines around the caret are highlighted at once, this many each way; the rest when idle.</summary>
+    private const int LinesNow = 60;
+
+    /// <summary>Lines highlighted per idle moment, and the time an idle moment may take.</summary>
+    private const int LinesPerChunk = 8;
+    private const double ChunkMs = 12;
 
     public bool Highlight { get; set; } = true;
 
@@ -63,6 +73,9 @@ public sealed class WritingBox
 
     /// <summary>Raised after each edit or restyle is timed (for the demo journal's speed check).</summary>
     public event Action? Timed;
+
+    /// <summary>Notes where the time goes in big restyles, in startup.log (demo journals: nobody's text is logged).</summary>
+    public bool LogTimings { get; set; }
 
     /// <summary>Raised when the person changed the text (typing, pasting, formatting, undo or redo); not by <see cref="SetText"/>.</summary>
     public event Action? Edited;
@@ -93,11 +106,18 @@ public sealed class WritingBox
     /// <summary>Replaces everything (e.g. when a summary is opened); clears undo.</summary>
     public void SetText(string text)
     {
+        var plain = text.Replace("\r\n", "\r").Replace('\n', '\r');
         _applying = true;
-        _box.Document.SetText(TextSetOptions.None, text.Replace("\r\n", "\r").Replace('\n', '\r'));
+        _box.Document.SetText(TextSetOptions.None, plain);
         _applying = false;
+        // A RichEdit text always ends with a paragraph mark of its own, and
+        // GetText may include it. Learn which, from text we know, so an
+        // empty page reads as empty and a save never gains a line break.
+        _box.Document.GetText(TextGetOptions.None, out var raw);
+        _endsWithOwnBreak = raw.Length == plain.Length + 1 && raw[^1] == '\r' && raw.StartsWith(plain, StringComparison.Ordinal);
         _text = Read();
         _history.Clear();
+        _pending.Clear();
         _selection = CurrentSelection();
         ApplySpacing();
         RestyleAll();
@@ -120,7 +140,8 @@ public sealed class WritingBox
     public void RestyleAll()
     {
         var clock = Stopwatch.StartNew();
-        var lines = Restyle(0, _text.Length);
+        _pending.Clear();
+        var lines = RestyleSoon(0, _text.Length);
         Note(clock, lines);
     }
 
@@ -182,6 +203,7 @@ public sealed class WritingBox
     private string Read()
     {
         _box.Document.GetText(TextGetOptions.None, out var raw);
+        if (_endsWithOwnBreak && raw.Length > 0 && raw[^1] == '\r') raw = raw[..^1];
         return raw.Replace('\r', '\n');
     }
 
@@ -208,6 +230,7 @@ public sealed class WritingBox
         var inserted = now.Substring(change.Start, change.NewEnd - change.Start);
         _history.Record(new EditorState(_text, _selection.Start, _selection.End), inserted, DateTime.UtcNow);
         _text = now;
+        _pending.Shift(change, _text.Length);
         var oldBright = _bright;
         _selection = CurrentSelection();
         var lines = RestyleEdit(change, oldBright);
@@ -276,7 +299,11 @@ public sealed class WritingBox
             _applying = false;
         }
         _text = Read();
-        if (_text == expected) return change;
+        if (_text == expected)
+        {
+            _pending.Shift(change, _text.Length);
+            return change;
+        }
 
         _applying = true;
         try
@@ -288,6 +315,7 @@ public sealed class WritingBox
             _applying = false;
         }
         _text = Read();
+        _pending.Clear();
         ApplySpacing();
         return new TextChange(0, oldLength, _text.Length);
     }
@@ -337,7 +365,7 @@ public sealed class WritingBox
     /// </summary>
     private int RestyleEdit(TextChange change, (int Start, int End) oldBright)
     {
-        if (!IsFocusMode) return Restyle(change.Start, change.NewEnd);
+        if (!IsFocusMode) return RestyleSoon(change.Start, change.NewEnd);
         _bright = SentenceBounds.Around(_text, _selection.Start);
         var edited = (Math.Min(change.Start, _bright.Start), Math.Max(change.NewEnd, _bright.End));
         return RestyleBoth(TextDiff.Moved(oldBright, change), edited);
@@ -348,8 +376,55 @@ public sealed class WritingBox
     {
         var la = TextDiff.WholeLines(_text, a.Start, a.End);
         var lb = TextDiff.WholeLines(_text, b.Start, b.End);
-        if (la.End < lb.Start || lb.End < la.Start) return Restyle(la.Start, la.End) + Restyle(lb.Start, lb.End);
-        return Restyle(Math.Min(la.Start, lb.Start), Math.Max(la.End, lb.End));
+        if (la.End < lb.Start || lb.End < la.Start) return RestyleSoon(la.Start, la.End) + RestyleSoon(lb.Start, lb.End);
+        return RestyleSoon(Math.Min(la.Start, lb.Start), Math.Max(la.End, lb.End));
+    }
+
+    /// <summary>
+    /// Restyles the lines of <c>[start, end)</c>: all of them if there are
+    /// few, else those around the caret now and the others while the editor
+    /// is idle, a few at a time. Returns how many lines it restyled now.
+    /// </summary>
+    private int RestyleSoon(int start, int end)
+    {
+        var (from, to) = TextDiff.WholeLines(_text, start, end);
+        if (PendingLines.LineCount(_text, from, to) <= 3 * LinesNow) return Restyle(from, to);
+        var caret = Math.Clamp(_selection.Start, from, to);
+        var (nearFrom, nearTo) = PendingLines.Around(_text, caret, LinesNow);
+        nearFrom = Math.Max(nearFrom, from);
+        nearTo = Math.Min(nearTo, to);
+        var lines = Restyle(nearFrom, nearTo);
+        _pending.Add(from, nearFrom);
+        _pending.Add(nearTo + 1, to);
+        Timings.AddBackground(0, restart: true);
+        QueueBackground();
+        return lines;
+    }
+
+    private void QueueBackground()
+    {
+        if (_backgroundQueued || _pending.IsEmpty) return;
+        _backgroundQueued = true;
+        _box.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, RestyleWhileIdle);
+    }
+
+    /// <summary>A few more lines of a long text, when nothing else is waiting.</summary>
+    private void RestyleWhileIdle()
+    {
+        _backgroundQueued = false;
+        CatchUp(); // the pending lines follow the text, the last key included
+        var clock = Stopwatch.StartNew();
+        while (clock.Elapsed.TotalMilliseconds < ChunkMs && _pending.Take(_text, LinesPerChunk) is { } lines)
+        {
+            Restyle(lines.Start, lines.End);
+        }
+        Timings.AddBackground(clock.Elapsed.TotalMilliseconds);
+        if (_pending.IsEmpty)
+        {
+            if (LogTimings) StartupLog.Step($"Writer: highlighting the rest took {Timings.Background:F0} ms while idle");
+            Timed?.Invoke();
+        }
+        QueueBackground();
     }
 
     // ---- styling ----------------------------------------------------------------
@@ -397,6 +472,8 @@ public sealed class WritingBox
         var (from, to) = TextDiff.WholeLines(_text, start, end);
         var doc = _box.Document;
         var c = _colors;
+        var clock = LogTimings ? Stopwatch.StartNew() : null;
+        double spansAt = 0, resetAt = 0, marksAt = 0, spanCount = 0;
         _applying = true;
         doc.BatchDisplayUpdates();
         try
@@ -409,10 +486,13 @@ public sealed class WritingBox
             all.Size = TextSize;
             all.ForegroundColor = c.Ink;
             all.BackgroundColor = Microsoft.UI.Colors.Transparent;
+            resetAt = clock?.Elapsed.TotalMilliseconds ?? 0;
 
             if (Highlight && to > from)
             {
                 var spans = BookshelfFfiMethods.MarkdownSpans(_text.Substring(from, to - from));
+                spansAt = clock?.Elapsed.TotalMilliseconds ?? 0;
+                spanCount = spans.Length;
                 // Marks last, so they stay dimmed inside a quote or a heading.
                 foreach (var span in spans.Where(s => s.Kind != StyleKind.Syntax).Concat(spans.Where(s => s.Kind == StyleKind.Syntax)))
                 {
@@ -430,6 +510,7 @@ public sealed class WritingBox
                 }
             }
 
+            marksAt = clock?.Elapsed.TotalMilliseconds ?? 0;
             if (IsFocusMode)
             {
                 // Everything on these lines but the bright sentence.
@@ -444,7 +525,14 @@ public sealed class WritingBox
             doc.ApplyDisplayUpdates();
             _applying = false;
         }
-        return to - from == 0 ? 1 : _text.AsSpan(from, to - from).Count('\n') + 1;
+        var lineCount = PendingLines.LineCount(_text, from, to);
+        if (clock is not null && lineCount > LinesPerChunk)
+        {
+            StartupLog.Step(
+                $"Writer: restyled {lineCount} lines ({spanCount} spans) in {clock.Elapsed.TotalMilliseconds:F0} ms: " +
+                $"reset {resetAt:F1}, spans {spansAt - resetAt:F1}, marks {marksAt - spansAt:F1}, display {clock.Elapsed.TotalMilliseconds - marksAt:F1}");
+        }
+        return lineCount;
     }
 
     private void Note(Stopwatch clock, int lines)

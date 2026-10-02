@@ -25,60 +25,60 @@
             AutomationProperties.AutomationId="FormatBar"
             AutomationProperties.Name="Formatting"
             Background="Transparent"
-            DefaultLabelPosition="Right"
+            DefaultLabelPosition="Collapsed"
             IsDynamicOverflowEnabled="True"
             OverflowButtonVisibility="Auto"
             PreviewKeyDown="OnFormatBarKeyDown"
             TabFocusNavigation="Once"
             XYFocusKeyboardNavigation="Enabled">
-            <AppBarButton x:Name="BoldButton" Tag="Bold" Label="Bold" LabelPosition="Collapsed"
+            <AppBarButton x:Name="BoldButton" Tag="Bold" Label="Bold"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatBold">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE8DD;" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Italic" Label="Italic" LabelPosition="Collapsed"
+            <AppBarButton Tag="Italic" Label="Italic"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatItalic">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE8DB;" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Strike" Label="Strikethrough" LabelPosition="Collapsed"
+            <AppBarButton Tag="Strike" Label="Strikethrough"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatStrike">
                 <AppBarButton.Icon><FontIcon Glyph="&#xEDE0;" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Code" Label="Code" LabelPosition="Collapsed"
+            <AppBarButton Tag="Code" Label="Code"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatCode">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE943;" /></AppBarButton.Icon>
             </AppBarButton>
             <AppBarSeparator />
-            <AppBarButton Tag="Heading1" Label="Heading 1" LabelPosition="Collapsed"
+            <AppBarButton Tag="Heading1" Label="Heading 1"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatHeading1">
                 <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H1" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Heading2" Label="Heading 2" LabelPosition="Collapsed"
+            <AppBarButton Tag="Heading2" Label="Heading 2"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatHeading2">
                 <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H2" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Heading3" Label="Heading 3" LabelPosition="Collapsed"
+            <AppBarButton Tag="Heading3" Label="Heading 3"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatHeading3">
                 <AppBarButton.Icon><FontIcon FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold" Glyph="H3" /></AppBarButton.Icon>
             </AppBarButton>
             <AppBarSeparator />
-            <AppBarButton Tag="Quote" Label="Quote" LabelPosition="Collapsed"
+            <AppBarButton Tag="Quote" Label="Quote"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatQuote">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE9B2;" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Bullets" Label="Bulleted list" LabelPosition="Collapsed"
+            <AppBarButton Tag="Bullets" Label="Bulleted list"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatBullets">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE8FD;" /></AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Numbered" Label="Numbered list" LabelPosition="Collapsed"
+            <AppBarButton Tag="Numbered" Label="Numbered list"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatNumbered">
                 <!-- Neither icon font has a numbered list: 1, 2, 3 and three lines. -->
@@ -89,7 +89,7 @@
                                     M7,2.75 H19 V4.25 H7 Z M7,9.25 H19 V10.75 H7 Z M7,15.75 H19 V17.25 H7 Z" />
                 </AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton Tag="Link" Label="Link" LabelPosition="Collapsed"
+            <AppBarButton Tag="Link" Label="Link"
                           AllowFocusOnInteraction="False" Click="OnFormat"
                           AutomationProperties.AutomationId="FormatLink">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE71B;" /></AppBarButton.Icon>
@@ -100,7 +100,7 @@
                                 AutomationProperties.AutomationId="FocusModeButton">
                 <AppBarToggleButton.Icon><FontIcon Glyph="&#xE890;" /></AppBarToggleButton.Icon>
             </AppBarToggleButton>
-            <AppBarButton x:Name="FullScreenButton" Label="Full screen" LabelPosition="Collapsed"
+            <AppBarButton x:Name="FullScreenButton" Label="Full screen"
                           AllowFocusOnInteraction="False" Click="OnFullScreen"
                           AutomationProperties.AutomationId="WriterFullScreenButton">
                 <AppBarButton.Icon><FontIcon x:Name="FullScreenIcon" Glyph="&#xE740;" /></AppBarButton.Icon>

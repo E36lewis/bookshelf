@@ -531,22 +531,43 @@ Step 'Writer: 10,000 words, typing in the middle stays fast' {
     do {
         Start-Sleep -Milliseconds 500
         $words = try { Status-Words } catch { 0 }
-    } while ($words -lt 10000 -and $clock.Elapsed.TotalSeconds -lt 30)
+    } while ($words -lt 10000 -and $clock.Elapsed.TotalSeconds -lt 60)
     if ($words -lt 10000) { throw "only $words words after pasting" }
+    $pasted = Writer-Timings
+    # Open it again, as someone would the next day: that's the restyle that matters.
+    Keys '%{LEFT}'
+    Wait-Name 'BookTitle' 'Piranesi' | Out-Null
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    Keys '^e'
+    Find-Id 'Editor' | Out-Null
+    Wait-Name 'WriterStatus' '*Saved' | Out-Null
+    Wait-Focused 'Editor'
+    $opened = $clock.Elapsed.TotalSeconds
+    # Typing in the middle, one key at a time, a little faster than people type.
     Keys '^{HOME}{DOWN 500}{END}'
-    Type-Now ' Typed in the middle, one key at a time.'
-    Start-Sleep -Seconds 2
+    [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    foreach ($c in ' Typed in the middle one key at a time'.ToCharArray()) {
+        [System.Windows.Forms.SendKeys]::SendWait([string]$c)
+        Start-Sleep -Milliseconds 60
+    }
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        Start-Sleep -Milliseconds 500
+        $t = Writer-Timings
+    } while (($t.edits -lt 30 -or $t.background -eq 0) -and $clock.Elapsed.TotalSeconds -lt 30)
     $text = Editor-Text
-    $at = $text.IndexOf('Typed in the middle')
+    $at = $text.IndexOf('Typed in the middle one key at a time')
     if ($at -lt $text.Length / 5 -or $at -gt $text.Length * 4 / 5) { throw "the typing landed at $at of $($text.Length)" }
-    $t = Writer-Timings
-    $line = "Writer speed on {0:N0} words: {1} edits, median {2:F2} ms, 90% under {3:F2} ms, slowest {4:F2} ms; pasting restyled {5} lines in {6:F0} ms" -f `
-        $words, $t.edits, $t.median, $t.p90, $t.max, $t.bulkLines, $t.bulk
+    $line = ("Writer speed on {0:N0} words: {1} keys typed in the middle, median {2:F2} ms, 90% under {3:F2} ms, slowest {4:F2} ms. " +
+        "Opening it: {5:N1} s to the page, {6} lines around the caret restyled in {7:F0} ms, the rest in {8:F0} ms while idle. " +
+        "The paste: {9} lines in {10:F0} ms, the rest in {11:F0} ms while idle.") -f `
+        $words, $t.edits, $t.median, $t.p90, $t.max, $opened, $t.bulkLines, $t.bulk, $t.background, $pasted.bulkLines, $pasted.bulk, $pasted.background
     Write-Host "      $line"
     Add-Content (Join-Path $Out 'writer-speed.txt') $line
-    if ($t.edits -lt 10) { throw "only $($t.edits) edits were timed" }
+    if ($t.edits -lt 30) { throw "only $($t.edits) keys were timed" }
     # Clear regressions only: a frame is 16 ms, and a restyle should be a fraction of it.
     if ($t.median -gt 25 -or $t.p90 -gt 50) { throw "typing got slow: $line" }
+    if ($t.bulk -gt 2000) { throw "opening got slow: $line" }
     Snap '43-writer-long'
 }
 Step 'Writer: focus mode keeps the line mid-page' {

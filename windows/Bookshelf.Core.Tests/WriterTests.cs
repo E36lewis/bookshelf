@@ -305,7 +305,66 @@ public class EditTimingsTests
         Assert.Equal(10.0, t.Max);
         Assert.Equal(100, t.MaxAtLength);
         Assert.Equal((250.0, 1000), t.Bulk);
-        Assert.Equal("edits=6 median=3.00 p90=10.00 max=10.00 maxAtLength=100 bulk=250.0 bulkLines=1000", t.Summary);
+        Assert.Equal("edits=6 median=3.00 p90=10.00 max=10.00 maxAtLength=100 bulk=250.0 bulkLines=1000 background=0", t.Summary);
+    }
+}
+
+public class PendingLinesTests
+{
+    //                     0 1 2345 678 9
+    private const string Text = "a\nbb\nccc\nd";
+
+    [Fact]
+    public void HandsOutAFewWholeLinesAtATime()
+    {
+        var p = new PendingLines();
+        Assert.True(p.IsEmpty);
+        p.Add(0, Text.Length);
+        Assert.Equal((0, 4), p.Take(Text, 2));   // "a", "bb"
+        Assert.Equal((5, 10), p.Take(Text, 2));  // "ccc", "d"
+        Assert.Null(p.Take(Text, 2));
+        Assert.True(p.IsEmpty);
+
+        p.Add(6, 7);                             // part of a line: the whole line
+        Assert.Equal((5, 8), p.Take(Text, 5));
+        p.Add(3, 3);                             // nothing
+        Assert.True(p.IsEmpty);
+    }
+
+    [Fact]
+    public void FollowsTheTextAsItsEdited()
+    {
+        var p = new PendingLines();
+        p.Add(5, 10);
+        p.Shift(new TextChange(0, 0, 3), 13);    // three characters typed before
+        Assert.Equal((8, 13), p.Take("xyz" + Text, 9));
+
+        p.Add(5, 10);
+        p.Shift(new TextChange(4, 10, 4), 4);    // all of it deleted
+        Assert.True(p.IsEmpty);
+    }
+
+    [Fact]
+    public void LinesAroundAPlace()
+    {
+        Assert.Equal((2, 10), PendingLines.Around(Text, 6, 1));
+        Assert.Equal((0, 8), PendingLines.Around(Text, 0, 2));
+        Assert.Equal((0, 10), PendingLines.Around(Text, 9, 99));
+        Assert.Equal((0, 2), PendingLines.Around("\nx", 1, 1)); // an empty line before
+        Assert.Equal((0, 0), PendingLines.Around("", 0, 3));
+        Assert.Equal(4, PendingLines.LineCount(Text, 0, Text.Length));
+        Assert.Equal(1, PendingLines.LineCount(Text, 3, 3));
+    }
+
+    [Fact]
+    public void BackgroundTimeAddsUpUntilANewText()
+    {
+        var t = new EditTimings();
+        t.AddBackground(10, restart: true);
+        t.AddBackground(5);
+        Assert.Equal(15.0, t.Background);
+        t.AddBackground(2, restart: true);
+        Assert.Equal(2.0, t.Background);
     }
 }
 

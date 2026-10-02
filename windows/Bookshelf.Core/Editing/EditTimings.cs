@@ -29,6 +29,16 @@ public sealed class EditTimings
     /// <summary>The slowest bulk restyle, in milliseconds, and how many lines it took.</summary>
     public (double Ms, int Lines) Bulk { get; private set; }
 
+    /// <summary>
+    /// Time spent highlighting the rest of a long text while the editor was
+    /// idle (see <see cref="PendingLines"/>), in milliseconds, since the last
+    /// long text arrived.
+    /// </summary>
+    public double Background { get; private set; }
+
+    /// <summary>Notes a bit of highlighting done while idle; <paramref name="restart"/> when a new long text arrived.</summary>
+    public void AddBackground(double ms, bool restart = false) => Background = (restart ? 0 : Background) + ms;
+
     /// <summary>Notes one edit: <paramref name="ms"/> to handle it, restyling <paramref name="lines"/> lines of a <paramref name="length"/>-long text.</summary>
     public void Add(double ms, int lines, int length)
     {
@@ -58,5 +68,5 @@ public sealed class EditTimings
     /// <summary>One line, <c>key=value</c> pairs with invariant numbers, easy for a script to read.</summary>
     public string Summary => string.Create(
         CultureInfo.InvariantCulture,
-        $"edits={Count} median={Percentile(0.5):F2} p90={Percentile(0.9):F2} max={Max:F2} maxAtLength={MaxAtLength} bulk={Bulk.Ms:F1} bulkLines={Bulk.Lines}");
+        $"edits={Count} median={Percentile(0.5):F2} p90={Percentile(0.9):F2} max={Max:F2} maxAtLength={MaxAtLength} bulk={Bulk.Ms:F1} bulkLines={Bulk.Lines} background={Background:F0}");
 }
