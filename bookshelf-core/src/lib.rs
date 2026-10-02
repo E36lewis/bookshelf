@@ -20,6 +20,7 @@ pub mod render;
 pub mod service;
 pub mod shortcuts;
 pub mod text;
+pub mod theme;
 pub mod writer;
 
 // The one-off import from the old Rails app. Only built with

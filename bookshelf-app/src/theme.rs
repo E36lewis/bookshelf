@@ -6,17 +6,9 @@ use std::cell::{OnceCell, RefCell};
 use std::rc::Rc;
 
 use bookshelf_core::models::UserSettings;
-
-pub const ACCENTS: [(&str, &str); 8] = [
-    ("Blue", "#2d71e5"), // the shared palette's link color: the default
-    ("Terracotta", "#b4532a"),
-    ("Rose", "#b8475f"),
-    ("Plum", "#8a4f7d"),
-    ("Teal", "#2a7f7a"),
-    ("Sage", "#4f7a5a"),
-    ("Gold", "#a3741a"),
-    ("Slate", "#56657a"),
-];
+use bookshelf_core::theme::accent_colors;
+// The accent choices live in bookshelf-core, shared with the other apps.
+pub use bookshelf_core::theme::ACCENTS;
 
 const SERIF: &str = "\"Source Serif 4\", \"Noto Serif\", \"Charis SIL\", Georgia, serif";
 const DUO: &str = "\"iA Writer Duo S\", \"iA Writer Mono S\", \"JetBrains Mono\", \
@@ -115,24 +107,8 @@ impl Theme {
 
     fn render_accent(&self) {
         let dark = adw::StyleManager::default().is_dark();
-        let base = parse_hex(&self.accent_hex.borrow()).unwrap_or((0x2d, 0x71, 0xe5));
-        let text = if dark {
-            mix(base, (255, 255, 255), 0.35)
-        } else {
-            mix(base, (0, 0, 0), 0.15)
-        };
-        let fg = if luminance(base) > 0.6 {
-            "#1e1a16"
-        } else {
-            "#ffffff"
-        };
-        self.accent.load_from_string(&format!(
-            "@define-color accent_bg_color {};\n\
-             @define-color accent_fg_color {fg};\n\
-             @define-color accent_color {};\n",
-            to_hex(base),
-            to_hex(text)
-        ));
+        self.accent
+            .load_from_string(&accent_css(&self.accent_hex.borrow(), dark));
     }
 
     fn render_fonts(&self, s: &UserSettings) {
@@ -168,49 +144,81 @@ fn swatch_css() -> String {
         .collect()
 }
 
-// ------------------------------------------------------------- colors
-
-fn parse_hex(s: &str) -> Option<(u8, u8, u8)> {
-    let s = s.strip_prefix('#')?;
-    if s.len() != 6 || !s.is_ascii() {
-        return None;
-    }
-    Some((
-        u8::from_str_radix(&s[0..2], 16).ok()?,
-        u8::from_str_radix(&s[2..4], 16).ok()?,
-        u8::from_str_radix(&s[4..6], 16).ok()?,
-    ))
-}
-
-fn to_hex((r, g, b): (u8, u8, u8)) -> String {
-    format!("#{r:02x}{g:02x}{b:02x}")
-}
-
-fn mix(a: (u8, u8, u8), b: (u8, u8, u8), t: f32) -> (u8, u8, u8) {
-    let f = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round() as u8;
-    (f(a.0, b.0), f(a.1, b.1), f(a.2, b.2))
-}
-
-fn luminance((r, g, b): (u8, u8, u8)) -> f32 {
-    (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) / 255.0
+/// libadwaita's accent colors for one accent, from bookshelf-core's rule.
+fn accent_css(hex: &str, dark: bool) -> String {
+    let c = accent_colors(hex, dark);
+    format!(
+        "@define-color accent_bg_color {};\n\
+         @define-color accent_fg_color {};\n\
+         @define-color accent_color {};\n",
+        c.bg, c.fg, c.text
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn hex_round_trip() {
-        assert_eq!(parse_hex("#b4532a"), Some((0xb4, 0x53, 0x2a)));
-        assert_eq!(to_hex((0xb4, 0x53, 0x2a)), "#b4532a");
-        assert_eq!(parse_hex("b4532a"), None);
-        assert_eq!(parse_hex("#fff"), None);
-        assert_eq!(parse_hex("#ééé"), None); // 6 bytes, not 6 hex digits
+    /// The accent CSS as it was built before the color rule moved to
+    /// bookshelf-core, frozen. Don't edit it.
+    fn old_accent_css(hex: &str, dark: bool) -> String {
+        fn parse_hex(s: &str) -> Option<(u8, u8, u8)> {
+            let s = s.strip_prefix('#')?;
+            if s.len() != 6 || !s.is_ascii() {
+                return None;
+            }
+            Some((
+                u8::from_str_radix(&s[0..2], 16).ok()?,
+                u8::from_str_radix(&s[2..4], 16).ok()?,
+                u8::from_str_radix(&s[4..6], 16).ok()?,
+            ))
+        }
+        fn to_hex((r, g, b): (u8, u8, u8)) -> String {
+            format!("#{r:02x}{g:02x}{b:02x}")
+        }
+        fn mix(a: (u8, u8, u8), b: (u8, u8, u8), t: f32) -> (u8, u8, u8) {
+            let f = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round() as u8;
+            (f(a.0, b.0), f(a.1, b.1), f(a.2, b.2))
+        }
+        fn luminance((r, g, b): (u8, u8, u8)) -> f32 {
+            (0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32) / 255.0
+        }
+
+        let base = parse_hex(hex).unwrap_or((0x2d, 0x71, 0xe5));
+        let text = if dark {
+            mix(base, (255, 255, 255), 0.35)
+        } else {
+            mix(base, (0, 0, 0), 0.15)
+        };
+        let fg = if luminance(base) > 0.6 {
+            "#1e1a16"
+        } else {
+            "#ffffff"
+        };
+        format!(
+            "@define-color accent_bg_color {};\n\
+             @define-color accent_fg_color {fg};\n\
+             @define-color accent_color {};\n",
+            to_hex(base),
+            to_hex(text)
+        )
     }
 
     #[test]
-    fn mixing() {
-        assert_eq!(mix((0, 0, 0), (255, 255, 255), 0.5), (128, 128, 128));
-        assert_eq!(mix((10, 20, 30), (200, 200, 200), 0.0), (10, 20, 30));
+    fn the_accent_css_is_unchanged() {
+        let others = [
+            "#000000", "#ffffff", "#f0e68c", "#9a9a9a", "#a0a0a0", "#ABCDEF", "", "blue", "#ééé",
+            "#12345", "#1234567",
+        ];
+        let hexes = ACCENTS.iter().map(|(_, hex)| *hex).chain(others);
+        for hex in hexes {
+            for dark in [false, true] {
+                assert_eq!(
+                    accent_css(hex, dark),
+                    old_accent_css(hex, dark),
+                    "{hex} dark={dark}"
+                );
+            }
+        }
     }
 }
