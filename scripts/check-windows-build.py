@@ -15,6 +15,9 @@ Looks at every native .exe and .dll given (folders are searched) for two
   0x80131506) before any app code runs. The runner's newer Windows
   doesn't.
 
+And that the .NET app host .exe carries the app's icon (ApplicationIcon),
+which nothing else looks at.
+
 Standard library only, so it runs on the CI runner and on Linux/macOS.
 """
 
@@ -54,8 +57,8 @@ DOTNET_HOST = "DOTNET_DISABLE_GUI_ERRORS".encode("utf-16-le")
 
 
 def inspect(path):
-    """Returns (is_managed, [imported DLL names], is_cet_dotnet_host) for a
-    PE file, or None if it isn't one."""
+    """Returns (is_managed, [imported DLL names], is_cet_dotnet_host,
+    is_dotnet_host_without_icon) for a PE file, or None if it isn't one."""
     with open(path, "rb") as f:
         data = f.read()
     if data[:2] != b"MZ":
@@ -89,7 +92,7 @@ def inspect(path):
     # .NET assemblies (IL or ReadyToRun) are loaded by the runtime, not by
     # Windows, so their stub import of mscoree.dll is never used.
     if directory(14)[0]:
-        return True, [], False
+        return True, [], False, False
 
     # Extended DLL characteristics live in a debug directory entry
     # (type 20); bit 0 is IMAGE_DLLCHARACTERISTICS_EX_CET_COMPAT.
@@ -100,6 +103,18 @@ def inspect(path):
         raw = struct.unpack_from("<I", data, entry + 24)[0]
         if kind == 20 and struct.unpack_from("<I", data, raw)[0] & 1:
             cet = True
+
+    # The resource directory's top level is one entry per resource type;
+    # 14 is RT_GROUP_ICON. Named entries (high bit set) come first.
+    no_icon = False
+    if DOTNET_HOST in data:
+        rva, _ = directory(2)
+        types = []
+        if rva:
+            root = offset(rva)
+            named, numbered = struct.unpack_from("<HH", data, root + 12)
+            types = [struct.unpack_from("<I", data, root + 16 + 8 * i)[0] for i in range(named + numbered)]
+        no_icon = 14 not in types
 
     names = []
     rva, _ = directory(1)  # import table: 20-byte entries, name at +12
@@ -120,7 +135,7 @@ def inspect(path):
         # Old-style entries (attribute bit 0 clear) hold addresses, not RVAs.
         names.append(name(dll if attributes & 1 else dll - image_base))
         rva += 32
-    return False, names, cet
+    return False, names, cet, no_icon
 
 
 def main():
@@ -147,6 +162,8 @@ def main():
         importer = os.path.basename(path).lower()
         if result[2]:
             problems.append(f"{os.path.basename(path)} is marked CET-compatible (set CETCompat to false)")
+        if result[3]:
+            problems.append(f"{os.path.basename(path)} has no icon (set ApplicationIcon)")
         for dll in result[1]:
             if dll in shipped or dll in WINDOWS:
                 continue
@@ -166,7 +183,7 @@ def main():
             print("  " + problem)
         sys.exit(1)
     print(f"OK: the {checked} native files only need each other and Windows,")
-    print("and the .NET app host isn't marked CET-compatible.")
+    print("and the .NET app host isn't marked CET-compatible and has its icon.")
 
 
 if __name__ == "__main__":

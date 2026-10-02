@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Graphics;
 using Windows.System;
@@ -49,6 +50,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        _ = SetIconsAsync();
         SetBackdrop();
         PlaceWindow();
         AppWindow.Closing += OnClosing;
@@ -157,6 +159,31 @@ public sealed partial class MainWindow : Window
         SystemBackdrop = new MicaBackdrop();
         Root.ClearValue(Panel.BackgroundProperty);
         StartupLog.Step("Mica backdrop");
+    }
+
+    /// <summary>
+    /// The app icon on the window (taskbar, Alt+Tab) and in the title bar,
+    /// from the copy of Bookshelf.ico unpacked next to Bookshelf.dll. If it
+    /// can't be read, the title bar keeps its book glyph.
+    /// </summary>
+    private async Task SetIconsAsync()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "Bookshelf.ico");
+        try
+        {
+            AppWindow.SetIcon(path);
+            // From a stream: an unpackaged app's ms-appx and file URIs may not reach it.
+            var icon = new BitmapImage { DecodePixelType = DecodePixelType.Logical, DecodePixelWidth = 16 };
+            using (var file = File.OpenRead(path))
+            {
+                await icon.SetSourceAsync(file.AsRandomAccessStream());
+            }
+            AppTitleBar.IconSource = new ImageIconSource { ImageSource = icon };
+        }
+        catch (Exception e)
+        {
+            StartupLog.Step($"No app icon on the window: {e.Message}");
+        }
     }
 
     /// <summary>A comfortable size, centered, never bigger than the screen; and a minimum size.</summary>

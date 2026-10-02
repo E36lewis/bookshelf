@@ -8,6 +8,9 @@
     <RootNamespace>Bookshelf</RootNamespace>
     <AssemblyName>Bookshelf</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Bookshelf.exe's icon in Explorer, the Start menu and on shortcuts
+         (windows/scripts/make-icon.sh makes it). -->
+    <ApplicationIcon>Assets\Bookshelf.ico</ApplicationIcon>
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
@@ -56,6 +59,11 @@
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\packaging\fonts\source-serif-4\LICENSE.md" Link="Assets\Fonts\Source-Serif-4-LICENSE.md"
              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- The icon again as a file, unpacked next to Bookshelf.dll, for the
+       window (taskbar, Alt+Tab) and its title bar: see MainWindow.SetIconsAsync. -->
+  <ItemGroup>
+    <Content Include="Assets\Bookshelf.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- The Rust core, from `cargo build -release -p bookshelf-ffi`. -->
   <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)..\..\target\release\bookshelf_ffi.dll')">
