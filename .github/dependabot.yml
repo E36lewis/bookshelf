@@ -1,11 +1,11 @@
-# Weekly pull requests for dependency updates (security fixes come sooner).
+# Monthly pull requests for dependency updates (security fixes come sooner).
 version: 2
 updates:
   - package-ecosystem: cargo
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly

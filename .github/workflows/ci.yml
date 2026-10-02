@@ -5,7 +5,23 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'apple/**'
+      - 'windows/Bookshelf/**'
+      - 'windows/ci/**'
+      - 'windows/PREVIEW-README.txt'
+      - '.github/workflows/apple.yml'
+      - '.github/workflows/windows.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'apple/**'
+      - 'windows/Bookshelf/**'
+      - 'windows/ci/**'
+      - 'windows/PREVIEW-README.txt'
+      - '.github/workflows/apple.yml'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +35,8 @@ env:
 
 jobs:
   fmt:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Formatting (rustfmt)
     runs-on: ubuntu-24.04
     steps:
@@ -32,6 +50,8 @@ jobs:
       - run: cargo fmt --all --check
 
   core:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Core (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -54,6 +74,8 @@ jobs:
         run: cargo test -p bookshelf-core -p bookshelf-cli -p bookshelf-ffi
 
   linux-app:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Linux app (GTK)
     runs-on: ubuntu-24.04
     steps:
@@ -73,6 +95,8 @@ jobs:
         run: cargo test --workspace --all-features
 
   dotnet-linux:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     # The Windows app's non-UI layer is plain .NET, so its tests also run
     # here against the Linux build of the core: quicker feedback than the
     # Windows job, which runs them too.
@@ -97,6 +121,8 @@ jobs:
         run: dotnet test --project Bookshelf.Core.Tests/Bookshelf.Core.Tests.csproj
 
   bindings:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Bindings up to date
     runs-on: ubuntu-24.04
     steps:

@@ -5,7 +5,30 @@ name: macOS app
 on:
   push:
     branches: [main]
+    paths:
+      - 'apple/**'
+      - 'bookshelf-core/**'
+      - 'bookshelf-ffi/**'
+      - 'tools/uniffi-bindgen/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'MANUAL.md'
+      - 'packaging/**'
+      - '.github/workflows/apple.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'apple/**'
+      - 'bookshelf-core/**'
+      - 'bookshelf-ffi/**'
+      - 'tools/uniffi-bindgen/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'MANUAL.md'
+      - 'packaging/**'
+      - '.github/workflows/apple.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +43,8 @@ env:
 
 jobs:
   mac:
+    # Draft PRs don't build on every push; run the workflow by hand when ready.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build, test, screenshot
     runs-on: macos-15
     steps:
