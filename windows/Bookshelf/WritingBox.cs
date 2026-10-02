@@ -129,6 +129,7 @@ public sealed class WritingBox
     /// </summary>
     public bool Format(FormatAction action)
     {
+        CatchUp(); // work on the text as it is, the last key included
         var clock = Stopwatch.StartNew();
         var (start, end) = CurrentSelection();
         if (FormatCommands.Apply(_text, start, end, action) is not { } result) return false;
@@ -158,6 +159,7 @@ public sealed class WritingBox
             RestyleAll();
             return;
         }
+        CatchUp();
         _bright = SentenceBounds.Around(_text, CurrentSelection().Start);
         var doc = _box.Document;
         _applying = true;
@@ -219,11 +221,13 @@ public sealed class WritingBox
         if (e.Key == VirtualKey.Z && !shift)
         {
             e.Handled = true;
+            CatchUp(); // so undo sees the last key typed
             Apply(_history.Undo(Snapshot()));
         }
         else if (e.Key == VirtualKey.Y || (e.Key == VirtualKey.Z && shift))
         {
             e.Handled = true;
+            CatchUp();
             Apply(_history.Redo(Snapshot()));
         }
     }
@@ -312,6 +316,7 @@ public sealed class WritingBox
         {
             _caretUpdateQueued = false;
             if (!IsFocusMode) return;
+            CatchUp();
             var next = SentenceBounds.Around(_text, CurrentSelection().Start);
             if (next != _bright)
             {
