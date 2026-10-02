@@ -7,8 +7,8 @@ namespace Bookshelf.Pages;
 public class BookshelfPage : Page
 {
     /// <summary>The app's window.</summary>
-    internal static MainWindow Shell => MainWindow.Current;
+    internal static MainWindow Shell => MainWindow.Instance;
 
     /// <summary>The open journal and profile.</summary>
-    internal static Session Session => MainWindow.Current.Session;
+    internal static Session Session => MainWindow.Instance.Session;
 }

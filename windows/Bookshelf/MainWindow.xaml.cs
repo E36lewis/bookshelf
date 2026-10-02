@@ -19,6 +19,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Windows.Graphics;
 using Windows.System;
 using WinRT.Interop;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace Bookshelf;
 
@@ -38,7 +39,7 @@ public sealed partial class MainWindow : Window
 
     internal MainWindow(LaunchOptions options)
     {
-        Current = this;
+        Instance = this;
         _options = options;
         StartupLog.Step("Loading MainWindow.xaml");
         InitializeComponent();
@@ -62,7 +63,7 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>The app's window (there's only one).</summary>
-    internal static MainWindow Current { get; private set; } = null!;
+    internal static MainWindow Instance { get; private set; } = null!;
 
     /// <summary>The open journal. Pages exist only once it's open.</summary>
     internal Session Session => _session ?? throw new InvalidOperationException("The journal isn't open yet.");

@@ -49,7 +49,7 @@ public sealed partial class AddBookDialog : ContentDialog
     /// <summary>The profile's entry for that book, if it already has one.</summary>
     internal string? ExistingEntry { get; private set; }
 
-    private static Services.Session Session => MainWindow.Current.Session;
+    private static Services.Session Session => MainWindow.Instance.Session;
 
     private void OnQueryChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {

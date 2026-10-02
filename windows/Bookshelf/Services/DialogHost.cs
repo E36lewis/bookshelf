@@ -17,7 +17,7 @@ internal static class DialogHost
     /// <summary>Shows <paramref name="dialog"/> over the window; None if another is already open.</summary>
     public static async Task<ContentDialogResult> ShowAsync(ContentDialog dialog)
     {
-        if (IsOpen || MainWindow.Current.Content is not FrameworkElement root) return ContentDialogResult.None;
+        if (IsOpen || MainWindow.Instance.Content is not FrameworkElement root) return ContentDialogResult.None;
         dialog.XamlRoot = root.XamlRoot;
         // Dialogs open in a layer of their own, outside the window's theme.
         dialog.RequestedTheme = root.ActualTheme;
