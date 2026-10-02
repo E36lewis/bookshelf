@@ -56,6 +56,15 @@ jobs:
           if [ -d apple/build/UITests.xcresult ]; then
             xcrun xcresulttool export attachments \
               --path apple/build/UITests.xcresult --output-path apple/build/screenshots
+            # Files are exported under UUIDs; name them after their
+            # attachments ("06-book-page-dark.png").
+            cd apple/build/screenshots
+            jq -r '.[].attachments[] | [.exportedFileName, .suggestedHumanReadableName] | @tsv' manifest.json |
+              while IFS=$'\t' read -r file nice; do
+                clean=$(printf '%s' "$nice" | sed -E 's/_[0-9]+_[0-9A-Fa-f-]{36}(\.[A-Za-z]+)$/\1/')
+                [ -f "$file" ] && [ "$file" != "$clean" ] && mv -n -- "$file" "$clean"
+              done
+            ls
           fi
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -70,6 +79,12 @@ jobs:
           xcodebuild build \
             -project apple/Bookshelf.xcodeproj -scheme Bookshelf -configuration Release \
             -destination 'generic/platform=macOS' -derivedDataPath apple/build/dd
+          # The bundled fonts and their licenses are in the app.
+          fonts=apple/build/dd/Build/Products/Release/Bookshelf.app/Contents/Resources/Fonts
+          ls -R "$fonts"
+          test "$(find "$fonts" -maxdepth 1 -name '*.ttf' | wc -l)" -eq 8
+          test -f "$fonts/iA Writer Duo/LICENSE.md"
+          test -f "$fonts/Source Serif 4/LICENSE.md"
           ditto -c -k --keepParent \
             apple/build/dd/Build/Products/Release/Bookshelf.app apple/build/Bookshelf-mac-preview.zip
 
