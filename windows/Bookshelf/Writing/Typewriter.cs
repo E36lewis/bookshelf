@@ -24,6 +24,10 @@ internal sealed class Typewriter(RichEditBox box)
 {
     private readonly UISettings _ui = new();
     private ScrollViewer? _scroller;
+    private int _logged;
+
+    /// <summary>Notes the numbers behind the first few scrolls (demo journals: startup.log).</summary>
+    public bool LogScrolls { get; set; }
 
     /// <summary>Scrolls so the caret's line sits mid-page (if it isn't already).</summary>
     public void CenterCaret()
@@ -31,7 +35,22 @@ internal sealed class Typewriter(RichEditBox box)
         if (Scroller is not { ViewportHeight: > 0 } scroller || CaretInView(scroller) is not { } y) return;
         var target = Math.Clamp(scroller.VerticalOffset + y - scroller.ViewportHeight / 2, 0, scroller.ScrollableHeight);
         if (Math.Abs(target - scroller.VerticalOffset) < 4) return;
+        Note($"caret {y:F0} px down a {scroller.ViewportHeight:F0} px page at offset {scroller.VerticalOffset:F0} " +
+            $"(of {scroller.ScrollableHeight:F0}); scrolling to {target:F0}");
         scroller.ChangeView(null, target, null, disableAnimation: !_ui.AnimationsEnabled);
+    }
+
+    private void Note(string what)
+    {
+        if (!LogScrolls || _logged >= 12) return;
+        _logged++;
+        StartupLog.Step($"Typewriter: {what}");
+    }
+
+    private void OnViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        if (e.IsIntermediate || !LogScrolls || _logged >= 12 || _scroller is not { } scroller) return;
+        Note($"settled at offset {scroller.VerticalOffset:F0}; caret now {CaretInView(scroller):F0} px down");
     }
 
     /// <summary>The middle of the caret's line, in pixels from the top of the visible page; null if it can't be told.</summary>
@@ -47,7 +66,16 @@ internal sealed class Typewriter(RichEditBox box)
         return (rect.Y + rect.Height / 2 - origin.Y) / scale - viewTop;
     }
 
-    private ScrollViewer? Scroller => _scroller ??= Find<ScrollViewer>(box);
+    private ScrollViewer? Scroller
+    {
+        get
+        {
+            if (_scroller is not null) return _scroller;
+            _scroller = Find<ScrollViewer>(box);
+            if (_scroller is not null) _scroller.ViewChanged += OnViewChanged;
+            return _scroller;
+        }
+    }
 
     private static T? Find<T>(DependencyObject parent) where T : DependencyObject
     {

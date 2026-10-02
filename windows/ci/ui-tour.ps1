@@ -259,10 +259,16 @@ function Status-Words {
 # How far the caret's line is from the middle of the page, as a share of its height.
 function Caret-Offset {
     $page = (Find-Id 'Editor').Current.BoundingRectangle
-    $line = (Editor-Pattern).GetSelection()[0].Clone()
-    $line.ExpandToEnclosingUnit([Windows.Automation.Text.TextUnit]::Line)
-    $rects = $line.GetBoundingRectangles()
-    if ($rects.Count -eq 0) { throw 'the caret line has no rectangle (off screen?)' }
+    $rects = @()
+    for ($try = 0; $try -lt 5 -and $rects.Count -eq 0; $try++) {
+        try {
+            $caret = (Editor-Pattern).GetSelection()[0].Clone()
+            $caret.ExpandToEnclosingUnit([Windows.Automation.Text.TextUnit]::Character)
+            $rects = @($caret.GetBoundingRectangles())
+        }
+        catch { Start-Sleep -Milliseconds 500 }
+    }
+    if ($rects.Count -eq 0) { throw 'the caret has no rectangle (is it off the page?)' }
     $middle = $rects[0].Top + $rects[0].Height / 2
     return ($middle - ($page.Top + $page.Height / 2)) / $page.Height
 }

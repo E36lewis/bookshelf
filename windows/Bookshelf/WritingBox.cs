@@ -75,8 +75,14 @@ public sealed class WritingBox
     /// <summary>Raised after each edit or restyle is timed (for the demo journal's speed check).</summary>
     public event Action? Timed;
 
-    /// <summary>Notes where the time goes in big restyles, in startup.log (demo journals: nobody's text is logged).</summary>
-    public bool LogTimings { get; set; }
+    /// <summary>Notes where the time goes in big restyles, and how typewriter scrolling works out, in startup.log (demo journals: nobody's text is logged).</summary>
+    public bool LogTimings
+    {
+        get => _logTimings;
+        set => _logTimings = _typewriter.LogScrolls = value;
+    }
+
+    private bool _logTimings;
 
     /// <summary>Raised when the person changed the text (typing, pasting, formatting, undo or redo); not by <see cref="SetText"/>.</summary>
     public event Action? Edited;
