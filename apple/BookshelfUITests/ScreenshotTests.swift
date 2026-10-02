@@ -204,8 +204,17 @@ final class ScreenshotTests: XCTestCase {
             "-BookshelfWindowSize", "1000x700",
         ]
         app.launch()
+        if !app.windows.firstMatch.waitForExistence(timeout: 8) {
+            // Shouldn't happen (the app opens its own window); noted so it's seen.
+            let note = XCTAttachment(string: "No window after launch: opened it from the Window menu.")
+            note.name = "no-window-at-launch"
+            note.lifetime = .keepAlways
+            add(note)
+            app.menuBars.menuBarItems["Window"].click()
+            app.menuItems["Bookshelf"].firstMatch.click()
+        }
         // If a test can't find what it waits for, this shows what was there.
-        sleep(2)
+        sleep(1)
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = "00-launched-\(name)-\(look.rawValue)"
         shot.lifetime = .deleteOnSuccess

@@ -12,6 +12,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Appearance.apply(.system, override: model.options.appearance)
     }
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            showMainWindowIfNeeded()
+        }
+    }
+
+    /// On macOS 15, a SwiftUI app with an app delegate can finish launching
+    /// without opening its window (it happens when launched from the
+    /// command line, as UI tests do). Open it the way Window › Bookshelf
+    /// would.
+    private func showMainWindowIfNeeded() {
+        guard !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }),
+              let menu = NSApp.windowsMenu,
+              let index = menu.items.firstIndex(where: { $0.title == "Bookshelf" })
+        else { return }
+        menu.performActionForItem(at: index)
+    }
+
     func applicationDidBecomeActive(_ notification: Notification) {
         // Coming back the next day: "day 12" is now "day 13".
         Task { await model.refreshIfChanged() }
