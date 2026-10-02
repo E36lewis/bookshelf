@@ -1,6 +1,8 @@
 // swift-tools-version: 5.10
-// BookshelfKit: the Swift side of the macOS app that isn't UI. It wraps the
-// shared Rust core (bookshelf-ffi) and holds the app's models.
+// BookshelfKit: the Swift side of the macOS app that isn't views. It wraps
+// the shared Rust core (bookshelf-ffi), holds the app's models, and the
+// writing page's text engine (AppKit text, no windows), so all of it can be
+// tested with `swift test`.
 import PackageDescription
 
 let package = Package(

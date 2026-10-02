@@ -254,9 +254,17 @@ public enum MenuShortcuts {
     public static let read = "Read your summary"
     public static let fullScreen = "Full screen"
     public static let manual = "User manual"
+    public static let save = "Save now (it also saves as you type)"
+    public static let bold = "Bold"
+    public static let italic = "Italic"
+    public static let link = "Link"
+    public static let focusMode = "Focus mode"
 
     /// Every title the Mac app looks up.
-    public static let all = [reading, finished, eventually, addBook, search, settings, write, read, fullScreen, manual]
+    public static let all = [
+        reading, finished, eventually, addBook, search, settings, write, read, fullScreen, manual,
+        save, bold, italic, link, focusMode,
+    ]
 
     /// The keys for each title in `groups`.
     public static func table(_ groups: [ShortcutGroup]) -> [String: KeyCombo] {
