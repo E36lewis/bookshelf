@@ -50,8 +50,12 @@ fonts=$contents/Resources/Fonts
 codesign --verify --deep --strict --verbose=2 "$app"
 signature=$(codesign -dv "$app" 2>&1)
 grep -qx 'Signature=adhoc' <<<"$signature" || fail "not ad-hoc signed"
-entitlements=$(codesign -d --entitlements - --xml "$app" 2>/dev/null)
-[ "$(plutil -extract com.apple.security.app-sandbox raw -o - - <<<"$entitlements")" = true ] || fail "not sandboxed"
+# PlistBuddy, not plutil: plutil's key paths split on the key's dots.
+entitlements=$(mktemp)
+codesign -d --entitlements - --xml "$app" >"$entitlements" 2>/dev/null
+sandboxed=$(/usr/libexec/PlistBuddy -c "Print :com.apple.security.app-sandbox" "$entitlements" 2>/dev/null || true)
+[ "$sandboxed" = true ] || { cat "$entitlements"; fail "not sandboxed"; }
+rm -f "$entitlements"
 
 # The disk image: the app (named for its channel, so a preview can sit
 # beside the release in Applications) and a link to drop it on.
