@@ -15,10 +15,6 @@ name: Release
 on:
   push:
     tags: ['v*']
-    # TEMPORARY, for testing before release.yml is on main (workflow_dispatch
-    # only finds workflows on the default branch): a dry run on each push.
-    # Remove before merging.
-    branches: [release-engineering]
   workflow_dispatch:
     inputs:
       dry_run:
