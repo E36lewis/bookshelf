@@ -28,13 +28,20 @@ const FOLDER_KEY: &str = "backup_folder";
 const JOURNAL_ID_KEY: &str = "journal_id";
 
 /// This journal's id: 8 hex characters, made the first time it's needed.
+/// The id becomes part of a file name, so a stored one that couldn't be
+/// one (hand-edited, or damaged) is replaced rather than used.
 pub fn journal_id(conn: &Connection) -> Result<String> {
-    if let Some(id) = app_setting(conn, JOURNAL_ID_KEY)? {
+    if let Some(id) = app_setting(conn, JOURNAL_ID_KEY)?.filter(|id| is_plain_id(id)) {
         return Ok(id);
     }
     let id = uuid::Uuid::new_v4().simple().to_string()[..8].to_string();
     set_app_setting(conn, JOURNAL_ID_KEY, Some(&id))?;
     Ok(id)
+}
+
+/// Letters and digits only: nothing that names a path or hides in one.
+fn is_plain_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.bytes().all(|b| b.is_ascii_alphanumeric())
 }
 
 /// The date of this journal's newest backup, if it has one where backups go now.
@@ -274,6 +281,24 @@ mod tests {
             .join("bookshelf-0000beef-2026-09-01.sqlite3")
             .exists());
         assert_eq!(latest(&conn, &paths).unwrap(), Some(day(3)));
+    }
+
+    #[test]
+    fn a_damaged_journal_id_is_never_part_of_a_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = AppPaths::in_dir(dir.path()).unwrap();
+        let conn = db::open(&paths.db_path).unwrap();
+        for bad in ["x/../../evil", r"..\..\evil", "", " ", "a b", "x.y"] {
+            set_app_setting(&conn, JOURNAL_ID_KEY, Some(bad)).unwrap();
+            let id = journal_id(&conn).unwrap();
+            assert!(is_plain_id(&id), "{bad:?} gave {id:?}");
+            assert_eq!(journal_id(&conn).unwrap(), id, "the new id is kept");
+        }
+        let made = daily(&conn, &paths, KEEP).unwrap().unwrap();
+        assert_eq!(made.parent().unwrap(), paths.backups_dir);
+        // Longer ids from a later version still pass.
+        assert!(is_plain_id(&"a".repeat(64)));
+        assert!(!is_plain_id(&"a".repeat(65)));
     }
 
     fn names_in(dir: &Path) -> Vec<String> {
