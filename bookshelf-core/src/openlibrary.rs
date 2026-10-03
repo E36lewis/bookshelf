@@ -221,6 +221,8 @@ fn description_of(j: &Value) -> Option<String> {
     .filter(|s| !s.trim().is_empty())
 }
 
+/// Every text field is clipped: the response is untrusted, and these go
+/// straight into the database and onto the page.
 fn parse_doc(doc: &Value) -> NewBook {
     let join_strs = |key: &str| -> Option<String> {
         let parts: Vec<&str> = doc[key]
@@ -228,10 +230,15 @@ fn parse_doc(doc: &Value) -> NewBook {
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
-        (!parts.is_empty()).then(|| parts.join(", "))
+        (!parts.is_empty()).then(|| clip(&parts.join(", "), MAX_FIELD_CHARS))
     };
-    let first_str =
-        |key: &str| -> Option<String> { doc[key].as_array()?.first()?.as_str().map(str::to_owned) };
+    let first_str = |key: &str| -> Option<String> {
+        doc[key]
+            .as_array()?
+            .first()?
+            .as_str()
+            .map(|s| clip(s, MAX_FIELD_CHARS))
+    };
 
     NewBook {
         external_id: doc["key"].as_str().unwrap_or_default().to_owned(),
@@ -270,6 +277,44 @@ mod tests {
     fn long_text_is_clipped_on_a_character_boundary() {
         assert_eq!(clip("Dune", 10), "Dune");
         assert_eq!(clip("Éowyn's tale", 5), "Éowyn…");
+    }
+
+    #[test]
+    fn every_field_of_a_search_result_is_clipped() {
+        // A doc with a few hundred authors and a book-length "ISBN".
+        let authors: Vec<Value> = (0..300).map(|i| format!("Author {i}").into()).collect();
+        let doc = serde_json::json!({
+            "key": "/works/OL1W",
+            "title": "x".repeat(2000),
+            "subtitle": "y".repeat(2000),
+            "author_name": authors,
+            "isbn": ["9".repeat(100_000)],
+            "publisher": ["p".repeat(100_000), "second"],
+        });
+        let book = parse_doc(&doc);
+        let len = |s: &Option<String>| s.as_deref().map_or(0, |s| s.chars().count());
+        assert_eq!(book.title.chars().count(), MAX_FIELD_CHARS + 1); // plus "…"
+        assert_eq!(len(&book.subtitle), MAX_FIELD_CHARS + 1);
+        assert_eq!(len(&book.author), MAX_FIELD_CHARS + 1);
+        assert!(book
+            .author
+            .as_deref()
+            .unwrap()
+            .starts_with("Author 0, Author 1, "));
+        assert_eq!(len(&book.isbn), MAX_FIELD_CHARS + 1);
+        assert_eq!(len(&book.publisher), MAX_FIELD_CHARS + 1);
+        // Short fields are left exactly as they came.
+        let doc = serde_json::json!({
+            "key": "/works/OL1W",
+            "title": "Dune",
+            "author_name": ["Frank Herbert"],
+            "isbn": ["9780441013593"],
+            "publisher": ["Chilton Books"],
+        });
+        let book = parse_doc(&doc);
+        assert_eq!(book.author.as_deref(), Some("Frank Herbert"));
+        assert_eq!(book.isbn.as_deref(), Some("9780441013593"));
+        assert_eq!(book.publisher.as_deref(), Some("Chilton Books"));
     }
 
     #[test]
