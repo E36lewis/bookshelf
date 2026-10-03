@@ -25,8 +25,9 @@ if (-not (Test-Path (Join-Path $root 'target/release/bookshelf_ffi.dll'))) {
     throw 'Build the Rust core first: cargo build --release -p bookshelf-ffi'
 }
 
-$app = Join-Path $root "windows/build/installer-app/$Channel"
-$out = Join-Path $root 'windows/build/installer'
+# Full Windows paths (ISCC is given them).
+$app = [IO.Path]::GetFullPath((Join-Path $root "windows\build\installer-app\$Channel"))
+$out = [IO.Path]::GetFullPath((Join-Path $root "windows\build\installer"))
 if (Test-Path $app) { Remove-Item -Recurse -Force $app }
 
 Write-Host "==> Publishing Bookshelf $version ($Channel) to $app"
