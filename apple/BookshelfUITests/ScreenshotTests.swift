@@ -332,6 +332,15 @@ final class ScreenshotTests: XCTestCase {
             // fails if it's under 4.5:1.
             if text == "Started" || text == "Finished" || text.hasSuffix(" pages") { return true }
             if element.identifier == "writer.status" { return true }
+            // A shelf row is one element over its cover (a colored block with
+            // a light letter) and four lines of text, so the audit's verdict
+            // swings with the cover and the date: near miss one day, failed
+            // the next. Its text colors are each checked instead: the title
+            // is the primary label color, author and excerpt are `quietText`
+            // (the status line's gray, measured above), and the date line is
+            // the accent text, 4.5:1 for every accent on every app's
+            // background (bookshelf-core theme.rs tests).
+            if element.identifier.hasPrefix("entry.") { return true }
             // Near misses, not failures: a row's secondary text over the
             // list's own background. Kept in the report.
             if issue.compactDescription.localizedCaseInsensitiveContains("nearly passed") { return true }

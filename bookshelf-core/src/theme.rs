@@ -104,6 +104,44 @@ pub fn luminance((r, g, b): (u8, u8, u8)) -> f32 {
 mod tests {
     use super::*;
 
+    /// WCAG 2 contrast ratio (the accessibility checks' measure, not
+    /// [`luminance`]'s rough one).
+    fn contrast(a: (u8, u8, u8), b: (u8, u8, u8)) -> f64 {
+        fn relative((r, g, b): (u8, u8, u8)) -> f64 {
+            let c = |v: u8| {
+                let v = f64::from(v) / 255.0;
+                if v <= 0.04045 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b)
+        }
+        let (x, y) = (relative(a), relative(b));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    #[test]
+    fn every_accents_text_reads_on_every_apps_background() {
+        // Window and list backgrounds of the three apps, from white to the
+        // grayest light one (WinUI's), and the darkest to the lightest dark.
+        let light = [(0xff, 0xff, 0xff), (0xf3, 0xf3, 0xf3)];
+        let dark = [(0x1e, 0x1e, 0x1e), (0x2d, 0x2d, 0x2d)];
+        for (name, hex) in ACCENTS {
+            for (is_dark, backgrounds) in [(false, light), (true, dark)] {
+                let text = parse_hex(&accent_colors(hex, is_dark).text).unwrap();
+                for bg in backgrounds {
+                    let ratio = contrast(text, bg);
+                    assert!(
+                        ratio >= 4.5,
+                        "{name} (dark: {is_dark}) on {bg:?}: {ratio:.2}:1"
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn hex_round_trip() {
         assert_eq!(parse_hex("#b4532a"), Some((0xb4, 0x53, 0x2a)));
