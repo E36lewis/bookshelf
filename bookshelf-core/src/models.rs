@@ -51,6 +51,14 @@ pub fn create_user(conn: &Connection, name: &str, color: Option<&str>) -> Result
     }
     let id = new_id();
     let now = Utc::now();
+    // Both rows or neither: a profile without its settings row can't be
+    // opened. A caller already in a transaction (the FFI's create_profile)
+    // has that covered, and SQLite refuses a BEGIN inside one.
+    let tx = if conn.is_autocommit() {
+        Some(conn.unchecked_transaction()?)
+    } else {
+        None
+    };
     conn.execute(
         "INSERT INTO users (id, name, color, created_at, updated_at)
          VALUES (?1, ?2, COALESCE(?3, '#4f46e5'), ?4, ?4)",
@@ -61,6 +69,9 @@ pub fn create_user(conn: &Connection, name: &str, color: Option<&str>) -> Result
         "INSERT INTO user_settings (id, user_id, date_format, accent) VALUES (?1, ?2, 'long', ?3)",
         params![new_id(), id, DEFAULT_ACCENT],
     )?;
+    if let Some(tx) = tx {
+        tx.commit()?;
+    }
     get_user(conn, &id)
 }
 
@@ -804,6 +815,30 @@ mod tests {
         delete_user(&conn, &a.id).unwrap();
         assert!(get_user(&conn, &a.id).is_err());
         assert!(get_settings(&conn, &a.id).is_err()); // cascaded
+    }
+
+    #[test]
+    fn a_profile_is_made_whole_or_not_at_all() {
+        // Stands in for a disk that fails between the two inserts.
+        let conn = db::open_in_memory().unwrap();
+        conn.execute_batch("DROP TABLE user_settings").unwrap();
+        assert!(create_user(&conn, "Avery", None).is_err());
+        assert!(
+            list_users(&conn).unwrap().is_empty(),
+            "no half-made profile"
+        );
+        assert!(conn.is_autocommit(), "nothing left open");
+
+        // Inside a caller's transaction, that transaction decides.
+        let conn = db::open_in_memory().unwrap();
+        let tx = conn.unchecked_transaction().unwrap();
+        create_user(&tx, "Avery", None).unwrap();
+        tx.rollback().unwrap();
+        assert!(list_users(&conn).unwrap().is_empty());
+        let tx = conn.unchecked_transaction().unwrap();
+        let user = create_user(&tx, "Avery", None).unwrap();
+        tx.commit().unwrap();
+        assert!(get_settings(&conn, &user.id).is_ok());
     }
 
     #[test]
