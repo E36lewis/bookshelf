@@ -65,14 +65,15 @@ The first time you open Bookshelf, your computer may ask you to confirm. That's 
 
 ### Windows
 
-1. Open the setup file.
-2. If a blue box says *Windows protected your PC*, click **More info**, then **Run anyway**.
+1. Download the setup file. If your browser says it *isn't commonly downloaded*, choose **Keep**.
+2. Open it. If a blue box says *Windows protected your PC*, click **More info**, then **Run anyway**.
 3. Follow the installer's steps. It installs Bookshelf just for you, so it doesn't need an administrator password.
 4. Open Bookshelf from the Start menu.
 
 **What to expect, and why**
 
 - **The blue *Windows protected your PC* box.** Windows shows it for apps that aren't signed with a paid code-signing certificate. Those cost money every year, and Bookshelf is a free, open-source project, so it isn't signed yet. The box doesn't mean anything is wrong with the file. To be sure your copy is genuine, see [Checking your download](#checking-your-download).
+- **Smart App Control.** If it's switched on (Windows 11 only), it blocks apps that aren't paid-signed, with no way past it. Bookshelf can't run there until it's signed.
 - **A message asking you to update Windows.** Bookshelf uses a security feature that only up-to-date Windows has. If a required update is missing, the installer stops and says so, before changing anything. Run Windows Update and try again.
 - **Removing it:** **Settings › Apps**, find Bookshelf, **Uninstall**. Your journal is kept.
 
