@@ -122,6 +122,8 @@ struct EntryRow: View {
         // there, accent-colored ones don't. (The list's prominence doesn't
         // reach the row on macOS 15, so ask the selection too.)
         let selected = prominence == .increased || model.selectedEntryID == entry.summaryId
+        // The system's secondary gray falls just short of 4.5:1 on the list.
+        let quiet = selected ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.quietText)
         HStack(alignment: .top, spacing: 12) {
             CoverView(path: entry.coverPath, title: entry.title, width: 44)
                 .padding(.top, 2)
@@ -132,7 +134,7 @@ struct EntryRow: View {
                 if let author = entry.author, !author.isEmpty {
                     Text(author)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(quiet)
                         .lineLimit(1)
                 }
                 if !entry.meta.isEmpty {
@@ -146,7 +148,7 @@ struct EntryRow: View {
                 if !entry.excerpt.isEmpty {
                     Text(entry.excerpt)
                         .font(Typeface.text(font, size: 13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(quiet)
                         .lineLimit(2)
                         .padding(.top, 3)
                 } else if let note = entry.emptyNote {
