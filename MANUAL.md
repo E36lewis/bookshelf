@@ -677,21 +677,25 @@ Bookshelf runs on Linux, macOS and Windows.
 Both kinds of install use the same data folder, so they share your shelves.
 <!-- /platform -->
 <!-- platform: mac -->
-Bookshelf needs macOS 14 (Sonoma) or newer.
+Bookshelf needs macOS 14 (Sonoma) or newer, on an Apple silicon or Intel Mac.
 
-1. Open the `.dmg` file you downloaded, and drag **Bookshelf** onto **Applications**.
+1. Open the `Bookshelf-`*version*`.dmg` file you downloaded, and drag **Bookshelf** onto **Applications**.
 2. Open Bookshelf from your Applications folder.
-3. Until Bookshelf is signed by Apple, the Mac won't open it the first time and says it can't check it. Press **Done**, then open **System Settings › Privacy & Security**, scroll down to the message about Bookshelf, press **Open Anyway** and confirm. You only need to do this once.
+3. The first time, the Mac won't open it. Apple only vouches for apps whose developer pays for a yearly Apple account and sends each version to Apple to check (*notarizing* it), and Bookshelf isn't notarized yet. On macOS 15 or newer the message says *"Bookshelf" Not Opened*; on macOS 14 it says the developer *cannot be verified*. Press **Done** (or **Cancel**), not **Move to Trash**.
+4. Open **System Settings › Privacy & Security**, scroll down to the message that Bookshelf was blocked, press **Open Anyway** and confirm with your password. On macOS 14 you can instead Control-click Bookshelf in Applications and choose **Open**. You only need to do this once.
 
 To remove Bookshelf, drag it from Applications to the Trash. Your journal stays in its folder (see *Where your data lives*).
 <!-- /platform -->
 <!-- platform: windows -->
-Bookshelf needs Windows 10 (version 1809 or newer) or Windows 11.
+Bookshelf needs Windows 10 (version 1809 or newer) or Windows 11, on a 64-bit Intel or AMD PC.
 
-<!-- TODO(owner): there's no installer yet, only the single Bookshelf.exe. Once there is one, name it here and say where it puts Bookshelf and how to uninstall it. -->
-If you downloaded the installer, run it and follow its steps. If you downloaded the single `Bookshelf.exe`, there's nothing to install: put it wherever you like and double-click it. Either way, the very first start can take up to a minute; after that it's quick.
+**Install Windows' updates first.** On a PC with a newer processor (roughly Intel's 11th generation or AMD's Ryzen 5000 and later), Bookshelf needs Windows updates from October 2024 or later: they fix part of Windows that Bookshelf's security protections rely on. A PC that installs its updates has them. If yours doesn't, the installer says *Bookshelf needs a newer Windows update* and stops. Open **Settings › Windows Update**, install everything it offers (restart if it asks), then run the installer again.
 
-Until Bookshelf is signed, Windows may say *Windows protected your PC* the first time. Press **More info**, then **Run anyway**. You only need to do this once.
+1. Run `Bookshelf-`*version*`-setup-x64.exe`. If your browser warns that it isn't commonly downloaded, choose to keep it.
+2. Windows may say *Windows protected your PC*. Press **More info**, then **Run anyway**. It says this because Bookshelf isn't yet signed with a certificate bought from a company Windows trusts, so Windows doesn't know who made it. You only need to do this once. (On Windows 11 with **Smart App Control** on, Windows may refuse unsigned apps outright.)
+3. The installer doesn't need an administrator: it installs Bookshelf for you alone, in `%LOCALAPPDATA%\Programs\Bookshelf`, and adds it to the Start menu. Tick *Create a desktop shortcut* if you'd like one.
 
-Removing Bookshelf, or deleting `Bookshelf.exe`, leaves your journal in its folder (see *Where your data lives*).
+To remove Bookshelf, find it in **Settings › Apps** (**Installed apps** on Windows 11, **Apps & features** on Windows 10) and choose **Uninstall**. That removes the program, never your journal: it stays in its folder (see *Where your data lives*), and Bookshelf finds it again if you reinstall.
+
+Test builds come as a single `Bookshelf.exe` instead. There's nothing to install: put it wherever you like and double-click it (the first start can take up to a minute). They're *Bookshelf Preview*, with a journal of their own.
 <!-- /platform -->
