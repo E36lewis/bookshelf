@@ -6,6 +6,8 @@ mod markdown;
 mod reader;
 mod search;
 mod settings;
+#[cfg(debug_assertions)]
+mod shots;
 mod theme;
 mod writer;
 
@@ -103,6 +105,8 @@ fn build_ui(app: &adw::Application) {
             });
             nav.push(&profiles_page(&ctx));
             window.set_content(Some(&toasts));
+            #[cfg(debug_assertions)]
+            shots::run(&ctx, &window);
 
             // Help from anywhere: F1 the manual, Ctrl+? every shortcut.
             let help_keys = gtk::ShortcutController::new();
