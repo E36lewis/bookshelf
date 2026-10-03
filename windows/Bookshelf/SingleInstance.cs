@@ -22,7 +22,7 @@ internal static class SingleInstance
         AppInstance main;
         try
         {
-            main = AppInstance.FindOrRegisterForKey(AppFolders.AppName);
+            main = AppInstance.FindOrRegisterForKey(AppFolders.AppId);
         }
         catch (Exception e)
         {

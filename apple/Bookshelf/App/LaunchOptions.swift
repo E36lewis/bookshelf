@@ -1,21 +1,22 @@
 import Foundation
 import BookshelfKit
 
-/// What the app was launched with. Normally nothing: the preview journal in
-/// Application Support. UI tests ask for a journal of their own inside the
+/// What the app was launched with. Normally nothing: this build's journal
+/// in Application Support. UI tests ask for a journal of their own inside the
 /// app's sandbox, a fixed window size and a light or dark look, so their
 /// screenshots are repeatable and never touch anyone's real journal.
 struct LaunchOptions: Sendable {
     enum JournalChoice: Sendable {
-        /// This build's own journal (`Channel.preview`, never the real one).
-        case preview
+        /// This build's journal: the real one in a release, the preview
+        /// journal in any other build (`BuildChannel.current`).
+        case own
         /// An empty journal in a temporary folder (`-BookshelfFreshJournal`).
         case fresh
         /// A temporary journal filled by `DemoJournal` (`-BookshelfDemoJournal`).
         case demo
     }
 
-    var journal: JournalChoice = .preview
+    var journal: JournalChoice = .own
     /// Light or dark whatever the settings say (`-BookshelfAppearance dark`).
     var appearance: Theme?
     /// The main window's content size (`-BookshelfWindowSize 1200x760`).
@@ -39,7 +40,7 @@ struct LaunchOptions: Sendable {
             journal = .fresh
         }
         // The look, size and test switches are only for test journals.
-        guard journal != .preview else { return }
+        guard journal != .own else { return }
         #if DEBUG
         styleProbe = arguments.contains("-BookshelfStyleProbe")
         failSaves = arguments.contains("-BookshelfFailSaves")
@@ -67,8 +68,8 @@ struct LaunchOptions: Sendable {
     /// database), so call it off the main thread.
     func openJournal() throws -> JournalWorker {
         switch journal {
-        case .preview:
-            return try JournalWorker(channel: .preview)
+        case .own:
+            return try JournalWorker(channel: BuildChannel.current)
         case .fresh, .demo:
             let dir = FileManager.default.temporaryDirectory
                 .appendingPathComponent("journal-\(UUID().uuidString)", isDirectory: true)

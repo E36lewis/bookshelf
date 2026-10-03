@@ -20,7 +20,7 @@ public static class Program
         var exe = Environment.ProcessPath ?? "unknown";
         StartupLog.Step($"Started {exe}{(IsUnderOneDrive(exe) ? " (in OneDrive)" : "")}");
         StartupLog.Step($"Files in {AppContext.BaseDirectory}");
-        StartupLog.Step($"Windows {Environment.OSVersion.Version} {RuntimeInformation.OSArchitecture}, " +
+        StartupLog.Step($"{AppFolders.AppName} {AppFolders.Version}, Windows {Environment.OSVersion.Version} {RuntimeInformation.OSArchitecture}, " +
             $"app {RuntimeInformation.ProcessArchitecture}, .NET {Environment.Version}");
         var options = LaunchOptions.Parse(args);
         App.Options = options;
@@ -36,6 +36,11 @@ public static class Program
             // The window still opens and says what went wrong.
             StartupLog.Step($"Rust core failed to load: {e.GetType().Name}: {e.Message}");
         }
+
+        // Tells the installer that Bookshelf is open (AppMutex in
+        // windows/installer/Bookshelf.iss), so it asks for it to be closed
+        // before replacing or removing its files. Held until Main returns.
+        using var running = OpenRunningMutex();
 
         StartupLog.Step("Starting the Windows App SDK (COM wrappers)");
         WinRT.ComWrappersSupport.InitializeComWrappers();
@@ -58,6 +63,20 @@ public static class Program
         });
         StartupLog.Step("Closed");
         return 0;
+    }
+
+    private static Mutex? OpenRunningMutex()
+    {
+        try
+        {
+            return new Mutex(false, AppFolders.AppId);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or WaitHandleCannotBeOpenedException)
+        {
+            // Only the installer's check misses it; never a reason not to start.
+            StartupLog.Step($"No running-app mutex: {e.Message}");
+            return null;
+        }
     }
 
     private static bool IsUnderOneDrive(string path) =>

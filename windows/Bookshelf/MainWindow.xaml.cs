@@ -45,6 +45,8 @@ public sealed partial class MainWindow : Window
         StartupLog.Step("Loading MainWindow.xaml");
         InitializeComponent();
         Title = AppFolders.AppName;
+        // "Bookshelf" alone is a release; anything else says it's a preview.
+        if (AppFolders.BuildChannel == Channel.Preview) AppTitleBar.Subtitle = "Preview";
         // The taskbar's name for the window, whatever the title bar shows.
         Root.Loaded += (_, _) => Title = AppFolders.AppName;
         ExtendsContentIntoTitleBar = true;
@@ -90,7 +92,7 @@ public sealed partial class MainWindow : Window
             StartupLog.Step("Opening the journal");
             var (journal, open) = _options.DemoJournal
                 ? await OpenDemoAsync()
-                : (await JournalService.OpenDefaultAsync(Channel.Preview), null);
+                : (await JournalService.OpenDefaultAsync(AppFolders.BuildChannel), null);
             if (_options.DemoJournal && _options.DemoSaveFails)
             {
                 // After the demo's own notes are in.

@@ -1,24 +1,40 @@
+using Bookshelf.Core;
+using Bookshelf.Ffi;
+
 namespace Bookshelf;
 
-/// <summary>Where the app keeps its own files, beside the journal.</summary>
+/// <summary>Which build this is, and where the app keeps its own files, beside the journal.</summary>
 internal static class AppFolders
 {
     /// <summary>
-    /// The journal's folder name in %LOCALAPPDATA%, as the core names it for
-    /// a preview build (<c>bookshelf-core/src/paths.rs</c>). The app needs it
-    /// before the core is loaded, for the startup log.
+    /// This build's channel. Only a release build is Stable and opens the
+    /// real journal: <c>dotnet publish -p:BookshelfChannel=Stable</c> (see
+    /// Bookshelf.csproj). Everything else is a preview, with its own.
     /// </summary>
-    public const string JournalFolderName = "Bookshelf Preview";
+#if BOOKSHELF_STABLE
+    public static readonly Channel BuildChannel = Channel.Stable;
+#else
+    public static readonly Channel BuildChannel = Channel.Preview;
+#endif
 
-    /// <summary>The window title, and the key that keeps the app to one window.</summary>
-    public const string AppName = "Bookshelf Preview";
+    /// <summary>
+    /// "Bookshelf" or "Bookshelf Preview": the window title, and the
+    /// journal's folder name in %LOCALAPPDATA%.
+    /// </summary>
+    public static readonly string AppName = ChannelNames.AppName(BuildChannel);
+
+    /// <summary>The key that keeps the app to one window, and the installer's mutex name.</summary>
+    public static readonly string AppId = ChannelNames.AppId(BuildChannel);
+
+    /// <summary>The app's version (Version in Bookshelf.csproj), as "0.9.0".</summary>
+    public static string Version => typeof(AppFolders).Assembly.GetName().Version?.ToString(3) ?? "unknown";
 
     /// <summary>
     /// startup.log, crash.log and core.log: in a "logs" folder inside the
     /// journal's, so there's one place to look.
     /// </summary>
     public static string Logs => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), JournalFolderName, "logs");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppName, "logs");
 }
 
 /// <summary>What the app was started with.</summary>

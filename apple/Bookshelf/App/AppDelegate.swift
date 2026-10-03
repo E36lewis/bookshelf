@@ -42,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showMainWindowIfNeeded() {
         guard !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }),
               let menu = NSApp.windowsMenu,
-              let index = menu.items.firstIndex(where: { $0.title == "Bookshelf" })
+              let index = menu.items.firstIndex(where: { $0.title == BuildChannel.appName(BuildChannel.current) })
         else { return }
         menu.performActionForItem(at: index)
     }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import BookshelfKit
 
@@ -7,6 +8,13 @@ struct BookshelfCommands: Commands {
     let model: AppModel
 
     var body: some Commands {
+        // About names the build: "Bookshelf Preview" in anything but a release.
+        CommandGroup(replacing: .appInfo) {
+            let name = BuildChannel.appName(BuildChannel.current)
+            Button("About \(name)") {
+                NSApp.orderFrontStandardAboutPanel(options: [.applicationName: name])
+            }
+        }
         CommandGroup(replacing: .newItem) {
             FileMenuItems(model: model)
         }

@@ -30,7 +30,7 @@ extension XCTestCase {
             note.lifetime = .keepAlways
             add(note)
             app.menuBars.menuBarItems["Window"].click()
-            app.menuItems["Bookshelf"].firstMatch.click()
+            app.menuItems["Bookshelf Preview"].firstMatch.click() // tests run preview builds
         }
         // If a test can't find what it waits for, this shows what was there.
         sleep(1)

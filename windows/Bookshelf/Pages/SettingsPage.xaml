@@ -237,7 +237,7 @@
                     <Button x:Name="ManualButton" Click="OnManual" Content="Open" AutomationProperties.Name="Open the user manual" />
                 </StackPanel>
             </controls:SettingsCard>
-            <controls:SettingsCard x:Name="AboutCard" Glyph="&#xE946;" Header="Bookshelf Preview">
+            <controls:SettingsCard x:Name="AboutCard" Glyph="&#xE946;" Header="Bookshelf">
                 <Button Click="OnOpenDataFolder" Content="Open data folder" />
             </controls:SettingsCard>
 

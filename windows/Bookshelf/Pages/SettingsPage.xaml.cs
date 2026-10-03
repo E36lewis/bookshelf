@@ -81,8 +81,9 @@ public sealed partial class SettingsPage : BookshelfPage
             StartShelfBox.SelectedIndex = s.StartShelf switch { Shelf.Finished => 1, Shelf.Eventually => 2, _ => 0 };
             ShowSwatches(s.Accent);
             AccentPicker.Color = Look.ParseColor(s.Accent) ?? AccentPicker.Color;
-            AboutCard.Description =
-                $"Rust core {BookshelfFfiMethods.CoreVersion()}. Your journal is kept in {Session.Journal.DataDirectory}";
+            AboutCard.Header = AppFolders.AppName;
+            AboutCard.Description = $"Version {AppFolders.Version}, Rust core {BookshelfFfiMethods.CoreVersion()}. " +
+                $"Your journal is kept in {Session.Journal.DataDirectory}";
             ShowPreview();
         }
         finally

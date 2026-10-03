@@ -35,7 +35,7 @@ struct WelcomeView: View {
         }
         .background(.background.secondary)
         .frame(minWidth: 760, minHeight: 560)
-        .navigationTitle("Bookshelf")
+        .navigationTitle(BuildChannel.appName(BuildChannel.current))
     }
 }
 

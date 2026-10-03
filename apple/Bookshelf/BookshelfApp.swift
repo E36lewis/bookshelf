@@ -8,7 +8,8 @@ struct BookshelfApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        Window("Bookshelf", id: SceneID.main) {
+        // "Bookshelf Preview" in any build but a release (Window menu, About).
+        Window(BuildChannel.appName(BuildChannel.current), id: SceneID.main) {
             RootView()
                 .environment(appDelegate.model)
                 .task { await appDelegate.model.start() }

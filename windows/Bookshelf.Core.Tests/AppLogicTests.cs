@@ -182,4 +182,15 @@ public sealed class AppLogicTests : IDisposable
             .SelectMany(s => ShortcutKeys.FindAll(s.Title));
         Assert.DoesNotContain(keys[1], others);
     }
+
+    [Fact]
+    public void OnlyAReleaseBuildIsCalledBookshelf()
+    {
+        // A preview (any dev or CI build) must never share the real
+        // journal's folder, its single-window key or its installer mutex.
+        Assert.Equal("Bookshelf", ChannelNames.AppName(Channel.Stable));
+        Assert.Equal("Bookshelf Preview", ChannelNames.AppName(Channel.Preview));
+        Assert.Equal("io.github.e36lewis.Bookshelf", ChannelNames.AppId(Channel.Stable));
+        Assert.Equal("io.github.e36lewis.Bookshelf.Preview", ChannelNames.AppId(Channel.Preview));
+    }
 }

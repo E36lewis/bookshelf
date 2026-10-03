@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace Bookshelf;
 
 /// <summary>
-/// Preview diagnostics: writes a line to startup.log before each startup
+/// Startup diagnostics: writes a line to startup.log before each startup
 /// step. Each line is on disk before the step runs, so if the app dies
 /// without a crash.log or a message box, the last line says where.
 /// Kept in the logs folder (<see cref="AppFolders.Logs"/>, not synced by

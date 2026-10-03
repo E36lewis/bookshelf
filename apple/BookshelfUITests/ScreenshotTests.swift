@@ -146,10 +146,11 @@ final class ScreenshotTests: XCTestCase {
         undo.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
 
-        // Bookshelf › About Bookshelf, for the app icon (the whole screen,
-        // so the Dock shows too). Last: closing the panel is the end.
+        // Bookshelf › About Bookshelf Preview (tests run preview builds), for
+        // the app icon (the whole screen, so the Dock shows too). Last:
+        // closing the panel is the end.
         app.menuBars.menuBarItems["Bookshelf"].click()
-        let aboutItem = app.menuBars.menuItems["About Bookshelf"]
+        let aboutItem = app.menuBars.menuItems["About Bookshelf Preview"]
         XCTAssertTrue(aboutItem.waitForExistence(timeout: 5))
         aboutItem.click()
         sleep(2)

@@ -12,9 +12,16 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
-    # Ad-hoc signing for development and CI; Developer ID comes in the release phase.
+    MARKETING_VERSION: "0.9.0"
+    CURRENT_PROJECT_VERSION: "0.9.0"
+    # Which journal the app opens. Only a release build says Stable
+    # (scripts/build-dmg.sh Stable passes BOOKSHELF_CHANNEL=Stable): it's
+    # "Bookshelf", with the real bundle ID and journal. Every other build
+    # is "Bookshelf Preview", with its own (see BuildChannel.swift).
+    BOOKSHELF_CHANNEL: Preview
+    BOOKSHELF_BUNDLE_ID_Stable: io.github.e36lewis.Bookshelf
+    BOOKSHELF_BUNDLE_ID_Preview: io.github.e36lewis.Bookshelf.Preview
+    # Ad-hoc signing (unsigned for Gatekeeper): no Developer ID for now.
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
@@ -53,6 +60,7 @@ targets:
         # From the build settings above, so About Bookshelf shows the real version.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        BookshelfChannel: $(BOOKSHELF_CHANNEL)
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "Copyright © 2026 e36lewis. Free software under the GPL 3.0 or later."
         ATSApplicationFontsPath: Fonts
@@ -66,8 +74,9 @@ targets:
         com.apple.security.files.bookmarks.app-scope: true
     settings:
       base:
-        # Previews get their own ID, so they never touch a real journal.
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.e36lewis.Bookshelf.Preview
+        # Previews get their own ID (and so their own sandbox container),
+        # so they never touch a real journal.
+        PRODUCT_BUNDLE_IDENTIFIER: $(BOOKSHELF_BUNDLE_ID_$(BOOKSHELF_CHANNEL))
         PRODUCT_NAME: Bookshelf
         # Bookshelf/Assets.xcassets, from icon/AppIcon.svg (scripts/make-icons.sh).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

@@ -6,7 +6,10 @@
 # mouse send them; UI Automation only reads, and invokes a button where a
 # step says so.
 #
-#   ui-tour.ps1 -Exe <Bookshelf.exe> -Out <folder for PNGs>
+#   ui-tour.ps1 -Exe <Bookshelf.exe> -Out <folder for PNGs> [-WindowTitle <title>]
+#
+# The title is "Bookshelf Preview" for a preview build (the default) and
+# "Bookshelf" for a release build.
 #
 # Every step runs even if an earlier one failed (so one run shows as much
 # as it can); the script fails at the end if any step did.
@@ -22,7 +25,8 @@
 
 param(
     [Parameter(Mandatory)] [string] $Exe,
-    [Parameter(Mandatory)] [string] $Out
+    [Parameter(Mandatory)] [string] $Out,
+    [string] $WindowTitle = 'Bookshelf Preview'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -103,7 +107,7 @@ function Start-Bookshelf([string[]] $Arguments) {
     $clock = [Diagnostics.Stopwatch]::StartNew()
     $mine = New-Object Windows.Automation.AndCondition(
         (New-Object Windows.Automation.PropertyCondition($A::ProcessIdProperty, $app.Id)),
-        (New-Object Windows.Automation.PropertyCondition($A::NameProperty, 'Bookshelf Preview')))
+        (New-Object Windows.Automation.PropertyCondition($A::NameProperty, $WindowTitle)))
     $found = $null
     while ($clock.Elapsed.TotalSeconds -lt 90 -and -not $app.HasExited -and -not $found) {
         $found = $A::RootElement.FindFirst($Scope::Children, $mine)
