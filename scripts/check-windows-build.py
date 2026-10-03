@@ -9,11 +9,11 @@ Looks at every native .exe and .dll given (folders are searched) for two
 - A DLL that is neither in the build nor part of Windows 10 version 1809
   and later (import tables, normal and delay-loaded). GitHub's runners
   have extras installed, such as the Visual C++ runtime.
-- A .NET app host .exe marked CET-compatible. On Windows 10 PCs with a
-  recent CPU but without Windows updates from 2023 on, .NET then stops
-  at startup ("Your Windows doesn't fully support CET", exit code
-  0x80131506) before any app code runs. The runner's newer Windows
-  doesn't.
+- A .NET app host .exe that isn't marked CET-compatible (.NET 9+ marks it
+  unless CETCompat is false). The mark turns on Windows' hardware shadow
+  stack, which stops return-address (ROP) attacks, on PCs with CET. Such
+  a PC also needs a Windows update .NET relies on; the installer checks
+  for it (windows/installer/Bookshelf.iss).
 
 And that the .NET app host .exe carries the app's icon (ApplicationIcon),
 which nothing else looks at.
@@ -57,7 +57,7 @@ DOTNET_HOST = "DOTNET_DISABLE_GUI_ERRORS".encode("utf-16-le")
 
 
 def inspect(path):
-    """Returns (is_managed, [imported DLL names], is_cet_dotnet_host,
+    """Returns (is_managed, [imported DLL names], is_dotnet_host, is_cet,
     is_dotnet_host_without_icon) for a PE file, or None if it isn't one."""
     with open(path, "rb") as f:
         data = f.read()
@@ -92,13 +92,14 @@ def inspect(path):
     # .NET assemblies (IL or ReadyToRun) are loaded by the runtime, not by
     # Windows, so their stub import of mscoree.dll is never used.
     if directory(14)[0]:
-        return True, [], False, False
+        return True, [], False, False, False
+    host = DOTNET_HOST in data
 
     # Extended DLL characteristics live in a debug directory entry
     # (type 20); bit 0 is IMAGE_DLLCHARACTERISTICS_EX_CET_COMPAT.
     cet = False
     rva, size = directory(6)  # debug directory: 28-byte entries
-    for entry in range(offset(rva), offset(rva) + size, 28) if rva and DOTNET_HOST in data else ():
+    for entry in range(offset(rva), offset(rva) + size, 28) if rva and host else ():
         kind = struct.unpack_from("<I", data, entry + 12)[0]
         raw = struct.unpack_from("<I", data, entry + 24)[0]
         if kind == 20 and struct.unpack_from("<I", data, raw)[0] & 1:
@@ -107,7 +108,7 @@ def inspect(path):
     # The resource directory's top level is one entry per resource type;
     # 14 is RT_GROUP_ICON. Named entries (high bit set) come first.
     no_icon = False
-    if DOTNET_HOST in data:
+    if host:
         rva, _ = directory(2)
         types = []
         if rva:
@@ -135,7 +136,7 @@ def inspect(path):
         # Old-style entries (attribute bit 0 clear) hold addresses, not RVAs.
         names.append(name(dll if attributes & 1 else dll - image_base))
         rva += 32
-    return False, names, cet, no_icon
+    return False, names, host, cet, no_icon
 
 
 def main():
@@ -153,7 +154,7 @@ def main():
     binaries = [p for p in paths if p.lower().endswith((".dll", ".exe"))]
 
     problems = []
-    checked = 0
+    checked = hosts = 0
     for path in sorted(binaries):
         result = inspect(path)
         if result is None or result[0]:
@@ -161,8 +162,10 @@ def main():
         checked += 1
         importer = os.path.basename(path).lower()
         if result[2]:
-            problems.append(f"{os.path.basename(path)} is marked CET-compatible (set CETCompat to false)")
-        if result[3]:
+            hosts += 1
+            if not result[3]:
+                problems.append(f"{os.path.basename(path)} isn't marked CET-compatible (remove CETCompat=false)")
+        if result[4]:
             problems.append(f"{os.path.basename(path)} has no icon (set ApplicationIcon)")
         for dll in result[1]:
             if dll in shipped or dll in WINDOWS:
@@ -177,13 +180,15 @@ def main():
 
     if checked == 0:
         sys.exit("No native files found")
+    if hosts == 0:
+        sys.exit("No .NET app host (Bookshelf.exe) found")
     if problems:
         print("The app may not start on some Windows 10/11 PCs:")
         for problem in problems:
             print("  " + problem)
         sys.exit(1)
     print(f"OK: the {checked} native files only need each other and Windows,")
-    print("and the .NET app host isn't marked CET-compatible and has its icon.")
+    print("and the .NET app host is marked CET-compatible and has its icon.")
 
 
 if __name__ == "__main__":

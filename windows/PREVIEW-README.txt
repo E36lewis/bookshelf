@@ -1,5 +1,11 @@
 Bookshelf preview for Windows 10 (version 1809 or later) and Windows 11, x64
 
+First, install Windows' updates (Settings > Windows Update). On PCs with a
+newer processor (roughly Intel 11th generation or AMD Ryzen 5000 and later),
+Bookshelf needs Windows updates from October 2024 or later. Without them it
+closes at once, with no message. (The installer checks this for you; this
+single exe can't.)
+
 1. Double-click Bookshelf.exe. You can move it anywhere first, such as
    the desktop. Nothing needs to be installed.
 2. If Windows says "Windows protected your PC", click "More info", then
@@ -15,6 +21,9 @@ folder with Bookshelf.exe and run:  Bookshelf.exe --demo-journal
 That journal lives in a temporary folder and never touches yours.
 
 If no window opens after a minute:
+- Run Windows Update (see above), restart, and try again. An Event Viewer
+  entry (below) saying "Your Windows doesn't fully support CET" means
+  exactly that.
 - Paste %LOCALAPPDATA%\Bookshelf Preview\logs into the File Explorer
   address bar and send startup.log (its last line shows how far Bookshelf
   got) and crash.log, if there is one. If startup.log isn't there, look in

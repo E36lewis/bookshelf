@@ -1,6 +1,8 @@
 # Builds the Windows app and uploads a test build (download the
 # "Bookshelf-windows-preview-x64" artifact, unzip, run Bookshelf.exe; the
-# exe is self-sufficient and can be moved anywhere).
+# exe is self-sufficient and can be moved anywhere), and its installer
+# ("Bookshelf-windows-installer-x64"), which it installs, opens and
+# uninstalls. Builds a preview; release.yml calls it with channel Stable.
 name: Windows app
 
 on:
@@ -33,16 +35,27 @@ on:
       - 'scripts/check-windows-build.py'
       - '.github/workflows/windows.yml'
   workflow_dispatch:
+  # release.yml builds the release (channel Stable) with this workflow.
+  workflow_call:
+    inputs:
+      channel:
+        description: Stable for a release (the real journal); anything else builds a preview
+        type: string
+        default: Preview
 
 permissions:
   contents: read
 
 concurrency:
-  group: windows-${{ github.ref }}
+  group: windows-${{ inputs.channel || 'Preview' }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
+  # Only release.yml asks for Stable; every other build is a preview.
+  CHANNEL: ${{ inputs.channel == 'Stable' && 'Stable' || 'Preview' }}
+  # The window title, and the folder in %LOCALAPPDATA% (journal and logs).
+  APP_NAME: ${{ inputs.channel == 'Stable' && 'Bookshelf' || 'Bookshelf Preview' }}
 
 jobs:
   windows:
@@ -75,7 +88,7 @@ jobs:
         run: dotnet test --project Bookshelf.Core.Tests/Bookshelf.Core.Tests.csproj
 
       - name: Publish the app
-        run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -o windows/build/Bookshelf
+        run: dotnet publish windows/Bookshelf/Bookshelf.csproj -c Release -r win-x64 -p:Platform=x64 -p:BookshelfChannel=$env:CHANNEL -o windows/build/Bookshelf
 
       - name: Check the build is one self-sufficient Bookshelf.exe
         shell: pwsh
@@ -96,10 +109,11 @@ jobs:
           $alone = New-Item -ItemType Directory "$env:RUNNER_TEMP/Desktop copy"
           Copy-Item windows/build/Bookshelf/Bookshelf.exe $alone
           $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
-          $logs = Join-Path $env:LOCALAPPDATA 'Bookshelf Preview/logs'
+          # The logs follow the channel: "Bookshelf Preview\logs" or "Bookshelf\logs".
+          $logs = Join-Path $env:LOCALAPPDATA "$env:APP_NAME/logs"
           $crashLog = Join-Path $logs 'crash.log'
           $startupLog = Join-Path $logs 'startup.log'
-          $title = 'Bookshelf Preview'
+          $title = $env:APP_NAME
           Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
           $A = [Windows.Automation.AutomationElement]
           # The process's top-level windows, through UI Automation.
@@ -165,8 +179,8 @@ jobs:
           # runtime, for one) and a newer Windows, so the smoke test alone
           # can't catch every problem. This checks the exe and what it
           # unpacked (exactly what a PC loads) for DLLs that aren't part of
-          # Windows, and for the CET marking that stops .NET on older
-          # Windows 10 (see scripts/check-windows-build.py).
+          # Windows, and that it keeps its CET marking, which the runner
+          # never needs (see scripts/check-windows-build.py).
           $unpacked = Get-ChildItem "$env:RUNNER_TEMP/unpacked/Bookshelf" -Directory | Select-Object -First 1
           if (-not $unpacked) { throw "Bookshelf.exe didn't unpack anything" }
           foreach ($f in 'Bookshelf.dll', 'bookshelf_ffi.dll', 'Bookshelf.pri') {
@@ -177,15 +191,106 @@ jobs:
           if ($LASTEXITCODE) { throw "check-windows-build.py failed" }
 
       - name: Add the read-me for testers
+        if: env.CHANNEL == 'Preview'
         shell: pwsh
         run: Copy-Item windows/PREVIEW-README.txt windows/build/Bookshelf/README.txt
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: env.CHANNEL == 'Preview'
         with:
           name: Bookshelf-windows-preview-x64
           path: |
             windows/build/Bookshelf/Bookshelf.exe
             windows/build/Bookshelf/README.txt
+          if-no-files-found: error
+
+      - name: Get Inno Setup (pinned, checksum checked)
+        shell: pwsh
+        run: |
+          # To upgrade: change the version, download the x64 installer from
+          # github.com/jrsoftware/issrc/releases, and put its sha256 here.
+          $version = '7.1.0'
+          $sha256 = '0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f'
+          $file = "$env:RUNNER_TEMP/innosetup-$version-x64.exe"
+          Invoke-WebRequest "https://github.com/jrsoftware/issrc/releases/download/is-$($version -replace '\.', '_')/innosetup-$version-x64.exe" -OutFile $file
+          if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $sha256) { throw "Inno Setup's checksum doesn't match; refusing to run it" }
+          $dir = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          $setup = Start-Process $file -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$dir`"" -Wait -PassThru
+          if ($setup.ExitCode) { throw "Inno Setup didn't install (exit code $($setup.ExitCode))" }
+          if (-not (Test-Path "$dir/ISCC.exe")) { throw "No ISCC.exe in $dir" }
+          "ISCC=$dir\ISCC.exe" >> $env:GITHUB_ENV
+
+      - name: Build the installer
+        # A folder build of the app (nothing to unpack at startup), checked
+        # like the exe above, then packed by Inno Setup.
+        shell: pwsh
+        run: windows/installer/build-installer.ps1 -Channel $env:CHANNEL -Iscc $env:ISCC
+
+      - name: Install, open and uninstall (the journal stays)
+        # Windows PowerShell, for its built-in UI Automation client.
+        shell: powershell
+        run: |
+          $setup = Get-ChildItem windows/build/installer/*-setup-x64.exe | Select-Object -First 1
+          $name = $env:APP_NAME
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\$name"
+          $exe = Join-Path $dir 'Bookshelf.exe'
+          $data = Join-Path $env:LOCALAPPDATA $name
+          $log = Join-Path $env:RUNNER_TEMP 'setup.log'
+          Write-Host "Installing $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
+          $run = Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$log`"" -Wait -PassThru
+          # What its Windows check found (CetSupportMissing in Bookshelf.iss).
+          Select-String -Path $log -Pattern 'CET' | ForEach-Object { $_.Line }
+          if ($run.ExitCode) { Get-Content $log -Tail 40; throw "Setup failed (exit code $($run.ExitCode))" }
+          if (-not (Test-Path $exe)) { throw "Bookshelf.exe isn't in $dir" }
+          $startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) "$name.lnk"
+          if (-not (Test-Path $startMenu)) { throw "No Start menu entry" }
+          if (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) "$name.lnk")) { throw "A desktop shortcut nobody asked for" }
+          $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' | Where-Object { $_.DisplayName -eq $name }
+          if (-not $entry) { throw "No entry in Settings > Apps" }
+          Write-Host "Settings > Apps: $($entry.DisplayName) $($entry.DisplayVersion), icon $($entry.DisplayIcon)"
+          # What was installed: CET marked, its icon, only Windows' own DLLs.
+          python scripts/check-windows-build.py $dir
+          if ($LASTEXITCODE) { throw "check-windows-build.py failed on the installed app" }
+
+          # It opens, with the channel's title.
+          Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+          $A = [Windows.Automation.AutomationElement]
+          $app = Start-Process $exe -PassThru
+          $mine = New-Object Windows.Automation.AndCondition(
+            (New-Object Windows.Automation.PropertyCondition($A::ProcessIdProperty, $app.Id)),
+            (New-Object Windows.Automation.PropertyCondition($A::NameProperty, $name)))
+          $clock = [Diagnostics.Stopwatch]::StartNew()
+          $window = $null
+          while ($clock.Elapsed.TotalSeconds -lt 60 -and -not $app.HasExited -and -not $window) {
+            $window = $A::RootElement.FindFirst([Windows.Automation.TreeScope]::Children, $mine)
+            if (-not $window) { Start-Sleep -Milliseconds 500 }
+          }
+          Start-Sleep -Seconds 3
+          if ($app.HasExited) { throw "The installed Bookshelf.exe exited on its own (exit code $($app.ExitCode))" }
+          if (-not $window) { throw "No '$name' window from the installed app" }
+          Write-Host ("The installed app opened its window after {0:N1} s" -f $clock.Elapsed.TotalSeconds)
+          Stop-Process -Id $app.Id
+          $app.WaitForExit(10000) | Out-Null
+          # Its logs follow the channel too.
+          $started = [regex]::Escape("Programs\$name\Bookshelf.exe")
+          if (-not (Select-String -Path "$data/logs/startup.log" -Pattern $started -Quiet)) { throw "The installed app didn't log to $data\logs" }
+
+          # Uninstalling removes the program, never the journal.
+          $kept = Join-Path $data 'uninstall-must-keep-this.txt'
+          Set-Content $kept 'The journal folder outlives the program.'
+          Start-Process $entry.UninstallString.Trim('"') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait
+          $clock.Restart()
+          while ($clock.Elapsed.TotalSeconds -lt 60 -and (Test-Path $exe)) { Start-Sleep -Milliseconds 500 }
+          if (Test-Path $exe) { throw "Uninstalling left Bookshelf.exe" }
+          if (Test-Path $startMenu) { throw "Uninstalling left the Start menu entry" }
+          if (-not (Test-Path $kept)) { throw "Uninstalling removed the journal folder" }
+          Remove-Item $kept
+          Write-Host "Installed, opened and uninstalled; $data is still there."
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Bookshelf-windows-installer-x64
+          path: windows/build/installer/*-setup-x64.exe
           if-no-files-found: error
 
       - name: UI tour on demo journals, with screenshots
@@ -195,13 +300,13 @@ jobs:
         shell: powershell
         run: |
           $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = "$env:RUNNER_TEMP/unpacked"
-          windows/ci/ui-tour.ps1 -Exe "$env:RUNNER_TEMP/Desktop copy/Bookshelf.exe" -Out "$env:RUNNER_TEMP/screenshots"
+          windows/ci/ui-tour.ps1 -Exe "$env:RUNNER_TEMP/Desktop copy/Bookshelf.exe" -Out "$env:RUNNER_TEMP/screenshots" -WindowTitle $env:APP_NAME
 
       - name: Show the app's logs
         if: always()
         shell: pwsh
         run: |
-          $logs = Join-Path $env:LOCALAPPDATA 'Bookshelf Preview/logs'
+          $logs = Join-Path $env:LOCALAPPDATA "$env:APP_NAME/logs"
           foreach ($log in 'startup.log', 'crash.log', 'core.log') {
             $file = Join-Path $logs $log
             if (Test-Path $file) { Write-Host "--- $log"; Get-Content $file -Tail 200 }
