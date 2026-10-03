@@ -1,0 +1,184 @@
+# Builds a release from one commit: the Windows installer, the Mac disk
+# image and the Linux AppImage, each a release build (the Stable channel,
+# which opens the real journal), and drafts a GitHub Release with them,
+# SHA256SUMS and build provenance attestations. Publish the draft by hand.
+#
+# - Push a tag (v0.9.0, matching the version everywhere) to release.
+# - Run it by hand (dry_run, the default) to build and check everything
+#   without a release: the files are this run's artifacts.
+#
+# The Windows and Mac builds use windows.yml and apple.yml, so they get the
+# same tests and checks as every preview, plus an install and launch.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and check everything, but don't draft a release
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  version:
+    # Before anything is built: the tag and every version must agree.
+    name: Version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: check
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          # A real release only ever comes from a v* tag.
+          if [ "$DRY_RUN" != true ] && [ -z "$TAG" ]; then
+            echo "A release needs a v* tag; run it from one, or as a dry run." >&2
+            exit 1
+          fi
+          scripts/check-version.sh "$TAG" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  windows:
+    name: Windows
+    needs: version
+    uses: ./.github/workflows/windows.yml
+    with:
+      channel: Stable
+    permissions:
+      contents: read
+
+  mac:
+    name: Mac
+    needs: version
+    uses: ./.github/workflows/apple.yml
+    with:
+      channel: Stable
+    permissions:
+      contents: read
+
+  linux:
+    name: Linux AppImage
+    needs: version
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build tools, GTK 4 and libadwaita
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config curl file \
+            libgtk-4-dev libadwaita-1-dev librsvg2-bin librsvg2-common
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+        with:
+          toolchain: 1.98.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Build the AppImage
+        run: bash packaging/build-appimage.sh
+      - name: Check it
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          file=dist/Bookshelf-$VERSION-x86_64.AppImage
+          ls -l dist
+          test -x "$file"
+          file "$file" | grep -q 'ELF 64-bit .*x86-64'
+          # The app and its fonts are inside.
+          inside=$(mktemp -d)
+          (cd "$inside" && "$GITHUB_WORKSPACE/$file" --appimage-extract >/dev/null)
+          test -x "$inside/squashfs-root/usr/bin/bookshelf-gtk"
+          test "$(find "$inside/squashfs-root/usr/share/fonts/bookshelf" -name '*.ttf' | wc -l)" -eq 8
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Bookshelf-linux-appimage
+          path: dist/Bookshelf-*-x86_64.AppImage
+          if-no-files-found: error
+
+  release:
+    name: Draft the release
+    needs: [version, windows, mac, linux]
+    runs-on: ubuntu-24.04
+    # Only this job may write: the release, and the attestations (signed
+    # with this run's OIDC identity).
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: Bookshelf-windows-installer-x64
+          path: dist
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: Bookshelf-mac-dmg-Stable
+          path: dist
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: Bookshelf-linux-appimage
+          path: dist
+
+      - name: Check the files, write SHA256SUMS and the notes
+        run: |
+          cd dist
+          # Exactly these three, named for the version (and so the tag).
+          printf '%s\n' "Bookshelf-$VERSION-setup-x64.exe" "Bookshelf-$VERSION-x86_64.AppImage" "Bookshelf-$VERSION.dmg" | sort > ../expected
+          ls | sort > ../found
+          diff ../expected ../found
+          ls -l
+          sha256sum Bookshelf-* > SHA256SUMS
+          cat SHA256SUMS
+          sed "s/@VERSION@/$VERSION/g" ../.github/release-notes.md > ../notes.md
+          if grep -n '@VERSION@' ../notes.md; then exit 1; fi
+
+      - name: Attest build provenance
+        if: env.DRY_RUN != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/Bookshelf-*
+
+      - name: Draft the GitHub Release
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # A draft, from the existing tag only; publishing it is done by hand.
+          gh release create "$TAG" --draft --verify-tag --repo "$GITHUB_REPOSITORY" \
+            --title "Bookshelf $VERSION" --notes-file notes.md dist/Bookshelf-* dist/SHA256SUMS
+
+      - name: Keep what the release would have had (dry run)
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dry-run
+          path: |
+            dist/SHA256SUMS
+            notes.md
+          if-no-files-found: error
