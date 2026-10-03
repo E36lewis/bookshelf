@@ -12,6 +12,10 @@ on:
       - 'windows/PREVIEW-README.txt'
       - '.github/workflows/apple.yml'
       - '.github/workflows/windows.yml'
+      - 'README.md'
+      - 'site/**'
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
@@ -21,6 +25,10 @@ on:
       - 'windows/PREVIEW-README.txt'
       - '.github/workflows/apple.yml'
       - '.github/workflows/windows.yml'
+      - 'README.md'
+      - 'site/**'
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
