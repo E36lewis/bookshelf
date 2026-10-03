@@ -239,7 +239,7 @@ jobs:
           Write-Host "Installing $($setup.Name) ($([math]::Round($setup.Length / 1MB)) MB)"
           $run = Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=`"$log`"" -Wait -PassThru
           # What its Windows check found (CetSupportMissing in Bookshelf.iss).
-          Select-String -Path $log -Pattern 'CET' | ForEach-Object { $_.Line }
+          Select-String -Path $log -Pattern 'CET:' | ForEach-Object { $_.Line }
           if ($run.ExitCode) { Get-Content $log -Tail 40; throw "Setup failed (exit code $($run.ExitCode))" }
           if (-not (Test-Path $exe)) { throw "Bookshelf.exe isn't in $dir" }
           $startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) "$name.lnk"
@@ -248,8 +248,9 @@ jobs:
           $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' | Where-Object { $_.DisplayName -eq $name }
           if (-not $entry) { throw "No entry in Settings > Apps" }
           Write-Host "Settings > Apps: $($entry.DisplayName) $($entry.DisplayVersion), icon $($entry.DisplayIcon)"
-          # What was installed: CET marked, its icon, only Windows' own DLLs.
-          python scripts/check-windows-build.py $dir
+          # The installed exe is CET marked and has its icon (the folder was
+          # checked before packing; Inno Setup's own uninstaller is in it now).
+          python scripts/check-windows-build.py $exe
           if ($LASTEXITCODE) { throw "check-windows-build.py failed on the installed app" }
 
           # It opens, with the channel's title.
