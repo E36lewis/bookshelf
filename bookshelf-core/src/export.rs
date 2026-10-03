@@ -62,6 +62,12 @@ fn yaml(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+/// The most characters, and the most bytes, a slug keeps. File names are
+/// capped at 255 bytes on most file systems; 80 characters fit, unless
+/// they're four-byte ones, so the bytes are capped too.
+const SLUG_MAX_CHARS: usize = 80;
+const SLUG_MAX_BYTES: usize = 240;
+
 /// A title as a file name: lowercase letters and digits joined by dashes.
 /// Never one of the names Windows reserves for devices, which can't be
 /// used as a file name there whatever the extension ("con.md").
@@ -77,7 +83,13 @@ pub fn slug(title: &str) -> String {
             last_dash = true;
         }
     }
-    let trimmed: String = out.trim_matches('-').chars().take(80).collect();
+    let mut trimmed = String::new();
+    for c in out.trim_matches('-').chars().take(SLUG_MAX_CHARS) {
+        if trimmed.len() + c.len_utf8() > SLUG_MAX_BYTES {
+            break;
+        }
+        trimmed.push(c);
+    }
     if trimmed.is_empty() {
         "untitled".to_string()
     } else if is_windows_device_name(&trimmed) {
@@ -144,6 +156,22 @@ mod tests {
             "the-hobbit-or-there-back"
         );
         assert_eq!(slug("???"), "untitled");
+    }
+
+    #[test]
+    fn slugs_fit_in_a_file_name() {
+        // 80 letters fit; the 81st goes.
+        assert_eq!(slug(&"a".repeat(81)), "a".repeat(80));
+        // So do 80 three-byte letters (240 bytes with the ".md" to come).
+        assert_eq!(slug(&"書".repeat(80)), "書".repeat(80));
+        // Four-byte letters stop at the byte cap: 80 of them would be 320
+        // bytes, which no file system takes.
+        let bold_a = "𝐀";
+        let s = slug(&bold_a.repeat(100));
+        assert_eq!(s.len(), 240);
+        assert_eq!(s, bold_a.repeat(60));
+        let dir = tempfile::tempdir().unwrap();
+        write_new(dir.path(), &s, "fits").unwrap();
     }
 
     #[test]
