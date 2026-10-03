@@ -5,7 +5,8 @@
 #
 # - Push a tag (v0.9.0, matching the version everywhere) to release.
 # - Run it by hand (dry_run, the default) to build and check everything
-#   without a release: the files are this run's artifacts.
+#   without a release: the files are this run's artifacts. Only a run on a
+#   v* tag can ever draft a release; on a branch it's always a dry run.
 #
 # The Windows and Mac builds use windows.yml and apple.yml, so they get the
 # same tests and checks as every preview, plus an install and launch.
@@ -29,6 +30,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  DRY_RUN: ${{ github.ref_type != 'tag' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
 
 jobs:
   version:
@@ -46,13 +48,14 @@ jobs:
       - id: check
         env:
           TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          ASKED_FOR_RELEASE: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run }}
         run: |
           # A real release only ever comes from a v* tag.
-          if [ "$DRY_RUN" != true ] && [ -z "$TAG" ]; then
+          if [ "$ASKED_FOR_RELEASE" = true ] && [ -z "$TAG" ]; then
             echo "A release needs a v* tag; run it from one, or as a dry run." >&2
             exit 1
           fi
+          echo "Dry run: $DRY_RUN"
           scripts/check-version.sh "$TAG" >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
 
@@ -126,7 +129,6 @@ jobs:
       attestations: write
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
