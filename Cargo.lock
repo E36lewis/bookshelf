@@ -106,7 +106,7 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "bookshelf-app"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "bookshelf-core",
  "chrono",
@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "bookshelf-cli"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "bookshelf-core",
  "chrono",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "bookshelf-core"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "csv",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "bookshelf-ffi"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "bookshelf-core",
  "chrono",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "uniffi-bindgen"
-version = "0.1.0"
+version = "0.9.0"
 dependencies = [
  "uniffi",
 ]
