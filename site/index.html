@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nothing here loads from anywhere else: no scripts, fonts, trackers or analytics. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Bookshelf, a reading journal</title>
+<meta name="description" content="Bookshelf is a free, private reading journal for Linux, Windows and Mac. Keep three shelves, add books from Open Library, and write your own summary of each one.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Bookshelf, a reading journal">
+<meta property="og:description" content="A quiet place to keep track of the books you read, and to write down what they meant to you. Free and private, for Linux, Windows and Mac.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://e36lewis.github.io/bookshelf/">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Bookshelf, back to the top">
+      <img src="icon.svg" alt="" width="32" height="32">
+      <span>Bookshelf</span>
+    </a>
+    <nav aria-label="On this page">
+      <ul>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+        <li><a href="https://github.com/E36lewis/bookshelf">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============================================================ hero -->
+  <section class="hero" id="top" aria-labelledby="title">
+    <div class="wrap hero-grid">
+      <div class="hero-text">
+        <img class="hero-icon" src="icon.svg" alt="" width="96" height="96">
+        <h1 id="title">Bookshelf</h1>
+        <p class="lede">A quiet place to keep track of the books you read, and to write down what they meant to&nbsp;you.</p>
+        <p>Bookshelf is a free reading journal for Linux, Windows and Mac. Put books on your shelves, note when you started and finished them, and write your own summary of each one in a calm writing space. Everything stays on your own computer.</p>
+        <p class="actions">
+          <a class="button" href="https://github.com/E36lewis/bookshelf/releases/latest">Download Bookshelf</a>
+          <a class="button secondary" href="#install">How to install</a>
+        </p>
+        <p class="small">Free and open source · No account, no ads, no tracking</p>
+      </div>
+      <figure class="hero-shot">
+        <img src="screenshots/mac-book.webp" width="1000" height="678"
+             alt="Bookshelf on a Mac: the Finished shelf on the left, with Piranesi selected, and its page on the right showing the cover, the reading dates and the start of the summary.">
+      </figure>
+    </div>
+    <div class="wrap">
+      <aside class="note" aria-label="About this version">
+        <p><strong>The first release, 0.9, is nearly here.</strong> If the download page is still empty, please check back in a few days. Version 0.9 means “nearly 1.0”: everything is in place, and the Mac app is still being tested by real readers before&nbsp;1.0.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================================================== screenshots -->
+  <section class="band" id="screenshots" aria-labelledby="screenshots-title">
+    <div class="wrap">
+      <h2 id="screenshots-title">At home on your computer</h2>
+      <p class="intro">Bookshelf is a native app on each system, so it looks and feels like it belongs there. The shelves, the writing and the reading are the same everywhere. These screenshots use a made-up reader’s journal.</p>
+
+      <div class="os" id="linux">
+        <h3>Linux</h3>
+        <p class="os-note">Made with GTK&nbsp;4 and libadwaita, so it fits right in on GNOME.</p>
+        <div class="shots">
+          <figure>
+            <img src="screenshots/linux-shelf.webp" width="1000" height="700" loading="lazy" decoding="async"
+                 alt="Bookshelf on Linux in dark mode, showing the Finished shelf: books grouped under 2026, each with its author, the date it was finished, how many days it took, and the first lines of the summary.">
+            <figcaption>The Finished shelf, grouped by year (dark mode)</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/linux-book.webp" width="1000" height="700" loading="lazy" decoding="async"
+                 alt="The page for Piranesi by Susanna Clarke on Linux: publisher, year and page count, a folded ‘About this book’ section, the started and finished dates with Today and calendar buttons, and the start of the summary.">
+            <figcaption>A book’s page: details, reading dates and your summary</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/linux-writer.webp" width="1000" height="700" loading="lazy" decoding="async"
+                 alt="The writing page on Linux: a formatting bar above one calm column of text with a heading, a paragraph with italic and bold words, and a numbered list. The word count and ‘Saved’ sit at the bottom.">
+            <figcaption>The writer: Markdown marks stay visible, but dimmed</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/linux-reader.webp" width="1000" height="700" loading="lazy" decoding="async"
+                 alt="The reading page on Linux in dark mode: the title Piranesi, the author’s name, and the summary set in a serif font with headings.">
+            <figcaption>The reader: just your words, nicely set (dark mode)</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="os" id="windows">
+        <h3>Windows</h3>
+        <p class="os-note">Made with WinUI&nbsp;3, like Windows&nbsp;11’s own apps. Works on Windows&nbsp;10 too.</p>
+        <div class="shots">
+          <figure>
+            <img src="screenshots/windows-shelf.webp" width="1030" height="781" loading="lazy" decoding="async"
+                 alt="Bookshelf on Windows showing the Finished shelf: a left pane with Reading, Finished and Eventually and how many books each holds, and books grouped by year with their dates and the first lines of each summary.">
+            <figcaption>The Finished shelf, with the shelves in the left pane</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/windows-book.webp" width="1030" height="781" loading="lazy" decoding="async"
+                 alt="The page for Dune by Frank Herbert on Windows: Edit and Read buttons, an ‘About this book’ section, the reading dates with calendars and Today buttons, and the summary below.">
+            <figcaption>A book’s page, with Edit and Read close at hand</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/windows-writer.webp" width="1030" height="781" loading="lazy" decoding="async"
+                 alt="The writing page on Windows in dark mode: a formatting bar with bold, italic, heading, quote, list and link buttons, above notes on To the Lighthouse with headings, a bulleted list and a quote.">
+            <figcaption>The writer, in dark mode</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/windows-reader.webp" width="1030" height="781" loading="lazy" decoding="async"
+                 alt="The reading page on Windows: the summary of Dune set in a serif font, with a heading, a bulleted list and paragraphs.">
+            <figcaption>The reader, ready for full screen</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="os" id="mac">
+        <h3>Mac</h3>
+        <p class="os-note">Made with SwiftUI, with the sidebar, menus and keyboard shortcuts you’d expect on a&nbsp;Mac.</p>
+        <div class="shots">
+          <figure>
+            <img src="screenshots/mac-shelf.webp" width="1000" height="675" loading="lazy" decoding="async"
+                 alt="Bookshelf on a Mac in dark mode: the sidebar with three shelves, and the Reading shelf with Middlemarch on day 4 and The Left Hand of Darkness on day 13.">
+            <figcaption>The Reading shelf, counting the days (dark mode)</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/mac-book.webp" width="1000" height="678" loading="lazy" decoding="async"
+                 alt="Bookshelf on a Mac: the Finished shelf with Piranesi selected, and its page beside it with the cover, the reading dates and the start of the summary.">
+            <figcaption>Your shelf and a book’s page, side by side</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/mac-writer.webp" width="1000" height="678" loading="lazy" decoding="async"
+                 alt="The writing page on a Mac: a toolbar of formatting buttons above Markdown text with a heading, italic and bold words, and a numbered list.">
+            <figcaption>The writer, with formatting in the toolbar and the menus</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/mac-reader.webp" width="1000" height="675" loading="lazy" decoding="async"
+                 alt="The reading page on a Mac in dark mode: the summary of Piranesi with headings, a numbered list and a dividing line.">
+            <figcaption>The reader (dark mode)</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== features -->
+  <section id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <h2 id="features-title">What it does</h2>
+      <ul class="features">
+        <li><h3>Three shelves</h3><p>Reading, Finished and Eventually. Finished books are grouped by year, with a count of this year’s.</p></li>
+        <li><h3>Add any book</h3><p>Search Open Library by title, author or ISBN. The cover and description come with it.</p></li>
+        <li><h3>Reading dates</h3><p>Note when you started and finished, and see how many days it took. A book’s dates decide its shelf.</p></li>
+        <li><h3>A calm writer</h3><p>One column of text and nothing else. Markdown formatting, with the marks dimmed, and a few gentle prompts on an empty page.</p></li>
+        <li><h3>Focus mode and full screen</h3><p>Everything but the sentence you’re writing fades back, and the line stays centred like a typewriter.</p></li>
+        <li><h3>Saves as you type</h3><p>No save button to remember. If saving ever fails, Bookshelf keeps your words safe instead of losing them.</p></li>
+        <li><h3>A reader for your summaries</h3><p>Read what you wrote, nicely set, with nothing around it.</p></li>
+        <li><h3>Search everything</h3><p>Titles, authors and every word you’ve written, across all three shelves at once.</p></li>
+        <li><h3>Read it again</h3><p>Start a fresh entry for a favourite, with its own dates and summary. The first one stays as it was.</p></li>
+        <li><h3>A profile for everyone</h3><p>Everyone who reads in your home can have their own shelves, summaries and settings.</p></li>
+        <li><h3>Make it yours</h3><p>Light or dark, eight accent colors or any you like, and your choice of font, text size, line spacing and page width.</p></li>
+        <li><h3>Backups and export</h3><p>A daily copy of your journal, kept wherever you like. Export every summary as a plain Markdown file.</p></li>
+      </ul>
+      <p class="more">Every feature is explained in the <a href="https://github.com/E36lewis/bookshelf/blob/main/MANUAL.md">user manual</a>, which is also built into the app (<kbd>F1</kbd> on Linux and Windows, <kbd>⌘?</kbd> on a Mac).</p>
+    </div>
+  </section>
+
+  <!-- ========================================================= install -->
+  <section class="band" id="install" aria-labelledby="install-title">
+    <div class="wrap narrow">
+      <h2 id="install-title">Install</h2>
+      <p class="intro">Bookshelf is free. Download the file for your computer from the <a href="https://github.com/E36lewis/bookshelf/releases/latest">latest release on GitHub</a>, then follow the steps for your system below.</p>
+      <p>The first time you open it, your computer may ask you to confirm. That’s because Bookshelf is a free project, not a company with paid certificates. Below is exactly what you’ll see, and&nbsp;why.</p>
+
+      <!-- File names and requirements: this list is the one place on the page they're spelled out. -->
+      <h3 id="downloads">What to download</h3>
+      <ul class="downloads">
+        <li><strong>Windows</strong> <code>Bookshelf-0.9.0-setup-x64.exe</code> <span>Windows&nbsp;10 (version&nbsp;1809 or newer) or Windows&nbsp;11 on a 64-bit (x64) PC, with Windows Update up to date</span></li>
+        <li><strong>Mac</strong> <code>Bookshelf-0.9.0.dmg</code> <span>macOS&nbsp;14 Sonoma or newer</span></li>
+        <li><strong>Linux</strong> <code>Bookshelf-0.9.0-x86_64.AppImage</code> <span>A 64-bit PC with Ubuntu&nbsp;24.04, Fedora&nbsp;40, Debian&nbsp;13 or newer</span></li>
+        <li><strong>Checking</strong> <code>SHA256SUMS</code> <span>Optional: see <a href="#check">Checking your download</a></span></li>
+      </ul>
+
+      <h3 id="install-windows">Windows</h3>
+      <ol class="steps">
+        <li>Download the setup file and open it.</li>
+        <li>If a blue box says <q>Windows protected your PC</q>, click <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+        <li>Follow the installer’s steps. It installs Bookshelf just for you, so it doesn’t need an administrator password.</li>
+        <li>Open Bookshelf from the Start menu.</li>
+      </ol>
+      <div class="expect">
+        <h4>What to expect, and why</h4>
+        <p><strong>The blue <q>Windows protected your PC</q> box.</strong> Windows shows it for apps that aren’t signed with a paid code-signing certificate. Those certificates cost money every year, and Bookshelf is a free, open-source project, so it isn’t signed yet. The box doesn’t mean anything is wrong with the file. If you’d like to be sure your copy is genuine, see <a href="#check">Checking your download</a>.</p>
+        <p><strong>A message asking you to update Windows.</strong> Bookshelf uses a security feature that only up-to-date Windows has. If a required update is missing, the installer stops and says so, before changing anything. Run Windows Update, restart if it asks, and open the installer again.</p>
+        <p><strong>Removing it.</strong> Go to <strong>Settings › Apps</strong>, find Bookshelf and choose <strong>Uninstall</strong>. Your journal is kept, so if you install Bookshelf again, your shelves are still there.</p>
+      </div>
+
+      <h3 id="install-mac">Mac</h3>
+      <ol class="steps">
+        <li>Open the <code>.dmg</code> file and drag <strong>Bookshelf</strong> onto <strong>Applications</strong>.</li>
+        <li>Open Bookshelf from your Applications folder. The first time, your Mac won’t open it and says it can’t check it. Click <strong>Done</strong>.</li>
+        <li>Open <strong>System Settings › Privacy &amp; Security</strong>, scroll down to the message about Bookshelf, click <strong>Open Anyway</strong>, and confirm.</li>
+        <li>That’s all. From now on, Bookshelf opens like any other app.</li>
+      </ol>
+      <div class="expect">
+        <h4>What to expect, and why</h4>
+        <p><strong>The Mac blocks the first launch.</strong> Apple checks (“notarizes”) apps for developers who pay $99 a year. Bookshelf isn’t notarized yet, so your Mac asks you to confirm once that you trust it. You only need to do this the first time.</p>
+        <p><strong>On macOS&nbsp;14 Sonoma</strong> there’s a shortcut: Control-click (or right-click) Bookshelf in Applications, choose <strong>Open</strong>, then <strong>Open</strong> again.</p>
+        <p><strong>Removing it.</strong> Drag Bookshelf from Applications to the Trash. Your journal stays on your Mac.</p>
+      </div>
+
+      <h3 id="install-linux">Linux</h3>
+      <ol class="steps">
+        <li>Download the AppImage.</li>
+        <li>Make it executable: in your file manager, open the file’s <strong>Properties</strong> and turn on <strong>Allow executing file as program</strong> (the wording varies). Or, in a terminal: <code>chmod&nbsp;+x&nbsp;Bookshelf-*.AppImage</code></li>
+        <li>Double-click it to start Bookshelf.</li>
+      </ol>
+      <div class="expect">
+        <h4>What to expect, and why</h4>
+        <p><strong>Nothing gets installed.</strong> An AppImage is the whole app in one file, so it doesn’t change your system. Downloaded files aren’t allowed to run until you say so, which is why step&nbsp;2 is needed.</p>
+        <p><strong>On Ubuntu</strong>, AppImages need one small extra package. If Bookshelf doesn’t start, run <code>sudo&nbsp;apt&nbsp;install&nbsp;libfuse2t64</code> and try again.</p>
+        <p><strong>Removing it.</strong> Delete the file. Your journal stays in <code>~/.local/share/bookshelf</code>.</p>
+      </div>
+
+      <h3 id="check">Checking your download</h3>
+      <p>This is optional, for anyone who’d like to be sure their copy is exactly what was published. Each release has two kinds of proof:</p>
+      <ul>
+        <li><strong>A fingerprint.</strong> The <code>SHA256SUMS</code> file lists a fingerprint (a SHA-256 checksum) for every download. Work out your file’s fingerprint and check it matches its line in <code>SHA256SUMS</code>:
+          <ul>
+            <li>Windows, in PowerShell: <code>Get-FileHash&nbsp;.\Bookshelf-*-setup-x64.exe</code></li>
+            <li>Mac, in Terminal: <code>shasum&nbsp;-a&nbsp;256&nbsp;Bookshelf-*.dmg</code></li>
+            <li>Linux, next to <code>SHA256SUMS</code>: <code>sha256sum&nbsp;-c&nbsp;SHA256SUMS&nbsp;--ignore-missing</code></li>
+          </ul>
+        </li>
+        <li><strong>GitHub’s proof of where it came from.</strong> Every file is built by GitHub from this project’s public code, and GitHub signs a record of that (an <q>attestation</q>). With the <a href="https://cli.github.com/">GitHub command-line tool</a>, signed in, run this with the name of the file you downloaded:
+          <pre><code>gh attestation verify <var>the-file-you-downloaded</var> --repo E36lewis/bookshelf</code></pre>
+          It confirms the file was built from this repository’s code, not uploaded by someone else.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ========================================================= privacy -->
+  <section id="privacy" aria-labelledby="privacy-title">
+    <div class="wrap narrow">
+      <h2 id="privacy-title">Private by design</h2>
+      <ul class="plain">
+        <li><strong>Your journal stays on your computer.</strong> There’s no account and no sign-in, and your summaries never leave your computer.</li>
+        <li><strong>It only goes online to find books.</strong> Bookshelf connects to <code>openlibrary.org</code> and <code>covers.openlibrary.org</code> and nothing else. Open Library is a free, public library catalogue run by the Internet Archive. It sees what you search for, and sends back book details and covers.</li>
+        <li><strong>An email address is optional.</strong> If you add one to your profile, it’s sent along with those requests, so Open Library can contact you if something ever causes them a problem. Leave it blank to send nothing.</li>
+        <li><strong>Your writing is always yours.</strong> Daily backups keep the last seven copies of your journal, and you can export every summary as a plain Markdown file.</li>
+        <li><strong>Profiles keep shelves apart, but aren’t locked.</strong> Anyone using your computer account can open any profile.</li>
+        <li><strong>This website doesn’t track you either.</strong> No cookies, no analytics, and nothing loaded from anywhere else.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================================================== open source -->
+  <section class="band" id="open-source" aria-labelledby="open-source-title">
+    <div class="wrap narrow">
+      <h2 id="open-source-title">Free and open source</h2>
+      <p>Bookshelf is free software under the <a href="https://github.com/E36lewis/bookshelf/blob/main/LICENSE">GNU General Public License, version&nbsp;3 or later</a>, with an extra permission for the Windows app’s use of Microsoft’s Windows App SDK (see <a href="https://github.com/E36lewis/bookshelf/blob/main/NOTICE.md">NOTICE.md</a>). You can read, change and share the code.</p>
+      <ul class="links">
+        <li><a href="https://github.com/E36lewis/bookshelf">The code, on GitHub</a></li>
+        <li><a href="https://github.com/E36lewis/bookshelf/blob/main/MANUAL.md">The user manual</a></li>
+        <li><a href="https://github.com/E36lewis/bookshelf/releases">Every release</a></li>
+        <li><a href="https://github.com/E36lewis/bookshelf/issues">Report a problem or suggest an idea</a></li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Bookshelf · Free software (GPL-3.0-or-later) · <a href="https://github.com/E36lewis/bookshelf">GitHub</a></p>
+  </div>
+</footer>
+</body>
+</html>
