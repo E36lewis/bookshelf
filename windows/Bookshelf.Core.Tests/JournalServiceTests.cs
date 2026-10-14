@@ -29,7 +29,8 @@ public sealed class JournalServiceTests : IDisposable
 
     private static SearchResult OfflineBook(string key, string title, string? coverUrl = null) => new(
         ExternalId: key, Title: title, Subtitle: null, Author: "Frank Herbert", Isbn: null, Publisher: null,
-        Description: "Sand, and the people of it.", PublishedDate: "1965", PageCount: 412, CoverUrl: coverUrl);
+        Description: "Sand, and the people of it.", PublishedDate: "1965", PageCount: 412, CoverUrl: coverUrl,
+        CoverId: null, EditionKey: null);
 
     private string Folder(string name) => Directory.CreateDirectory(Path.Combine(_dir, name)).FullName;
 
