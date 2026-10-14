@@ -45,8 +45,8 @@ internal sealed class Typewriter(RichEditBox box)
     /// </summary>
     public void KeepClear(double lines, double linePitch)
     {
-        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine() is not { } line) return;
-        var room = lines * Math.Max(line.Height, linePitch); // the caret is a row high; a line has its space after too
+        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine(linePitch) is not { } line) return;
+        var room = lines * (linePitch > 0 ? linePitch : line.Height); // a line has its space after too; the caret is only a row high
         var (top, bottom) = (line.Top - room, line.Top + line.Height + room);
         if (bottom - top > scroller.ViewportHeight) return;
         var target = scroller.VerticalOffset;
@@ -64,8 +64,8 @@ internal sealed class Typewriter(RichEditBox box)
     /// </summary>
     public (double Above, double Below)? Room(double linePitch)
     {
-        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine() is not { } line) return null;
-        var pitch = Math.Max(line.Height, linePitch);
+        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine(linePitch) is not { } line) return null;
+        var pitch = linePitch > 0 ? linePitch : line.Height;
         var above = (line.Top - scroller.VerticalOffset) / pitch;
         var below = (scroller.VerticalOffset + scroller.ViewportHeight - line.Top - line.Height) / pitch;
         return (above, below);
@@ -88,10 +88,18 @@ internal sealed class Typewriter(RichEditBox box)
     private double? CaretY() => CaretLine() is { } line ? line.Top + line.Height / 2 : null;
 
     /// <summary>The top and height of the caret's line, in pixels from the top of the text; null if it can't be told.</summary>
-    private (double Top, double Height)? CaretLine()
+    /// <remarks>
+    /// On the last line RichEdit counts the room left below the text (its
+    /// paragraph's space after) as part of the line, hundreds of pixels; a
+    /// line is never taken as more than two of <paramref name="linePitch"/>
+    /// (a heading is taller than one, but not that tall).
+    /// </remarks>
+    private (double Top, double Height)? CaretLine(double linePitch = 0)
     {
         box.Document.Selection.GetRect(PointOptions.ClientCoordinates, out var rect, out _);
-        return rect.Height > 0 ? (rect.Y, rect.Height) : null;
+        if (rect.Height <= 0) return null;
+        var height = linePitch > 0 ? Math.Min(rect.Height, 2 * linePitch) : rect.Height;
+        return (rect.Y, height);
     }
 
     private ScrollViewer? Scroller
