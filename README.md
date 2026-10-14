@@ -16,36 +16,39 @@
   <a href="#install">Install</a>
 </p>
 
-Bookshelf keeps three shelves (Reading, Finished and Eventually). Add books from [Open Library](https://openlibrary.org/), note when you started and finished each one, and write your own summary in a calm Markdown writer with focus mode, full screen and autosave. Your journal stays on your computer: there's no account, and nothing you write is ever sent anywhere.
+Bookshelf keeps three shelves (Reading, Finished and Eventually), each a grid of book cards. Add books from [Open Library](https://openlibrary.org/), note when you started and finished each one, and write your own summary in a calm Markdown writer with focus mode, full screen and autosave. Your journal stays on your computer: there's no account, and nothing you write is ever sent anywhere.
 
 > [!NOTE]
 > **The first release, 0.9, is nearly here.** If [the releases page](https://github.com/E36lewis/bookshelf/releases/latest) is still empty, please check back in a few days. 0.9 means "nearly 1.0": everything is in place, and the Mac app is still being tested by real readers before 1.0.
 
 ## Screenshots
 
-Bookshelf is a native app on each system: GTK 4 and libadwaita on Linux, WinUI 3 on Windows, SwiftUI on the Mac. All three share one Rust core. These screenshots use a made-up reader's journal; click any of them to see it full size.
+Bookshelf has one design on all three systems: a header with back, add, the three shelf tabs, search and Settings; each shelf as a grid of book cards; and the same writer and reader. Underneath, each is a native app: GTK 4 and libadwaita on Linux, with GNOME's window controls; WinUI 3 on Windows, with its title bar and keys; SwiftUI on the Mac, with its menu bar, keyboard shortcuts and Settings window. All three share one Rust core. These screenshots use a made-up reader's journal; click any of them to see it full size.
 
 | | Linux | Windows | Mac |
 |---|---|---|---|
-| **Shelf** | ![Bookshelf on Linux in dark mode, showing the Finished shelf: books grouped by year with their dates and the first lines of each summary](site/screenshots/linux-shelf.webp) | ![Bookshelf on Windows showing the Finished shelf, with Reading, Finished and Eventually in the left pane and books grouped by year](site/screenshots/windows-shelf.webp) | ![Bookshelf on a Mac in dark mode: the sidebar with three shelves, and the Reading shelf with two books and the day of reading each is on](site/screenshots/mac-shelf.webp) |
-| **A book's page** | ![The page for Piranesi on Linux: details, an About this book section, the reading dates, and the start of the summary](site/screenshots/linux-book.webp) | ![The page for Dune on Windows: Edit and Read buttons, the reading dates with calendars, and the summary](site/screenshots/windows-book.webp) | ![Bookshelf on a Mac: the Finished shelf with Piranesi selected, and its page beside it with the cover, reading dates and summary](site/screenshots/mac-book.webp) |
+| **Shelf** | ![Bookshelf on Linux in dark mode, showing the Finished shelf: three book cards under 2026, each with its cover, author, dates and the first lines of the summary](site/screenshots/linux-shelf.webp) | ![Bookshelf on Windows showing the Finished shelf: the shelf tabs, search and Settings at the top, and books as cards grouped by year](site/screenshots/windows-shelf.webp) | ![Bookshelf on a Mac showing the Finished shelf: a row of three book cards under 2026, and two more under 2025, centred](site/screenshots/mac-shelf.webp) |
+| **Books** | ![The page for Piranesi on Linux: the cover, details, an About this book panel, the reading dates, and Read and Edit buttons above the summary](site/screenshots/linux-book.webp) | ![Adding a book on Windows: search results for le guin, each with a small cover, and The Dispossessed with its subtitle](site/screenshots/windows-search.webp) | ![The page for Piranesi on a Mac in dark mode: the cover, details, the reading dates, and Read and Edit buttons above the summary](site/screenshots/mac-book.webp) |
 | **Writing** | ![The writing page on Linux: a formatting bar above one column of Markdown text with dimmed marks](site/screenshots/linux-writer.webp) | ![The writing page on Windows in dark mode: a formatting bar above Markdown notes with headings, a list and a quote](site/screenshots/windows-writer.webp) | ![The writing page on a Mac: a formatting toolbar above Markdown text with a heading and a numbered list](site/screenshots/mac-writer.webp) |
-| **Reading** | ![The reading page on Linux in dark mode: the summary of Piranesi set in a serif font](site/screenshots/linux-reader.webp) | ![The reading page on Windows: the summary of Dune set in a serif font, with a list](site/screenshots/windows-reader.webp) | ![The reading page on a Mac in dark mode: the summary of Piranesi with headings and a numbered list](site/screenshots/mac-reader.webp) |
+| **Reading** | ![The reading page on Linux in dark mode: the summary of Piranesi set in a serif font](site/screenshots/linux-reader.webp) | ![The reading page on Windows in full screen: the summary of Dune set in a serif font, with a list](site/screenshots/windows-reader.webp) | ![The reading page on a Mac in dark mode: the summary of Piranesi with headings and a numbered list](site/screenshots/mac-reader.webp) |
 
 ## Features
 
-- **Three shelves**: Reading, Finished (grouped by year, with this year's count) and Eventually.
-- **Add any book** from Open Library by title, author or ISBN. The cover and description come with it.
+- **Three shelves**: Reading, Finished (grouped by year, with this year's count) and Eventually, each a grid of book cards with the cover, the dates and the start of your summary.
+- **Add any book** from Open Library by title, author or ISBN, with a small cover beside each result. You get the edition that matched, so its subtitle and the right cover come with it.
 - **Reading dates**: when you started and finished, and how many days it took. A book's dates decide its shelf.
 - **A calm writer**: one column of text, Markdown with the marks dimmed, and gentle prompts on an empty page.
+- **Lists that keep going**: Enter (Return on a Mac) starts the next item and, on an empty item, ends the list. Tab and Shift+Tab nest an item and bring it back out.
+- **Room to write**: as you type, about three lines stay clear above and below the line you're on.
 - **Focus mode** (typewriter-style) and **full screen**.
 - **Saves as you type.** If saving ever fails, your words are kept safe, never thrown away.
 - **A reader** that shows your summary nicely set, with nothing around it.
 - **Search** titles, authors and everything you've written, across all three shelves.
 - **Read it again**: a fresh entry for a favourite, with its own dates and summary.
-- **A profile for everyone** who reads in your home.
+- **A profile for everyone** who reads in your home. Go back from the shelves to *Who's reading?* to switch.
 - **Make it yours**: light or dark, eight accent colors or any you like, and your choice of font, text size, line spacing and page width.
 - **Daily backups** (the last seven, kept wherever you like) and **export** of every summary as a Markdown file.
+- **One design everywhere**: the same shelves, writer and reader on Linux, Windows and Mac.
 
 The [user manual](MANUAL.md) explains everything. It's also built into the app: <kbd>F1</kbd> on Linux and Windows, <kbd>⌘?</kbd> on a Mac.
 
