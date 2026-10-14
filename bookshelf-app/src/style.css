@@ -20,34 +20,30 @@ statuspage > scrolledwindow > viewport > box > label.title {
 .page-title { font-size: 1.8em; font-weight: 700; }
 .page-count { color: @journal_muted; font-size: 0.95em; }
 
-/* ---------- entries (the home lists) ---------- */
-list.entries { background: none; }
-
-list.entries > row.entry {
-  background-color: @journal_card;
+/* ---------- the shelf: a grid of book cards (shelf_grid.rs) ---------- */
+button.book-card {
+  padding: 16px;
   border: 1px solid @journal_rule;
   border-radius: 16px;
-  margin: 0 0 12px 0;
-  padding: 16px;
-  box-shadow: none;
-  transition: box-shadow 160ms ease, border-color 160ms ease;
-}
-list.entries > row.entry:hover {
   background-color: @journal_card;
+  background-image: none;
+  color: @journal_ink;
+  font-weight: normal;
+  box-shadow: none;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+button.book-card:hover {
   border-color: @journal_edge;
-  box-shadow: 0 6px 18px alpha(black, 0.08);
+  background-color: mix(@journal_card, @journal_ink, 0.025);
 }
-list.entries > row.entry:focus:focus-visible {
-  outline: 2px solid @accent_color;
-  outline-offset: 2px;
-}
+button.book-card:active { background-color: mix(@journal_card, @journal_ink, 0.06); }
 
-.entry-title   { font-size: 1.2em; font-weight: 700; line-height: 1.2; }
-.entry-byline  { color: @journal_muted; }
-.entry-meta    { color: @accent_color; font-size: 0.78em; font-weight: 700;
-                 letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
-.entry-excerpt { color: alpha(@journal_ink, 0.82); line-height: 1.4; margin-top: 8px; }
-.entry-excerpt-empty { color: @journal_muted; font-style: italic; margin-top: 8px; }
+.entry-title   { font-size: 1.1em; font-weight: 700; }
+.entry-byline  { color: @journal_muted; font-size: 0.95em; }
+.entry-meta    { color: @accent_color; font-size: 0.73em; font-weight: 700;
+                letter-spacing: 0.03em; text-transform: uppercase; margin-top: 4px; }
+.entry-excerpt { color: alpha(@journal_ink, 0.82); font-size: 0.9em; line-height: 1.1; margin-top: 8px; }
+.entry-excerpt-empty { color: @journal_muted; font-size: 0.9em; font-style: italic; margin-top: 8px; }
 
 /* ---------- covers ---------- */
 .cover {
