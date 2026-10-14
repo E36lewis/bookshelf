@@ -6,7 +6,8 @@
 
     <!-- The shell, as in the GTK app: one row across the top of the window
          (it's also the title bar: Back and Add a book on the left, the
-         three shelves in the middle, Search and Settings on the right), the
+         three shelves in the middle on a shelf and the page's title
+         elsewhere, Search and Settings on the right), the
          search under it when it's open, pages in the frame, and notices
          (like "Removed · Undo") at the bottom. -->
     <Grid x:Name="Root" Background="{ThemeResource JournalPaperBrush}">
@@ -87,7 +88,19 @@
                     Visibility="Collapsed" />
             </StackPanel>
 
-            <!-- The shelves: a tab list to Narrator (Controls/ShelfTabs.cs). -->
+            <!-- Any other page: its title (the book's, or Settings), as the GTK app's header shows it. -->
+            <TextBlock
+                x:Name="PageTitle"
+                Grid.Column="2"
+                MaxWidth="420"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource JournalInkBrush}"
+                TextTrimming="CharacterEllipsis"
+                Visibility="Collapsed" />
+
+            <!-- The shelves, on a shelf: a tab list to Narrator (Controls/ShelfTabs.cs). -->
             <controls:ShelfTabList
                 x:Name="Tabs"
                 Grid.Column="2"

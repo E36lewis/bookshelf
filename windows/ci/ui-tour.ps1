@@ -1028,7 +1028,15 @@ Step 'Writer: 10,000 words, typing in the middle stays fast' {
         Start-Sleep -Milliseconds 500
         $words = try { Status-Words } catch { 0 }
     } while ($words -lt 10000 -and $clock.Elapsed.TotalSeconds -lt 60)
-    if ($words -lt 10000) { throw "only $words words after pasting" }
+    if ($words -lt 10000) {
+        # Where Ctrl+V went, from the app's notes (demo journals only; no text).
+        $log = Join-Path $env:LOCALAPPDATA "$WindowTitle\logs\startup.log"
+        if (Test-Path $log) {
+            Select-String -Path $log -Pattern 'Keys: Ctrl\+V|a paste reached' | Select-Object -Last 6 | ForEach-Object { Write-Host "      $($_.Line.Trim())" }
+        }
+        Write-Host ("      the clipboard here: " + ((Get-Clipboard -Raw) -as [string]).Length + " characters")
+        throw "only $words words after pasting"
+    }
     $clock = [Diagnostics.Stopwatch]::StartNew()
     do {
         Start-Sleep -Milliseconds 500
