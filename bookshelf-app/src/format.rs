@@ -1,9 +1,11 @@
 //! The formatting bar. Every button just edits the markdown text in the
 //! buffer (`**bold**`, `# Heading`, ...), so typing the marks by hand and
 //! using the buttons are interchangeable. The edits themselves come from
-//! `bookshelf_core::text::edit`; this file is the GTK glue.
+//! `bookshelf_core::text::edit` (and the list keys' from `text::lists`);
+//! this file is the GTK glue.
 
 use bookshelf_core::text::edit::{format_edit, FormatAction, TextEdit};
+use bookshelf_core::text::lists::{list_edit, ListKey};
 use gtk::prelude::*;
 
 pub fn bar(tv: &gtk::TextView) -> gtk::Box {
@@ -147,6 +149,26 @@ pub fn apply(buf: &gtk::TextBuffer, action: FormatAction) {
     if let (Some(edit), false) = (&edit, inline) {
         select(buf, edit.new_sel_start as i32, edit.new_sel_end as i32);
     }
+}
+
+/// A list key (Enter, Tab or Shift+Tab) in a list: the next item, nesting,
+/// un-nesting, as one undo step. False when the key isn't the list's here,
+/// so it does what it always does.
+pub fn list_key(buf: &gtk::TextBuffer, key: ListKey) -> bool {
+    let (a, b) = selection_or_caret(buf);
+    let text = buf.text(&buf.start_iter(), &buf.end_iter(), false);
+    let Some(edit) = list_edit(&text, a as usize, b as usize, key) else {
+        return false;
+    };
+    // An edit of nothing: the key is the list's, with nothing to do.
+    if edit.start != edit.end || !edit.replacement.is_empty() {
+        buf.begin_user_action();
+        delete(buf, edit.start as i32, edit.end as i32);
+        insert(buf, edit.start as i32, &edit.replacement);
+        buf.end_user_action();
+    }
+    select(buf, edit.new_sel_start as i32, edit.new_sel_end as i32);
+    true
 }
 
 // The edit is applied in the same small steps the bar always used, because

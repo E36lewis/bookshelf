@@ -1,7 +1,8 @@
 //! The writing page: a quiet, centered column of monospace text in the
 //! spirit of iA Writer. Markdown marks are dimmed, an optional focus mode
-//! dims everything but the current sentence (and keeps it mid-screen), and
-//! the text autosaves as you type.
+//! dims everything but the current sentence (and keeps it mid-screen), lists
+//! carry on with Enter and nest with Tab, the caret keeps a few lines clear
+//! of the page's edges, and the text autosaves as you type.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -12,6 +13,7 @@ use bookshelf_core::export;
 use bookshelf_core::models::*;
 use bookshelf_core::text::edit::FormatAction;
 use bookshelf_core::text::highlight::{self, StyleKind};
+use bookshelf_core::text::lists::ListKey;
 use bookshelf_core::writer::{prompts, word_count, WriterLayout, AUTOSAVE_MS};
 use gtk::glib;
 
@@ -260,6 +262,42 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         focus_btn.set_active(true);
     }
 
+    // ---- list keys ------------------------------------------------------
+    // Enter carries a list on, Tab and Shift+Tab nest and un-nest its items
+    // (bookshelf_core::text::lists). Anywhere else, and while an input
+    // method is composing, the keys do what they always do.
+    {
+        let composing = Rc::new(Cell::new(false));
+        {
+            let composing = composing.clone();
+            text_view.connect_preedit_changed(move |_, preedit| {
+                composing.set(!preedit.is_empty());
+            });
+        }
+        let keys = gtk::EventControllerKey::new();
+        keys.set_propagation_phase(gtk::PropagationPhase::Capture); // before the text view's own
+        let buffer = buffer.downgrade(); // the view owns the controller and the buffer
+        keys.connect_key_pressed(move |_, key, _, state| {
+            use gtk::gdk::{Key, ModifierType as M};
+            let held = state & (M::SHIFT_MASK | M::CONTROL_MASK | M::ALT_MASK | M::SUPER_MASK);
+            let list_key = match key {
+                Key::Return | Key::KP_Enter if held.is_empty() => ListKey::Enter,
+                Key::Tab | Key::KP_Tab if held.is_empty() => ListKey::Indent,
+                Key::ISO_Left_Tab | Key::Tab | Key::KP_Tab if held == M::SHIFT_MASK => {
+                    ListKey::Outdent
+                }
+                _ => return glib::Propagation::Proceed,
+            };
+            match buffer.upgrade() {
+                Some(b) if !composing.get() && format::list_key(&b, list_key) => {
+                    glib::Propagation::Stop
+                }
+                _ => glib::Propagation::Proceed,
+            }
+        });
+        text_view.add_controller(keys);
+    }
+
     // ---- colors follow the theme ---------------------------------------
     {
         let tags = tags.clone();
@@ -310,6 +348,52 @@ pub fn writer_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .vexpand(true)
         .css_classes(["writer-surface"])
         .build();
+
+    // ---- room around the caret --------------------------------------------
+    // After an edit or a caret move from the keyboard (never a scroll of the
+    // mouse's), a few lines stay clear between the caret and the page's top
+    // and bottom; the view's bottom margin makes that room below the last
+    // line. Focus mode keeps the line mid-page instead.
+    {
+        let queued = Rc::new(Cell::new(false));
+        // The room wanted reaches past the page as it was last laid out (the
+        // text grew): finished once the page has grown too.
+        let unfinished = Rc::new(Cell::new(false));
+        let focus = focus.clone();
+        let view = text_view.downgrade(); // weak: the handlers live on the view, buffer and page
+        let page = scroll.downgrade();
+        let keep_room: Rc<dyn Fn()> = {
+            let unfinished = unfinished.clone();
+            let view = view.clone();
+            let page = page.clone();
+            Rc::new(move || {
+                if focus.get() || queued.replace(true) {
+                    return;
+                }
+                let queued = queued.clone();
+                let unfinished = unfinished.clone();
+                let view = view.clone();
+                let page = page.clone();
+                // Once per burst of changes and moves.
+                glib::idle_add_local_once(move || {
+                    queued.set(false);
+                    if let (Some(tv), Some(scroll)) = (view.upgrade(), page.upgrade()) {
+                        unfinished.set(!keep_caret_clear(&tv, &scroll));
+                    }
+                });
+            })
+        };
+        let on_change = keep_room.clone();
+        buffer.connect_changed(move |_| on_change());
+        text_view.connect_move_cursor(move |_, _, _, _| keep_room());
+        scroll.vadjustment().connect_changed(move |_| {
+            if let (true, Some(tv), Some(scroll)) =
+                (unfinished.get(), view.upgrade(), page.upgrade())
+            {
+                unfinished.set(!keep_caret_clear(&tv, &scroll));
+            }
+        });
+    }
 
     let toolbar = adw::ToolbarView::new();
     toolbar.set_top_bar_style(adw::ToolbarStyle::Flat);
@@ -547,6 +631,43 @@ fn set_status(label: &gtk::Label, words: usize, saved: bool) {
     let noun = if words == 1 { "word" } else { "words" };
     let state = if saved { "Saved" } else { "Saving…" };
     label.set_label(&format!("{words} {noun}  ·  {state}"));
+}
+
+/// Lines kept clear between the caret and the top and bottom of the page.
+const CARET_ROOM_LINES: f64 = 3.0;
+
+/// Scrolls just enough that `CARET_ROOM_LINES` lines of the page show
+/// above and below the caret's line (as far as the window allows). False
+/// if the page, as last laid out, ends too soon for that: the text has just
+/// grown, and it's worth another go once the page has too.
+fn keep_caret_clear(tv: &gtk::TextView, scroll: &gtk::ScrolledWindow) -> bool {
+    let buffer = tv.buffer();
+    let caret = tv.iter_location(&buffer.iter_at_mark(&buffer.get_insert()));
+    let (x, y) = tv.buffer_to_window_coords(gtk::TextWindowType::Widget, caret.x(), caret.y());
+    // The text view sits in a clamp in the scrolled window, so the caret is
+    // found in the scrolled window's own coordinates: 0 is the page's top.
+    let at = gtk::graphene::Point::new(x as f32, y as f32);
+    let Some(at) = tv.compute_point(scroll, &at) else {
+        return true;
+    };
+    let line = f64::from(caret.height().max(1));
+    let room = CARET_ROOM_LINES * line;
+    let adj = scroll.vadjustment();
+    let page = adj.page_size();
+    let (top, bottom) = (f64::from(at.y()) - room, f64::from(at.y()) + line + room);
+    let by = if bottom > page && top - (bottom - page) >= 0.0 {
+        bottom - page
+    } else if top < 0.0 && bottom - top <= page {
+        top
+    } else {
+        return true; // already clear, or a window too short for the room
+    };
+    let wanted = adj.value() + by;
+    let value = wanted.clamp(adj.lower(), adj.upper() - page);
+    if (value - adj.value()).abs() >= 1.0 {
+        adj.set_value(value);
+    }
+    wanted <= adj.upper() - page + 1.0
 }
 
 /// Typewriter scrolling: keep the line being written in the middle.
