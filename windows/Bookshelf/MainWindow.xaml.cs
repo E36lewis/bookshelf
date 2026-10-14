@@ -16,6 +16,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows.System;
@@ -45,6 +46,7 @@ public sealed partial class MainWindow : Window
     private bool _compactTabs; // icons only: the window is too narrow for the shelves' names
     private double _tabsFullWidth; // the tabs with their names
     private RectInt32[] _passthrough = [];
+    private string? _titled; // the entry whose title the header shows (or is fetching)
 
     internal MainWindow(LaunchOptions options)
     {
@@ -75,6 +77,7 @@ public sealed partial class MainWindow : Window
         SetTips();
         UpdateChrome();
         AddKeyboardShortcuts();
+        if (options.DemoJournal) WatchPasteKeys();
         StartupLog.Step("Checking the bundled fonts");
         Look.LoadFonts();
         Look.Apply(null, Root, AppWindow);
@@ -253,8 +256,10 @@ public sealed partial class MainWindow : Window
         BackButton.Visibility = ContentFrame.CanGoBack ? Visibility.Visible : Visibility.Collapsed;
         var shelfButtons = profile ? Visibility.Visible : Visibility.Collapsed;
         AddButton.Visibility = shelfButtons;
-        Tabs.Visibility = shelfButtons;
         RightButtons.Visibility = shelfButtons;
+        var onShelf = ContentFrame.Content is ShelfPage;
+        Tabs.Visibility = profile && onShelf ? Visibility.Visible : Visibility.Collapsed;
+        PageTitle.Visibility = profile && !onShelf ? Visibility.Visible : Visibility.Collapsed;
         AppTitle.Visibility = profile ? Visibility.Collapsed : Visibility.Visible;
         SearchBar.Visibility = profile && !fullScreen && SearchButton.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         PageBackdrop.Visibility = (ContentFrame.Content is ReaderPage or WriterPage) ? Visibility.Visible : Visibility.Collapsed;
@@ -325,7 +330,7 @@ public sealed partial class MainWindow : Window
         var room = Header.ActualWidth - leftSide - rightSide;
         if (Tabs.Visibility == Visibility.Visible && _tabsFullWidth > 0) SetCompactTabs(room < _tabsFullWidth + 24);
 
-        foreach (var middle in new FrameworkElement[] { Tabs, AppTitle })
+        foreach (var middle in new FrameworkElement[] { Tabs, PageTitle, AppTitle })
         {
             var spare = Math.Max(0, room - middle.ActualWidth);
             var shift = Math.Clamp(rightSide - leftSide, -spare, spare);
@@ -531,7 +536,9 @@ public sealed partial class MainWindow : Window
             ApplyLook();
         }
         if (e.Content is not (ReaderPage or WriterPage)) SetFullScreen(false);
+        ShowPageTitle(e);
         UpdateChrome();
+        if (_options.DemoJournal && e.Content is WriterPage writer) WatchPaste(writer);
         // The writing and reading pages, Settings and the profiles focus what they need themselves.
         if (e.Content is ShelfPage or BookPage or ManualPage)
         {
@@ -551,6 +558,42 @@ public sealed partial class MainWindow : Window
         var focused = FocusManager.GetFocusedElement(root);
         if (focused is not null && !ReferenceEquals(focused, BackButton)) return;
         if (FocusManager.FindFirstFocusableElement(page) is Control first) first.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>The header's title for a page that isn't a shelf: the book's, or the page's name.</summary>
+    private void ShowPageTitle(NavigationEventArgs e)
+    {
+        _titled = null;
+        switch (e.Content)
+        {
+            case SettingsPage:
+                PageTitle.Text = "Settings";
+                break;
+            case ManualPage:
+                PageTitle.Text = "User manual";
+                break;
+            case BookPage or ReaderPage or WriterPage when e.Parameter is string id && _session?.Profile is not null:
+                PageTitle.Text = "";
+                _titled = id;
+                _ = ShowBookTitleAsync(id);
+                break;
+            default:
+                PageTitle.Text = "";
+                break;
+        }
+    }
+
+    private async Task ShowBookTitleAsync(string id)
+    {
+        try
+        {
+            var entry = await Session.Journal.EntryAsync(id);
+            if (_titled == id) PageTitle.Text = entry.Book.Title;
+        }
+        catch (CoreException)
+        {
+            // The page says what went wrong; the header just has no title.
+        }
     }
 
     private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
@@ -826,6 +869,53 @@ public sealed partial class MainWindow : Window
         _canClose = true;
         Close();
     }
+
+    // ---- diagnostics (demo journals only) -----------------------------------------
+
+    /// <summary>
+    /// Notes in startup.log where Ctrl+V goes: the focused element on the
+    /// way down and back up, whether something handled it, and whether the
+    /// window is in front (the clipboard is only read by the app in front).
+    /// For the UI tour's paste; demo journals only, and no text is logged.
+    /// </summary>
+    private void WatchPasteKeys()
+    {
+        Root.AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler((_, e) => NotePasteKey(e, "on its way to")), true);
+        Root.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((_, e) => NotePasteKey(e, "back from")), true);
+    }
+
+    private void NotePasteKey(KeyRoutedEventArgs e, string where)
+    {
+        if (e.Key != VirtualKey.V || Keys.Modifiers() != VirtualKeyModifiers.Control || Root.XamlRoot is not { } root) return;
+        var focused = FocusManager.GetFocusedElement(root) as FrameworkElement;
+        var front = GetForegroundWindow() == WindowNative.GetWindowHandle(this);
+        StartupLog.Step($"Keys: Ctrl+V {where} {focused?.GetType().Name ?? "nothing"} '{focused?.Name}' (handled: {e.Handled}, window in front: {front})");
+    }
+
+    /// <summary>Notes whether a paste reaches the writing page's editor, and what the clipboard holds (its size and formats only).</summary>
+    private static void WatchPaste(WriterPage page)
+    {
+        if (page.FindName("Editor") is not RichEditBox editor) return;
+        editor.Paste += async (_, e) =>
+        {
+            var handled = e.Handled; // before the editor's own handler, if this one runs first
+            try
+            {
+                await Task.Delay(1500); // after the editor's own read, so as not to get in its way
+                var content = Clipboard.GetContent();
+                var formats = string.Join(", ", content.AvailableFormats);
+                var size = content.Contains(StandardDataFormats.Text) ? $"{(await content.GetTextAsync()).Length:N0} characters of text" : "no text";
+                StartupLog.Step($"Writer: a paste reached the editor (handled: {handled}); the clipboard has {size} ({formats})");
+            }
+            catch (Exception ex)
+            {
+                StartupLog.Step($"Writer: a paste reached the editor, but the clipboard can't be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        };
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr window);
