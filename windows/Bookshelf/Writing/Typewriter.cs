@@ -57,6 +57,20 @@ internal sealed class Typewriter(RichEditBox box)
         scroller.ChangeView(null, target, null, disableAnimation: true);
     }
 
+    /// <summary>
+    /// How many lines of the page show above and below the caret's line, in
+    /// lines of <paramref name="linePitch"/>; null if it can't be told. For
+    /// the UI tour, whose UI Automation rectangles lag the box's scrolling.
+    /// </summary>
+    public (double Above, double Below)? Room(double linePitch)
+    {
+        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine() is not { } line) return null;
+        var pitch = Math.Max(line.Height, linePitch);
+        var above = (line.Top - scroller.VerticalOffset) / pitch;
+        var below = (scroller.VerticalOffset + scroller.ViewportHeight - line.Top - line.Height) / pitch;
+        return (above, below);
+    }
+
     private void Note(string what)
     {
         if (!LogScrolls || _logged >= 12) return;

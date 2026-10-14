@@ -752,11 +752,16 @@ public sealed class WritingBox
             if (_text.Length > ProbedLength || _caretUpdateQueued || _backgroundQueued || Read() != _text) return;
             var look = DescribeLook();
             if (look == _lastLook) return;
-            StartupLog.Step(_restyled || _lastLook.Length == 0
-                ? $"Writer look: {look}"
-                : $"Writer look changed without a restyle of ours: {look} (was {_lastLook})");
+            // The room around the caret changes with scrolling: logged only with the rest.
+            var style = look.Split(" roomAbove=")[0];
+            if (style != _lastLook.Split(" roomAbove=")[0])
+            {
+                StartupLog.Step(_restyled || _lastLook.Length == 0
+                    ? $"Writer look: {style}"
+                    : $"Writer look changed without a restyle of ours: {style} (was {_lastLook.Split(" roomAbove=")[0]})");
+                _restyled = false;
+            }
             _lastLook = look;
-            _restyled = false;
             Looked?.Invoke(look);
         };
         timer.Start();
@@ -816,6 +821,10 @@ public sealed class WritingBox
             : "focus=off";
         var sized = string.Join(" ", sizes.Select(s =>
             (s.Key == 0 ? "body" : $"h{s.Key}") + "=" + s.Value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)));
-        return $"{focus} dimmed={dimmed} sizes {sized}";
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var room = _typewriter.Room(_spacing?.LinePitch ?? 0) is { } r
+            ? $" roomAbove={r.Above.ToString("F1", inv)} roomBelow={r.Below.ToString("F1", inv)}"
+            : "";
+        return $"{focus} dimmed={dimmed} sizes {sized}{room}";
     }
 }

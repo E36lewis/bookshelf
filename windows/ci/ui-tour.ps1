@@ -334,6 +334,18 @@ function Line-Room([string] $Text, [string] $Before) {
 # dimmed: should be 0), litOutside (characters outside it not dimmed:
 # should be 0), dimmed (all dimmed characters), and the text size of the
 # body and of each heading level (body, h1, h2, h3).
+# The writer's look, once $Ready says it has settled (up to 5 s; the probe
+# reads it back every 300 ms).
+function Wait-Room([scriptblock] $Ready) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        Start-Sleep -Milliseconds 300
+        $v = Look-Values
+        if (& $Ready $v) { return $v }
+    } while ($clock.Elapsed.TotalSeconds -lt 5)
+    throw "the writer's look never said how much room the caret has: '$($v.raw)'"
+}
+
 function Look-Values {
     $raw = (Find-Id 'WriterLook').Current.Name
     $v = @{ raw = $raw }
@@ -870,17 +882,17 @@ Step 'Writer: the caret keeps a few lines clear of the bottom and the top' {
     Keys ((1..30 | ForEach-Object { 'row{0:D2}{{ENTER}}' -f $_ }) -join '')
     Keys 'the end'
     Wait-EditorEnd "row30`nthe end" | Out-Null
-    Start-Sleep -Seconds 1 # as for focus mode: UI Automation's places lag a scroll
-    $room = Line-Room 'the end' 'row30'
-    Write-Host ("      at the end: {0:F1} lines below the caret's line ({1:F0} px each)" -f $room.Below, $room.Pitch)
-    if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret's line" -f $room.Below) }
+    # The room as the writer measures it against its own scroller: UI
+    # Automation's rectangles for a RichEditBox's text lag its scrolling.
+    $room = Wait-Room { param($v) $v.ContainsKey('roomBelow') }
+    Write-Host ("      at the end: {0} lines below the caret's line, {1} above" -f $room.roomBelow, $room.roomAbove)
+    if ([double]$room.roomBelow -lt 2) { throw ("only {0} lines below the caret's line" -f $room.roomBelow) }
     Snap '41b-writer-caret-room'
     # 25 lines up, to row06.
     Keys '{UP 25}'
-    Start-Sleep -Seconds 1
-    $room = Line-Room 'row06' 'row05'
-    Write-Host ("      25 lines up: {0:F1} lines above the caret's line" -f $room.Above)
-    if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret's line" -f $room.Above) }
+    $room = Wait-Room { param($v) $v.ContainsKey('roomAbove') -and [double]$v.roomBelow -gt 5 }
+    Write-Host ("      25 lines up: {0} lines above the caret's line" -f $room.roomAbove)
+    if ([double]$room.roomAbove -lt 2) { throw ("only {0} lines above the caret's line" -f $room.roomAbove) }
     Keys '%{LEFT}'
     Wait-Name 'BookTitle' 'Middlemarch' | Out-Null
 }
