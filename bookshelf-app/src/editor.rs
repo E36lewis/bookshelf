@@ -174,8 +174,12 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .hexpand(true)
         .css_classes(["section-title"])
         .build();
-    let write_btn = gtk::Button::builder()
+    let write_label = adw::ButtonContent::builder()
+        .icon_name("document-edit-symbolic")
         .label("Write")
+        .build();
+    let write_btn = gtk::Button::builder()
+        .child(&write_label)
         .valign(gtk::Align::Center)
         .tooltip_text("Write or edit your summary (E)")
         .css_classes(["suggested-action"])
@@ -184,7 +188,6 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .label("Read")
         .valign(gtk::Align::Center)
         .tooltip_text("Distraction-free reading, with full screen (R)")
-        .css_classes(["flat"])
         .build();
     let summary_head = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
@@ -211,7 +214,7 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         .build();
     card.append(&preview);
     card.set_cursor_from_name(Some("pointer"));
-    refresh_preview(ctx, &summary.id, &preview, &write_btn, &read_btn);
+    refresh_preview(ctx, &summary.id, &preview, &write_label, &read_btn);
 
     // ---- assemble page --------------------------------------------------
     let column = gtk::Box::builder()
@@ -328,9 +331,11 @@ pub fn summary_page(ctx: &Rc<Ctx>, summary_id: &str) -> adw::NavigationPage {
         let ctx = ctx.clone();
         let id = summary.id.clone();
         let preview = preview.clone();
-        let write_btn = write_btn.clone();
+        let write_label = write_label.clone();
         let read_btn = read_btn.clone();
-        page.connect_showing(move |_| refresh_preview(&ctx, &id, &preview, &write_btn, &read_btn));
+        page.connect_showing(move |_| {
+            refresh_preview(&ctx, &id, &preview, &write_label, &read_btn)
+        });
     }
     // Start with the focus on the page itself, not the selectable title,
     // which would show a text cursor. Arrow keys then scroll right away.
@@ -428,7 +433,7 @@ fn refresh_preview(
     ctx: &Ctx,
     id: &str,
     preview: &gtk::Label,
-    write_btn: &gtk::Button,
+    write_label: &adw::ButtonContent,
     read_btn: &gtk::Button,
 ) {
     let body = get_summary(&ctx.conn, id)
@@ -438,11 +443,11 @@ fn refresh_preview(
         preview.set_markup(
             "<span alpha=\"55%\"><i>Nothing written yet. Tap Write to begin.</i></span>",
         );
-        write_btn.set_label("Write");
+        write_label.set_label("Write");
         read_btn.set_visible(false); // nothing to read yet
     } else {
         preview.set_markup(&markdown::to_pango(&body));
-        write_btn.set_label("Edit");
+        write_label.set_label("Edit");
         read_btn.set_visible(true);
     }
 }

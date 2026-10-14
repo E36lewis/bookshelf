@@ -25,7 +25,9 @@ use gtk::glib;
 use crate::Ctx;
 
 /// What to show, in order, each in light and then dark.
-const STEPS: [&str; 4] = ["shelf", "book", "writer", "reader"];
+const STEPS: [&str; 10] = [
+    "profiles", "shelf", "tabs", "search", "book", "settings", "dialog", "add", "writer", "reader",
+];
 
 pub(crate) fn run(ctx: &Rc<Ctx>, window: &adw::ApplicationWindow) {
     let Some(out) = std::env::var_os("BOOKSHELF_SCREENSHOTS").map(PathBuf::from) else {
@@ -54,29 +56,204 @@ pub(crate) fn run(ctx: &Rc<Ctx>, window: &adw::ApplicationWindow) {
         pause().await;
         for step in STEPS {
             match step {
+                // Again, now that there are profiles to list.
+                "profiles" => ctx.nav.replace(&[crate::profiles_page(&ctx)]),
                 "shelf" => ctx.nav.push(&crate::home_page(&ctx, &user)),
+                "search" => {
+                    // The shelf's own search: it filters what's there, no network.
+                    if let Some(bar) = showing(&ctx).and_then(|p| find::<gtk::SearchBar>(&p)) {
+                        bar.set_search_mode(true);
+                    }
+                    if let Some(entry) = showing(&ctx).and_then(|p| find::<gtk::SearchEntry>(&p)) {
+                        entry.set_text("le guin");
+                        entry.grab_focus();
+                    }
+                }
+                "tabs" => {
+                    // The keyboard focus on the shelf tabs, to show its ring.
+                    window.set_focus_visible(true);
+                    let header = showing(&ctx).and_then(|p| find::<adw::HeaderBar>(&p));
+                    let tabs = header.and_then(|h| h.title_widget());
+                    if let Some(tab) = tabs.and_then(|t| find::<gtk::ToggleButton>(&t)) {
+                        tab.grab_focus();
+                    }
+                }
                 "book" => ctx.nav.push(&crate::editor::summary_page(&ctx, &piranesi)),
+                "settings" => ctx.nav.push(&crate::settings::settings_page(&ctx, &user)),
+                "dialog" => {
+                    // Settings' "Delete this profile…", to show a dialog's buttons.
+                    ctx.nav.push(&crate::settings::settings_page(&ctx, &user));
+                    pause().await;
+                    let page = showing(&ctx);
+                    let delete =
+                        page.and_then(|p| find_class::<gtk::Button>(&p, "destructive-action"));
+                    if let Some(delete) = delete {
+                        delete.emit_clicked();
+                    }
+                }
+                "add" => ctx.nav.push(&crate::search::search_page(&ctx, &user)),
                 "writer" => ctx.nav.push(&crate::writer::writer_page(&ctx, &piranesi)),
                 _ => ctx.nav.push(&crate::reader::reader_page(&ctx, &piranesi)),
             }
-            for theme in ["light", "dark"] {
-                let mut s = get_settings(&ctx.conn, &user.id).expect("settings");
-                s.theme = theme.into();
-                update_settings(&ctx.conn, &s).expect("settings");
-                crate::theme::apply(&s);
-                pause().await;
-                let file = out.join(format!("linux-{step}-{theme}.png"));
-                match snap(&window, &file) {
-                    Ok(()) => eprintln!("[shots] {}", file.display()),
-                    Err(e) => eprintln!("[shots] {}: {e}", file.display()),
+            pause().await;
+            // Long pages are shown a screenful at a time.
+            let page = ctx.nav.visible_page();
+            let scroller = page.as_ref().and_then(find::<gtk::ScrolledWindow>);
+            let screens = match (step, &scroller) {
+                ("settings", Some(s)) => {
+                    let adj = s.vadjustment();
+                    ((adj.upper() / adj.page_size().max(1.0)).ceil() as usize).clamp(1, 6)
+                }
+                ("add", _) => 2,  // empty, then with results
+                ("tabs", _) => 2, // the shelf tabs as pills, then as one joined group
+                _ => 1,
+            };
+            for screen in 0..screens {
+                let mut name = step.to_string();
+                if screens > 1 {
+                    name = format!("{step}-{}", screen + 1);
+                }
+                if step == "settings" {
+                    if let Some(s) = &scroller {
+                        let adj = s.vadjustment();
+                        adj.set_value(adj.page_size() * screen as f64);
+                    }
+                } else if step == "tabs" && screen == 1 {
+                    joined_tabs(true);
+                } else if step == "add" && screen == 1 {
+                    if let Some(page) = &page {
+                        stand_in_results(page);
+                    }
+                }
+                for theme in ["light", "dark"] {
+                    let mut s = get_settings(&ctx.conn, &user.id).expect("settings");
+                    s.theme = theme.into();
+                    update_settings(&ctx.conn, &s).expect("settings");
+                    crate::theme::apply(&s);
+                    pause().await;
+                    if step == "tabs" {
+                        window.set_focus_visible(true); // GTK drops it after a while
+                        glib::timeout_future(Duration::from_millis(300)).await;
+                    }
+                    let file = out.join(format!("linux-{name}-{theme}.png"));
+                    match snap(&window, &file) {
+                        Ok(()) => eprintln!("[shots] {}", file.display()),
+                        Err(e) => eprintln!("[shots] {}: {e}", file.display()),
+                    }
                 }
             }
-            if step != "shelf" {
-                ctx.nav.pop(); // back to the shelf for the next page
+            match step {
+                "profiles" | "shelf" => {}
+                "search" => {
+                    if let Some(bar) = showing(&ctx).and_then(|p| find::<gtk::SearchBar>(&p)) {
+                        bar.set_search_mode(false); // which also clears it
+                    }
+                }
+                "tabs" => {
+                    joined_tabs(false);
+                    window.set_focus_visible(false);
+                }
+                "dialog" => {
+                    if let Some(dialog) = find::<adw::AlertDialog>(&window) {
+                        dialog.close();
+                    }
+                    pause().await;
+                    ctx.nav.pop();
+                }
+                _ => {
+                    ctx.nav.pop(); // back to the shelf for the next page
+                }
             }
         }
         window.close();
     });
+}
+
+/// The page on top.
+fn showing(ctx: &Ctx) -> Option<gtk::Widget> {
+    ctx.nav.visible_page().map(|p| p.upcast())
+}
+
+/// The first `T` with CSS class `class` inside `root`, depth first.
+fn find_class<T: IsA<gtk::Widget>>(root: &impl IsA<gtk::Widget>, class: &str) -> Option<T> {
+    let mut child = root.as_ref().first_child();
+    while let Some(widget) = child {
+        if widget.has_css_class(class) {
+            if let Ok(found) = widget.clone().downcast::<T>() {
+                return Some(found);
+            }
+        }
+        if let Some(found) = find_class::<T>(&widget, class) {
+            return Some(found);
+        }
+        child = widget.next_sibling();
+    }
+    None
+}
+
+thread_local! {
+    static JOINED: gtk::CssProvider = gtk::CssProvider::new();
+}
+
+/// The other look considered for the shelf tabs: one group, joined, only
+/// its outer corners rounded. Shown for comparison; not in the app.
+fn joined_tabs(on: bool) {
+    let Some(display) = gtk::gdk::Display::default() else {
+        return;
+    };
+    JOINED.with(|provider| {
+        if on {
+            provider.load_from_string(
+                ".shelf-tabs { border-spacing: 0; }\n\
+                 .shelf-tabs > button { border-radius: 0; margin-left: -1px; }\n\
+                 .shelf-tabs > button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }\n\
+                 .shelf-tabs > button:last-child { border-radius: 0 6px 6px 0; }\n",
+            );
+            gtk::style_context_add_provider_for_display(
+                &display,
+                provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 2,
+            );
+        } else {
+            gtk::style_context_remove_provider_for_display(&display, provider);
+        }
+    });
+}
+
+/// The first `T` inside `root`, depth first.
+fn find<T: IsA<gtk::Widget>>(root: &impl IsA<gtk::Widget>) -> Option<T> {
+    let mut child = root.as_ref().first_child();
+    while let Some(widget) = child {
+        if let Ok(found) = widget.clone().downcast::<T>() {
+            return Some(found);
+        }
+        if let Some(found) = find::<T>(&widget) {
+            return Some(found);
+        }
+        child = widget.next_sibling();
+    }
+    None
+}
+
+/// The add-a-book page with results in it. A real search would go to Open
+/// Library, so these rows stand in for them, built the way search.rs does.
+fn stand_in_results(page: &adw::NavigationPage) {
+    let Some(list) = find::<gtk::ListBox>(page) else {
+        return;
+    };
+    for (title, subtitle) in [
+        ("The Dispossessed", "Ursula K. Le Guin · 1974"),
+        ("The Lathe of Heaven", "Ursula K. Le Guin · 1971"),
+        ("The Word for World Is Forest", "Ursula K. Le Guin · 1972"),
+    ] {
+        let row = adw::ActionRow::builder()
+            .title(title)
+            .subtitle(subtitle)
+            .activatable(true)
+            .build();
+        row.add_suffix(&gtk::Image::from_icon_name("list-add-symbolic"));
+        list.append(&row);
+    }
 }
 
 /// The window as a PNG, cropped to its contents (so without its shadow).

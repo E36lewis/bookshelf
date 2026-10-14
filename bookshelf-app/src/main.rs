@@ -301,11 +301,12 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     new_group.add(&email_entry);
 
     let create_btn = gtk::Button::builder()
-        .label("Create profile")
+        .child(&label_then_icon("Create profile", "go-next-symbolic"))
         .halign(gtk::Align::Center)
         .sensitive(false)
         .css_classes(["pill", "suggested-action"])
         .build();
+    create_btn.update_property(&[gtk::accessible::Property::Label("Create profile")]);
     let error = gtk::Label::builder()
         .wrap(true)
         .xalign(0.0)
@@ -444,6 +445,19 @@ fn profiles_page(ctx: &Rc<Ctx>) -> adw::NavigationPage {
     page
 }
 
+/// A button's label with an icon after it ("Create profile →"). Buttons
+/// take their accessible name from the label.
+fn label_then_icon(label: &str, icon: &str) -> gtk::Box {
+    let content = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .spacing(8)
+        .halign(gtk::Align::Center)
+        .build();
+    content.append(&gtk::Label::new(Some(label)));
+    content.append(&gtk::Image::from_icon_name(icon));
+    content
+}
+
 /// Optional contact email, used when creating and editing a profile.
 pub(crate) fn email_row() -> adw::EntryRow {
     const WHY: &str = "Optional. Book details and covers come from Open Library, a free \
@@ -574,7 +588,12 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             .build();
 
         let add_btn = gtk::Button::builder()
-            .label("Add a book")
+            .child(
+                &adw::ButtonContent::builder()
+                    .icon_name("list-add-symbolic")
+                    .label("Add a book")
+                    .build(),
+            )
             .halign(gtk::Align::Center)
             .css_classes(["pill", "suggested-action"])
             .build();
@@ -655,12 +674,8 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     }
     let tabs = Rc::new(tabs);
 
-    let switcher = adw::ViewSwitcher::builder()
-        .stack(&stack)
-        .policy(adw::ViewSwitcherPolicy::Wide)
-        .build();
     let header = adw::HeaderBar::new();
-    header.set_title_widget(Some(&switcher));
+    header.set_title_widget(Some(&shelf_tabs(&stack)));
 
     let add_btn = gtk::Button::builder()
         .icon_name("list-add-symbolic")
@@ -834,6 +849,59 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     *ctx.home_refresher.borrow_mut() = Some(refresh.clone());
     page.connect_showing(move |_| refresh());
     page
+}
+
+/// The three shelves as a row of pill buttons (styled in style.css), in
+/// place of libadwaita's view switcher. Like it, they're a tab list to
+/// assistive technology, one tab selected, and they follow the stack when
+/// something else (the 1/2/3 keys) changes the shelf.
+fn shelf_tabs(stack: &adw::ViewStack) -> gtk::Box {
+    let tabs = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .accessible_role(gtk::AccessibleRole::TabList)
+        .css_classes(["shelf-tabs"])
+        .build();
+    tabs.update_property(&[gtk::accessible::Property::Label("Shelves")]);
+
+    let mut buttons: Vec<(gtk::ToggleButton, &'static str)> = vec![];
+    for (i, (name, title, icon, ..)) in TABS.into_iter().enumerate() {
+        let button = gtk::ToggleButton::builder()
+            .child(
+                &adw::ButtonContent::builder()
+                    .icon_name(icon)
+                    .label(title)
+                    .build(),
+            )
+            .tooltip_text(format!("{title} ({})", i + 1))
+            .accessible_role(gtk::AccessibleRole::Tab)
+            .build();
+        button.update_property(&[gtk::accessible::Property::Label(title)]);
+        button.update_state(&[gtk::accessible::State::Selected(Some(false))]);
+        if let Some((first, _)) = buttons.first() {
+            button.set_group(Some(first));
+        }
+        let stack = stack.downgrade();
+        button.connect_toggled(move |b| {
+            b.update_state(&[gtk::accessible::State::Selected(Some(b.is_active()))]);
+            if let (true, Some(stack)) = (b.is_active(), stack.upgrade()) {
+                stack.set_visible_child_name(name);
+            }
+        });
+        tabs.append(&button);
+        buttons.push((button, name));
+    }
+
+    let sync = move |stack: &adw::ViewStack| {
+        let showing = stack.visible_child_name();
+        for (button, name) in &buttons {
+            if showing.as_deref() == Some(*name) {
+                button.set_active(true); // its group turns the others off
+            }
+        }
+    };
+    sync(stack);
+    stack.connect_visible_child_name_notify(sync);
+    tabs
 }
 
 /// Fills one tab from the core's layout of it (finished books grouped under

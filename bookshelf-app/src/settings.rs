@@ -314,7 +314,12 @@ pub fn settings_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     // ---- danger zone --------------------------------------------------------
     let danger = adw::PreferencesGroup::new();
     let delete_btn = gtk::Button::builder()
-        .label("Delete this profile…")
+        .child(
+            &adw::ButtonContent::builder()
+                .icon_name("user-trash-symbolic")
+                .label("Delete this profile…")
+                .build(),
+        )
         .halign(gtk::Align::Start)
         .css_classes(["destructive-action"])
         .build();

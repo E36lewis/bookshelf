@@ -127,6 +127,7 @@ impl Theme {
         self.fonts.load_from_string(&format!(
             ".journal-title, .page-title, .entry-title, .entry-excerpt, .entry-excerpt-empty,\n\
              .book-title, .book-subtitle, .section-title, .preview-text, .reader-text,\n\
+             preferencesgroup > box > box.header label.heading,\n\
              statuspage > scrolledwindow > viewport > box > label.title {{ font-family: {heading}; }}\n\
              textview.writer, textview.writer text, .writer-preview {{ font-family: {writing}; font-size: {size}pt; }}\n\
              .reader-text {{ font-size: {size}pt; }}\n"
