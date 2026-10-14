@@ -867,12 +867,14 @@ Step 'Writer: the caret keeps a few lines clear of the bottom and the top' {
     Keys ((1..30 | ForEach-Object { 'row{0:D2}{{ENTER}}' -f $_ }) -join '')
     Keys 'the end'
     Wait-EditorEnd "row30`nthe end" | Out-Null
+    Start-Sleep -Seconds 1 # as for focus mode: UI Automation's places lag a scroll
     $room = Line-Room 'the end' 'row30'
     Write-Host ("      at the end: {0:F1} lines below the caret's line ({1:F0} px each)" -f $room.Below, $room.Pitch)
     if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret's line" -f $room.Below) }
     Snap '41b-writer-caret-room'
     # 25 lines up, to row06.
     Keys '{UP 25}'
+    Start-Sleep -Seconds 1
     $room = Line-Room 'row06' 'row05'
     Write-Host ("      25 lines up: {0:F1} lines above the caret's line" -f $room.Above)
     if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret's line" -f $room.Above) }
