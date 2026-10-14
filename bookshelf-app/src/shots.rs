@@ -39,7 +39,7 @@ pub(crate) fn run(ctx: &Rc<Ctx>, window: &adw::ApplicationWindow) {
         eprintln!("[shots] needs BOOKSHELF_DIR set to an empty folder; not taking screenshots");
         return;
     }
-    let (user, piranesi) = seed(&ctx.conn).expect("seeding the demo journal");
+    let (user, piranesi) = seed(&ctx.conn, &ctx.paths).expect("seeding the demo journal");
     std::fs::create_dir_all(&out).expect("making the screenshots folder");
     window.set_default_size(1000, 700);
     if let Some(settings) = gtk::Settings::default() {
@@ -318,7 +318,11 @@ fn demo_search() -> crate::search::Source {
 }
 
 /// Avery's shelves from the Mac demo journal; returns Avery and Piranesi's entry.
-fn seed(conn: &bookshelf_core::rusqlite::Connection) -> bookshelf_core::Result<(User, String)> {
+/// Each book gets a made-up cover (a plain colour), as a download would leave it.
+fn seed(
+    conn: &bookshelf_core::rusqlite::Connection,
+    paths: &bookshelf_core::paths::AppPaths,
+) -> bookshelf_core::Result<(User, String)> {
     let avery = create_user(conn, "Avery", None)?;
     create_user(conn, "Sam", None)?;
     let mut s = get_settings(conn, &avery.id)?;
@@ -380,6 +384,16 @@ fn seed(conn: &bookshelf_core::rusqlite::Connection) -> bookshelf_core::Result<(
                 ..Default::default()
             },
         )?;
+        let colour = [0x5c6e8fff, 0x9e6b59ff, 0x6b8273ff, 0xa08a52ff][i % 4];
+        if let Some(pixbuf) =
+            gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, false, 8, 360, 540)
+        {
+            pixbuf.fill(colour);
+            let file = format!("{}.png", book.id);
+            if pixbuf.savev(paths.cover_file(&file), "png", &[]).is_ok() {
+                set_cover_path(conn, &book.id, &file)?;
+            }
+        }
         let input = SummaryInput {
             body: body.into(),
             started_on: started,
