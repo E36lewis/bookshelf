@@ -15,31 +15,6 @@ enum Appearance {
     }
 }
 
-/// The toolbar's search field, for ⌘F on macOS 14 (which can't focus a
-/// `.searchable` field from code).
-@MainActor
-enum SearchField {
-    static func focus() {
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
-        if let item = window.toolbar?.items.lazy.compactMap({ $0 as? NSSearchToolbarItem }).first {
-            item.beginSearchInteraction()
-            return
-        }
-        // Not a search toolbar item: look for the field itself.
-        if let root = window.contentView?.superview, let field = find(in: root) {
-            window.makeFirstResponder(field)
-        }
-    }
-
-    private static func find(in view: NSView) -> NSSearchField? {
-        if let field = view as? NSSearchField { return field }
-        for child in view.subviews {
-            if let field = find(in: child) { return field }
-        }
-        return nil
-    }
-}
-
 /// Whether someone is typing: a menu shortcut that's also a text editing
 /// key (⌘⌫) must leave the text alone.
 @MainActor
@@ -176,5 +151,12 @@ extension AppModel {
     /// The menu shortcut the core's table gives `title` (`MenuShortcuts`).
     func shortcut(_ title: String) -> KeyboardShortcut? {
         keys[title]?.keyboardShortcut
+    }
+
+    /// A tooltip with the keys the core's table gives `title`: "Add a
+    /// book (⌘N)".
+    func help(_ text: String, keys title: String) -> String {
+        guard let combo = keys[title] else { return text }
+        return "\(text) (\(combo.symbols))"
     }
 }

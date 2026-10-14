@@ -155,10 +155,11 @@ private struct CoverFrame: View {
             Rectangle().fill(.white.opacity(0.18)).frame(width: max(1, width * 0.025))
         }
         .frame(width: width, height: height)
+        // Rounded a little more away from the spine, as on Linux (3 and 6 pt).
         .clipShape(UnevenRoundedRectangle(
-            topLeadingRadius: width * 0.03, bottomLeadingRadius: width * 0.03,
-            bottomTrailingRadius: width * 0.08, topTrailingRadius: width * 0.08))
-        .shadow(color: .black.opacity(0.22), radius: width * 0.06, y: width * 0.03)
+            topLeadingRadius: min(3, width * 0.03), bottomLeadingRadius: min(3, width * 0.03),
+            bottomTrailingRadius: min(6, width * 0.08), topTrailingRadius: min(6, width * 0.08)))
+        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
         .accessibilityHidden(true)
     }
 }

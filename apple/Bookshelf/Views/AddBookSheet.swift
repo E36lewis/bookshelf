@@ -50,6 +50,7 @@ struct AddBookSheet: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
+                    .buttonStyle(PillButtonStyle())
                     .keyboardShortcut(.cancelAction)
             }
             .padding(12)

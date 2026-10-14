@@ -32,6 +32,22 @@ final class PresentationTests: XCTestCase {
         XCTAssertTrue(ShelfLayout.sections([.yearHeading(year: 2026, count: 0, label: "0 books")]).isEmpty)
     }
 
+    func testTheBookGridHasThreeColumnsAtMost() {
+        XCTAssertEqual(BookGrid.columns(forWidth: 688), 3)
+        XCTAssertEqual(BookGrid.columns(forWidth: 600), 3)
+        XCTAssertEqual(BookGrid.columns(forWidth: 599), 2)
+        XCTAssertEqual(BookGrid.columns(forWidth: 400), 2)
+        XCTAssertEqual(BookGrid.columns(forWidth: 399), 1)
+        // Full rows fill the column: three cards and two gaps.
+        XCTAssertEqual(BookGrid.cardWidth(columns: 3, in: 688), 218)
+        XCTAssertEqual(BookGrid.cardWidth(columns: 2, in: 588), 286)
+        XCTAssertEqual(BookGrid.cardWidth(columns: 1, in: 350), 350)
+        XCTAssertEqual(BookGrid.rows([1, 2, 3, 4, 5], columns: 3), [[1, 2, 3], [4, 5]])
+        XCTAssertEqual(BookGrid.rows([1], columns: 3), [[1]])
+        XCTAssertEqual(BookGrid.rows([Int](), columns: 2), [])
+        XCTAssertEqual(Shelf.inOrder.map(\.heading), ["Reading now", "Finished", "Someday"])
+    }
+
     func testSearchLooksAcrossEveryShelf() {
         func view(_ rows: [ShelfRow]) -> ShelfView {
             ShelfView(rows: rows, total: UInt32(rows.count), thisYear: 0, countLine: "")

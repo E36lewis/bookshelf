@@ -42,16 +42,18 @@ final class ScreenshotTests: XCTestCase {
         let leftHand = entry(app, "The Left Hand of Darkness")
         XCTAssertTrue(leftHand.waitForExistence(timeout: 30))
 
-        // The shelves (⌘1, ⌘2, ⌘3).
+        // The shelves: the tabs in the header, and ⌘1, ⌘2, ⌘3.
         keep(app, "03-shelf-reading", look)
-        app.typeKey("2", modifierFlags: .command)
+        app.buttons["shelf.Finished"].firstMatch.click()
         XCTAssertTrue(entry(app, "Piranesi").waitForExistence(timeout: 5))
+        sleep(1)
         keep(app, "04-shelf-finished", look)
+        checkGrid(app, look)
         app.typeKey("3", modifierFlags: .command)
         XCTAssertTrue(entry(app, "Moby-Dick").waitForExistence(timeout: 5))
         keep(app, "05-shelf-eventually", look)
 
-        // A book's page.
+        // A book's page: click its card.
         app.typeKey("2", modifierFlags: .command)
         let piranesi = entry(app, "Piranesi")
         XCTAssertTrue(piranesi.waitForExistence(timeout: 5))
@@ -74,19 +76,27 @@ final class ScreenshotTests: XCTestCase {
         app.buttons["page.back"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
 
-        // Search (⌘F) across every shelf, then a search with no matches.
+        // Search (⌘F): back to the shelf (Finished), with the field open
+        // under the header. It filters the shelf showing, and the next one
+        // too; then a search with no matches, and Esc closes it.
         app.typeKey("f", modifierFlags: .command)
+        let field = app.textFields["shelf.search"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
         app.typeText("le guin")
         XCTAssertTrue(entry(app, "A Wizard of Earthsea").waitForExistence(timeout: 5))
-        XCTAssertTrue(entry(app, "The Left Hand of Darkness").exists)
+        XCTAssertTrue(entry(app, "Piranesi").waitForNonExistence(timeout: 5))
         keep(app, "09-search-results", look)
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
+        XCTAssertFalse(entry(app, "Middlemarch").exists)
         app.typeKey("a", modifierFlags: .command)
         app.typeText("zzyzx")
-        XCTAssertTrue(entry(app, "A Wizard of Earthsea").waitForNonExistence(timeout: 5))
+        XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForNonExistence(timeout: 5))
         keep(app, "10-search-no-matches", look)
         app.typeKey("a", modifierFlags: .command)
         app.typeKey(XCUIKeyboardKey.delete.rawValue, modifierFlags: [])
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "Esc didn't close the search")
 
         // Add a Book (⌘N): empty, then the demo journal's made-up results
         // and covers (it never goes online).
@@ -130,8 +140,9 @@ final class ScreenshotTests: XCTestCase {
         keep(help, "17-manual", look)
         help.typeKey("w", modifierFlags: .command)
 
-        // Remove a book (⌘⌫); Edit › Undo shows what it would undo, and
-        // brings the book back.
+        // Remove a book (⌘⌫) from its page: back on the shelf (one book
+        // now), a note says so, with Undo. Edit › Undo shows what it would
+        // undo, and brings the book back.
         let left = entry(app, "The Left Hand of Darkness")
         XCTAssertTrue(left.waitForExistence(timeout: 5))
         left.click()
@@ -139,6 +150,8 @@ final class ScreenshotTests: XCTestCase {
         app.typeKey(XCUIKeyboardKey.delete.rawValue, modifierFlags: .command)
         XCTAssertTrue(app.buttons["removed.undo"].waitForExistence(timeout: 5))
         XCTAssertFalse(left.exists)
+        XCTAssertTrue(entry(app, "Middlemarch").exists)
+        sleep(1)
         keep(app, "18-removed", look)
         app.menuBars.menuBarItems["Edit"].click()
         sleep(1)
@@ -152,6 +165,22 @@ final class ScreenshotTests: XCTestCase {
         undo.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 5))
 
+        // Back from the shelves: the profiles. Sam's shelf has one book.
+        app.buttons["shelf.back"].firstMatch.click()
+        let sam = app.buttons["profile.Sam"]
+        XCTAssertTrue(sam.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["profile.name"].exists, "no New Profile form")
+        keep(app, "33-profiles", look)
+        sam.click()
+        XCTAssertTrue(entry(app, "Dune").waitForExistence(timeout: 10))
+        sleep(1)
+        keep(app, "34-shelf-one-book", look)
+        // Its card is as tall as it needs, not as Avery's tallest.
+        note("Dune's card: \(entry(app, "Dune").frame)", named: "one-book-\(look.rawValue)")
+        app.buttons["shelf.back"].firstMatch.click()
+        app.buttons["profile.Avery"].firstMatch.click()
+        XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 10))
+
         // Bookshelf › About Bookshelf Preview (tests run preview builds), for
         // the app icon (the whole screen, so the Dock shows too). Last:
         // closing the panel is the end.
@@ -162,6 +191,59 @@ final class ScreenshotTests: XCTestCase {
         sleep(2)
         keepScreen("32-about", look)
         app.typeKey("w", modifierFlags: .command)
+    }
+
+    // MARK: The book grid
+
+    /// Finished in a wide window: 2026's three books fill a row, 2025's two
+    /// sit centered under them, every card the same width, 16 pt apart.
+    @MainActor
+    private func checkGrid(_ app: XCUIApplication, _ look: Look) {
+        let full = cardFrames(app, ["A Wizard of Earthsea", "Piranesi", "The Remains of the Day"])
+        let short = cardFrames(app, ["Dune", "Pride and Prejudice"])
+        note("2026: \(full)\n2025: \(short)", named: "grid-wide-\(look.rawValue)")
+        guard full.count == 3, short.count == 2 else { return XCTFail("cards missing: \(full) \(short)") }
+        for frame in full + short {
+            XCTAssertEqual(frame.width, full[0].width, accuracy: 1, "cards aren't the same width")
+        }
+        XCTAssertEqual(full[1].minY, full[0].minY, accuracy: 1, "not three to a row")
+        XCTAssertEqual(full[2].minY, full[0].minY, accuracy: 1, "not three to a row")
+        XCTAssertEqual(full[1].minX - full[0].maxX, 16, accuracy: 1.5, "the gap between cards")
+        XCTAssertEqual(short[1].minY, short[0].minY, accuracy: 1)
+        XCTAssertGreaterThan(short[0].minY, full[0].maxY, "2025 isn't under 2026")
+        XCTAssertEqual((short[0].minX + short[1].maxX) / 2, (full[0].minX + full[2].maxX) / 2, accuracy: 2,
+                       "a short row isn't centered")
+    }
+
+    @MainActor func testNarrowWindowLight() throws { try narrowWindow(.light) }
+    @MainActor func testNarrowWindowDark() throws { try narrowWindow(.dark) }
+
+    /// A narrow window (588 pt for the grid): two cards to a row, and the
+    /// last one centered.
+    @MainActor
+    private func narrowWindow(_ look: Look) throws {
+        let app = launch(.demo, look, size: "620x720")
+        XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 30))
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(entry(app, "Piranesi").waitForExistence(timeout: 5))
+        sleep(1)
+        keep(app, "35-shelf-narrow", look)
+        let row = cardFrames(app, ["A Wizard of Earthsea", "Piranesi", "The Remains of the Day"])
+        note("\(row)", named: "grid-narrow-\(look.rawValue)")
+        guard row.count == 3 else { return XCTFail("cards missing: \(row)") }
+        XCTAssertEqual(row[1].minY, row[0].minY, accuracy: 1, "not two to a row")
+        XCTAssertGreaterThan(row[2].minY, row[0].maxY, "a third card in the first row")
+        XCTAssertEqual(row[2].width, row[0].width, accuracy: 1)
+        XCTAssertEqual(row[2].midX, (row[0].minX + row[1].maxX) / 2, accuracy: 2, "the last card isn't centered")
+    }
+
+    /// The frames of the cards for `titles`, in order; missing ones are left out.
+    @MainActor
+    private func cardFrames(_ app: XCUIApplication, _ titles: [String]) -> [CGRect] {
+        titles.compactMap { title in
+            let card = entry(app, title)
+            return card.waitForExistence(timeout: 5) ? card.frame : nil
+        }
     }
 
     // MARK: Accessibility
@@ -184,7 +266,13 @@ final class ScreenshotTests: XCTestCase {
                         + "value “\(String(describing: $0.value ?? ""))” id “\($0.identifier)” at \($0.frame)"
                 }
                 let line = "\(screen): [\(issue.auditType.rawValue)] \(issue.compactDescription) — \(element ?? "no element")"
-                if Self.allowed(issue) {
+                // Only while typing in the search field: a parent/child
+                // mismatch with no element at all to name, which the shelf
+                // without the field doesn't have (so not the cards or the
+                // header). Taken to be AppKit's field editor inside the
+                // text field; the writing page's own text view has none.
+                let typing = screen == "shelf, searching" && issue.auditType == .parentChild && issue.element == nil
+                if Self.allowed(issue) || typing {
                     found.allowed.append(line)
                 } else {
                     found.lines.append(line)
@@ -230,6 +318,39 @@ final class ScreenshotTests: XCTestCase {
 
         try audit("shelf")
         checkToolbar("shelf")
+        // Each header button by its own name (sharing a toolbar item, they
+        // all once took the first one's).
+        let shelfNames = found.toolbars.last ?? ""
+        for name in ["Back to Profiles", "Add a Book", "Search", "Settings", "Reading", "Finished", "Eventually"]
+        where !shelfNames.contains(name) {
+            found.lines.append("shelf: no toolbar control named “\(name)”")
+        }
+        // The tabs tell VoiceOver which shelf is showing.
+        let selected = ["Reading", "Finished", "Eventually"].map { "\($0): \(app.buttons["shelf.\($0)"].firstMatch.isSelected)" }
+        found.toolbars.append("shelf tabs selected: \(selected.joined(separator: ", "))")
+        if !app.buttons["shelf.Reading"].firstMatch.isSelected || app.buttons["shelf.Finished"].firstMatch.isSelected {
+            found.lines.append("shelf: the tabs don't say which is selected (\(selected.joined(separator: ", ")))")
+        }
+
+        // The search field, filtering.
+        app.typeKey("f", modifierFlags: .command)
+        XCTAssertTrue(app.textFields["shelf.search"].waitForExistence(timeout: 5))
+        app.typeText("dark")
+        XCTAssertTrue(entry(app, "Middlemarch").waitForNonExistence(timeout: 5))
+        try audit("shelf, searching")
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(entry(app, "Middlemarch").waitForExistence(timeout: 5))
+
+        // The profiles, back from the shelf.
+        app.buttons["shelf.back"].firstMatch.click()
+        let avery = app.buttons["profile.Avery"]
+        XCTAssertTrue(avery.waitForExistence(timeout: 5))
+        try audit("profiles")
+        checkContrast("Profiles' lede", app.staticTexts["profiles.lede"].firstMatch)
+        checkToolbar("profiles")
+        avery.click()
+        XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 10))
+
         entry(app, "The Left Hand of Darkness").click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
         try audit("book page")
@@ -324,43 +445,41 @@ final class ScreenshotTests: XCTestCase {
         if element.label == "emoji & symbols" { return true }
         let text = String(describing: element.value ?? "")
         if issue.auditType == .contrast {
-            // Apple's standard empty state (ContentUnavailableView) draws its
-            // own grey title and description; we don't style it.
-            if ["No Book Selected", "Choose a book to see its page, or add one with ⌘N."].contains(text) {
-                return true
-            }
-            // Small text the audit misreads: the reading dates' labels and
-            // the book's facts are in the system's primary label color, and
-            // the writing page's status line in a gray chosen for 4.5:1
-            // (the system's secondary label gray falls short of it). The
-            // audit judges small text by its anti-aliased edges; the test
-            // measures each from the pixels instead (`checkContrast`) and
-            // fails if it's under 4.5:1.
+            // Small text the audit misreads: the reading dates' labels are
+            // the palette's ink on a panel, the book's facts and the writing
+            // page's status line a gray chosen for 4.5:1 (the system's
+            // secondary label gray falls short of it). The audit judges
+            // small text by its anti-aliased edges; the test measures each
+            // from the pixels instead (`checkContrast`) and fails if it's
+            // under 4.5:1.
             if text == "Started" || text == "Finished" || text.hasSuffix(" pages") { return true }
             if element.identifier == "writer.status" { return true }
-            // A shelf row is one element over its cover (a colored block with
-            // a light letter) and four lines of text, so the audit's verdict
-            // swings with the cover and the date: near miss one day, failed
-            // the next. Its text colors are each checked instead: the title
-            // is the primary label color, author and excerpt are `quietText`
-            // (the status line's gray, measured above), and the date line is
-            // the accent text, 4.5:1 for every accent on every app's
-            // background (bookshelf-core theme.rs tests).
+            // The profiles page's line under "Who's reading?" is that same
+            // gray, on the paper; measured too.
+            if element.identifier == "profiles.lede" { return true }
+            // A book's card is one element over its cover (a colored block
+            // with light lettering) and four lines of text, so the audit's
+            // verdict swings with the cover and the date: near miss one day,
+            // failed the next. Its text colors are each checked instead: the
+            // title is the palette's ink on the card, author and excerpt are
+            // `quietText` (the status line's gray, measured above), and the
+            // date line is the accent text, 4.5:1 for every accent on every
+            // app's background (bookshelf-core theme.rs tests).
             if element.identifier.hasPrefix("entry.") { return true }
-            // Near misses, not failures: a row's secondary text over the
-            // list's own background. Kept in the report.
+            // Near misses, not failures: a card's secondary text over the
+            // card. Kept in the report.
             if issue.compactDescription.localizedCaseInsensitiveContains("nearly passed") { return true }
         }
         switch element.elementType {
         case .popUpButton where !element.label.isEmpty:
-            // SwiftUI's Menu (the profile menu, the book's ⋯ menu) is a
+            // SwiftUI's Menu (the book's ⋯ menu) is a
             // pop-up button that opens with AXShowMenu rather than AXPress,
             // and its label isn't exposed as the AX description. VoiceOver
             // reads and opens both; nothing in our code can change this.
             return issue.auditType == .action || issue.auditType == .sufficientElementDescription
         case .group where element.label.isEmpty && element.identifier.isEmpty:
-            // SwiftUI's own layout containers (split view columns, scroll
-            // and stack containers): they hold labelled content, none of
+            // SwiftUI's own layout containers (scroll and stack
+            // containers): they hold labelled content, none of
             // their own, and our code can't name them.
             return issue.auditType == .sufficientElementDescription || issue.auditType == .parentChild
         case .touchBar:

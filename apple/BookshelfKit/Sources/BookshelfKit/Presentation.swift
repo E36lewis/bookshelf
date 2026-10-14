@@ -5,15 +5,24 @@ import BookshelfFFI
 // can be tested. The core lays out the shelves; this is what's left.
 
 extension Shelf {
-    /// The shelves in the order the sidebar lists them.
+    /// The shelves in the order the tabs show them.
     public static let inOrder: [Shelf] = [.reading, .finished, .eventually]
 
-    /// The shelf's name in the sidebar and menus.
+    /// The shelf's name on its tab and in the menus.
     public var title: String {
         switch self {
         case .reading: "Reading"
         case .finished: "Finished"
         case .eventually: "Eventually"
+        }
+    }
+
+    /// The heading over the shelf's books, as every Bookshelf has it.
+    public var heading: String {
+        switch self {
+        case .reading: "Reading now"
+        case .finished: "Finished"
+        case .eventually: "Someday"
         }
     }
 
@@ -106,7 +115,7 @@ public enum ShelfLayout {
     }
 
     /// The entries of every shelf that match `terms` (from `queryTerms`),
-    /// one section per shelf that has any, in sidebar order.
+    /// one section per shelf that has any, in tab order.
     public static func search(_ shelves: [Shelf: ShelfView], terms: [String]) -> [ShelfSection] {
         Shelf.inOrder.compactMap { shelf in
             guard let view = shelves[shelf] else { return nil }
@@ -122,6 +131,34 @@ public enum ShelfLayout {
     /// How many entries `sections` hold.
     public static func count(_ sections: [ShelfSection]) -> Int {
         sections.reduce(0) { $0 + $1.entries.count }
+    }
+}
+
+/// The shelf's book grid, laid out as every Bookshelf lays it out: up to
+/// three cards a row in a column of readable width, the same width each,
+/// with a short row centered.
+public enum BookGrid {
+    /// The widest the shelf's column gets, in points: a 720 pt clamp
+    /// less 16 pt either side, as on Linux.
+    public static let maxWidth: Double = 688
+    /// Space between cards, across and down.
+    public static let gap: Double = 16
+
+    /// Cards in a row, for a column `width` points wide.
+    public static func columns(forWidth width: Double) -> Int {
+        width >= 600 ? 3 : width >= 400 ? 2 : 1
+    }
+
+    /// Each card's width, so that a full row fills the column.
+    public static func cardWidth(columns: Int, in width: Double) -> Double {
+        let n = Double(max(columns, 1))
+        return max(0, ((width - gap * (n - 1)) / n).rounded(.down))
+    }
+
+    /// `items` in rows of `columns`; only the last can be short.
+    public static func rows<T>(_ items: [T], columns: Int) -> [[T]] {
+        let n = max(columns, 1)
+        return stride(from: 0, to: items.count, by: n).map { Array(items[$0..<min($0 + n, items.count)]) }
     }
 }
 

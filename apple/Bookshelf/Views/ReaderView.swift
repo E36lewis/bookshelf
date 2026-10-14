@@ -38,7 +38,7 @@ struct ReaderView: View {
                         Text("Nothing written yet.")
                             .font(Typeface.text(model.headingFont, size: size))
                             .italic()
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.quietText)
                     } else {
                         // Generous leading: the reading page is for reading.
                         BlocksView(blocks: model.summaryBlocks, font: model.headingFont, size: size, lineSpacing: size * 0.4)
@@ -53,7 +53,8 @@ struct ReaderView: View {
             .padding(.bottom, 160)
             .frame(maxWidth: .infinity)
         }
-        .background(Color(nsColor: .textBackgroundColor))
+        .foregroundStyle(Palette.ink)
+        .pageBackground(Palette.card)
         .navigationTitle(entry.book.title)
         .navigationSubtitle("Reading")
         .toolbar {
@@ -61,12 +62,23 @@ struct ReaderView: View {
                 Button {
                     leaveFullScreenOrPage()
                 } label: {
-                    Label("Back to Shelf", systemImage: "chevron.backward")
+                    Label("Back to the Book's Page", systemImage: "chevron.backward")
                 }
-                // Esc: out of full screen first, then back to the shelf.
+                .buttonStyle(BackButtonStyle())
+                // Esc: out of full screen first, then back to the book's page.
                 .keyboardShortcut(.cancelAction)
-                .help("Back to your shelf (Esc)")
+                .help("Back to the book's page (Esc)")
                 .accessibilityIdentifier("page.back")
+            }
+            // The book's title in the middle, as on Linux; it also keeps
+            // Edit at the right.
+            ToolbarItem(placement: .principal) {
+                Text(entry.book.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: 360)
+                    .accessibilityHidden(true)
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -74,7 +86,8 @@ struct ReaderView: View {
                 } label: {
                     Label("Edit", systemImage: "square.and.pencil")
                 }
-                .help("Edit this summary (⌘↩)")
+                .buttonStyle(PillButtonStyle())
+                .help(model.help("Edit this summary", keys: MenuShortcuts.write))
             }
         }
         .toolbarHidesInFullScreen()

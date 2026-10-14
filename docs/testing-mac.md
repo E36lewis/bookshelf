@@ -17,11 +17,11 @@ As you go, tick the boxes (or just keep notes) and write down anything odd, with
 ## 2. Your profile
 
 - [ ] Type a name (any name) and continue. The email address is optional; you can leave it blank.
-- [ ] Find the profile menu at the top of the sidebar.
+- [ ] Press the back button (**‹**) at the top left of your shelves: **Who's reading?** lists the profiles. Pick yours to go back.
 
 ## 3. Add books
 
-- [ ] Press **+** above the list of books, or **⌘N**.
+- [ ] Press **+** at the top left, or **⌘N**.
 - [ ] Search for a book you like by title, then by an author's name, then by an ISBN (the number on the back of a book). Results appear as you type.
 - [ ] Pick one and choose a shelf: **Reading Now**. Its page opens.
 - [ ] Add two or three more books, to each of the other shelves (**Finished** and **Someday**).
@@ -29,8 +29,8 @@ As you go, tick the boxes (or just keep notes) and write down anything odd, with
 
 ## 4. The shelves
 
-- [ ] Switch shelves in the sidebar, and with **⌘1** (Reading), **⌘2** (Finished) and **⌘3** (Eventually).
-- [ ] Does each book show its cover, author, dates and the start of what you wrote?
+- [ ] Switch shelves with the tabs at the top, and with **⌘1** (Reading), **⌘2** (Finished) and **⌘3** (Eventually).
+- [ ] Does each book's card show its cover, author, dates and the start of what you wrote? Make the window narrower: two cards to a row, then back to three.
 - [ ] Press **⌘F** and search for a word from a title or author. Then press **Esc** to clear it.
 
 ## 5. A book's page and its dates
