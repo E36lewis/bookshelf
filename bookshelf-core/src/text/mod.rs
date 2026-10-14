@@ -2,3 +2,4 @@
 
 pub mod edit;
 pub mod highlight;
+pub mod lists;

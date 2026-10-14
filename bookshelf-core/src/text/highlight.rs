@@ -110,8 +110,9 @@ fn style_line(out: &mut Spans, line: &[char], off: usize) {
         return;
     }
 
-    // "- item", "* item", "+ item", "12. item"
-    let indent = line.iter().take_while(|c| **c == ' ').count();
+    // "- item", "* item", "+ item", "12. item", "12) item", at any indent
+    // (nested items), and a task's "[ ]" or "[x]" after the marker.
+    let indent = line.iter().take_while(|c| matches!(c, ' ' | '\t')).count();
     let mut from = 0;
     if matches!(line.get(indent), Some('-' | '*' | '+')) && line.get(indent + 1) == Some(&' ') {
         out.mark(StyleKind::Syntax, off, indent, indent + 1);
@@ -122,12 +123,19 @@ fn style_line(out: &mut Spans, line: &[char], off: usize) {
             .take_while(|c| c.is_ascii_digit())
             .count();
         if digits > 0
-            && line.get(indent + digits) == Some(&'.')
+            && matches!(line.get(indent + digits), Some('.' | ')'))
             && line.get(indent + digits + 1) == Some(&' ')
         {
             out.mark(StyleKind::Syntax, off, indent, indent + digits + 1);
             from = indent + digits + 2;
         }
+    }
+    if from > 0
+        && matches!(line.get(from..from + 3), Some(['[', ' ' | 'x' | 'X', ']']))
+        && matches!(line.get(from + 3), None | Some(' '))
+    {
+        out.mark(StyleKind::Syntax, off, from, from + 3);
+        from += 3;
     }
     style_inline(out, line, off, from);
 }
@@ -261,7 +269,31 @@ mod tests {
         assert_eq!(marked("- item"), m(&[(Syntax, "-")]));
         assert_eq!(marked("  * item"), m(&[(Syntax, "*")]));
         assert_eq!(marked("12. item"), m(&[(Syntax, "12.")]));
+        assert_eq!(marked("12) item"), m(&[(Syntax, "12)")]));
         assert_eq!(marked("12.item"), m(&[]));
+        assert_eq!(marked("- [ ] task"), m(&[(Syntax, "-"), (Syntax, "[ ]")]));
+        assert_eq!(marked("1. [x] done"), m(&[(Syntax, "1."), (Syntax, "[x]")]));
+        assert_eq!(marked("- [x]not"), m(&[(Syntax, "-")]), "not a box");
+        assert_eq!(marked("[ ] no marker"), m(&[]));
+    }
+
+    #[test]
+    fn nested_items_at_any_indent() {
+        assert_eq!(marked("  - b"), m(&[(Syntax, "-")]));
+        assert_eq!(
+            marked("   2. b *i*"),
+            m(&[(Syntax, "2."), (Italic, "i"), (Syntax, "*"), (Syntax, "*")])
+        );
+        assert_eq!(marked("      - deep"), m(&[(Syntax, "-")]));
+        assert_eq!(marked("\t- tabbed"), m(&[(Syntax, "-")]));
+        assert_eq!(
+            marked("  - [ ] nested task"),
+            m(&[(Syntax, "-"), (Syntax, "[ ]")])
+        );
+        // Offsets are right on every line of a nested list.
+        let s = spans("1. a\n   - b\n     - c");
+        let at: Vec<(usize, usize)> = s.iter().map(|s| (s.start, s.end)).collect();
+        assert_eq!(at, vec![(0, 2), (8, 9), (17, 18)]);
     }
 
     #[test]

@@ -1458,6 +1458,17 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     RustBuffer uniffi_bookshelf_ffi_fn_func_list_key_edit(RustBuffer @text,uint @selStart,uint @selEnd,RustBuffer @key,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      RustBuffer uniffi_bookshelf_ffi_fn_func_markdown_spans(RustBuffer @text,ref UniffiRustCallStatus _uniffi_out_err
     );
 
@@ -2239,6 +2250,17 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_func_list_key_edit(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_func_markdown_spans(
     );
 
@@ -2725,6 +2747,12 @@ static class _UniFFILib {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_format_expands_to_word();
             if (checksum != 10693) {
                 throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_format_expands_to_word` checksum `10693`, library returned `{checksum}`");
+            }
+        }
+        {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_func_list_key_edit();
+            if (checksum != 61337) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_func_list_key_edit` checksum `61337`, library returned `{checksum}`");
             }
         }
         {
@@ -5662,9 +5690,9 @@ class FfiConverterTypeStyleSpan: FfiConverterRustBuffer<StyleSpan> {
 
 
 /// <summary>
-/// One formatting button press: replace `start..end` with `replacement`
-/// (as one undo step), then select `new_sel_start..new_sel_end` in the
-/// edited text (equal: just place the caret). UTF-16 code units.
+/// One formatting button or list key press: replace `start..end` with
+/// `replacement` (as one undo step), then select `new_sel_start..new_sel_end`
+/// in the edited text (equal: just place the caret). UTF-16 code units.
 /// </summary>
 /// <param name="Start">
 /// Start of the text to replace.
@@ -6609,6 +6637,59 @@ class FfiConverterTypeLineSpacing: FfiConverterRustBuffer<LineSpacing> {
             case LineSpacing.Normal: stream.WriteInt(2); break;
             case LineSpacing.Airy: stream.WriteInt(3); break;
             default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeLineSpacing.Write()", value));
+        }
+    }
+}
+
+
+
+
+
+
+
+/// <summary>
+/// A key the writing page's lists answer to: only these, with no other
+/// modifiers, and never while an input method is composing.
+/// </summary>
+public enum ListKey: int {
+    /// <summary>
+    /// Enter (Return): the next item, or the end of the list on an empty
+    /// one. Not Shift+Enter, which is always a plain line break.
+    /// </summary>
+    Enter,
+    /// <summary>
+    /// Tab: nest the items under the one above.
+    /// </summary>
+    Indent,
+    /// <summary>
+    /// Shift+Tab: un-nest them.
+    /// </summary>
+    Outdent
+}
+
+class FfiConverterTypeListKey: FfiConverterRustBuffer<ListKey> {
+    public static FfiConverterTypeListKey INSTANCE = new FfiConverterTypeListKey();
+
+    public override ListKey Read(BigEndianStream stream) {
+        var value = stream.ReadInt();
+        switch (value) {
+            case 1: return ListKey.Enter;
+            case 2: return ListKey.Indent;
+            case 3: return ListKey.Outdent;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeListKey.Read()", value));
+        }
+    }
+
+    public override int AllocationSize(ListKey value) {
+        return 4;
+    }
+
+    public override void Write(ListKey value, BigEndianStream stream) {
+        switch (value) {
+            case ListKey.Enter: stream.WriteInt(1); break;
+            case ListKey.Indent: stream.WriteInt(2); break;
+            case ListKey.Outdent: stream.WriteInt(3); break;
+            default: throw new InternalException(String.Format("invalid enum value '{0}' in FfiConverterTypeListKey.Write()", value));
         }
     }
 }
@@ -8494,6 +8575,23 @@ public static class BookshelfFfiMethods {
         return FfiConverterBoolean.INSTANCE.Lift(
     _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
     _UniFFILib.uniffi_bookshelf_ffi_fn_func_format_expands_to_word(FfiConverterTypeFormatAction.INSTANCE.Lower(@action), ref _status)
+));
+    }
+
+
+    /// <summary>
+    /// What pressing `key` does with `sel_start..sel_end` selected (equal: just
+    /// the caret), in UTF-16 code units: Enter carries a list on, Tab and
+    /// Shift+Tab nest and un-nest its items (the rules are in the core's
+    /// `text::lists`). `None`: not a list key here, so the key does what it
+    /// always does. An edit replacing nothing with nothing: the key was the
+    /// list's but there's nothing to do, so swallow it and leave the text
+    /// alone. Offsets past the end count as the end.
+    /// </summary>
+    public static TextEdit? ListKeyEdit(string @text, uint @selStart, uint @selEnd, ListKey @key) {
+        return FfiConverterOptionalTypeTextEdit.INSTANCE.Lift(
+    _UniffiHelpers.RustCall( (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_func_list_key_edit(FfiConverterString.INSTANCE.Lower(@text), FfiConverterUInt32.INSTANCE.Lower(@selStart), FfiConverterUInt32.INSTANCE.Lower(@selEnd), FfiConverterTypeListKey.INSTANCE.Lower(@key), ref _status)
 ));
     }
 

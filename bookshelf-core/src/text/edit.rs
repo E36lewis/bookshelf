@@ -94,6 +94,20 @@ pub fn format_edit_utf16(
     sel_end: usize,
     action: FormatAction,
 ) -> Option<TextEdit> {
+    in_utf16(text, sel_start, sel_end, |a, b| {
+        format_edit(text, a, b, action)
+    })
+}
+
+/// Runs `edit`, which works in characters, with a selection given in UTF-16
+/// code units, and gives back its answer in UTF-16 code units too. An
+/// offset inside a surrogate pair counts as the start of that character.
+pub(super) fn in_utf16(
+    text: &str,
+    sel_start: usize,
+    sel_end: usize,
+    edit: impl FnOnce(usize, usize) -> Option<TextEdit>,
+) -> Option<TextEdit> {
     // utf16_at[i] = the UTF-16 offset of the i-th character (and one past the end).
     let mut utf16_at = Vec::with_capacity(text.len() + 1);
     let mut at = 0;
@@ -103,7 +117,7 @@ pub fn format_edit_utf16(
     }
     utf16_at.push(at);
     let to_char = |u: usize| utf16_at.partition_point(|&x| x <= u) - 1;
-    let edit = format_edit(text, to_char(sel_start), to_char(sel_end), action)?;
+    let edit = edit(to_char(sel_start), to_char(sel_end))?;
 
     // The new selection is in the edited text, so its offsets past the edit
     // come from the old table, shifted by how much the edit grew or shrank.
@@ -135,7 +149,7 @@ pub fn format_edit_utf16(
     })
 }
 
-fn string(chars: &[char]) -> String {
+pub(super) fn string(chars: &[char]) -> String {
     chars.iter().collect()
 }
 
@@ -223,13 +237,13 @@ fn link(chars: &[char], a: usize, b: usize) -> TextEdit {
 /// One line of the text: `start..end` is its text, `end..next` its line
 /// break. Breaks are the ones GTK's text buffer counts (and Pango's):
 /// `\n`, `\r\n`, `\r` and U+2029, so Windows' `\r` paragraphs work too.
-struct Line {
-    start: usize,
-    end: usize,
-    next: usize,
+pub(super) struct Line {
+    pub start: usize,
+    pub end: usize,
+    pub next: usize,
 }
 
-fn split_lines(chars: &[char]) -> Vec<Line> {
+pub(super) fn split_lines(chars: &[char]) -> Vec<Line> {
     let mut out = Vec::new();
     let mut start = 0;
     let mut i = 0;
@@ -260,7 +274,7 @@ fn split_lines(chars: &[char]) -> Vec<Line> {
 }
 
 /// The line holding offset `at`.
-fn line_at(lines: &[Line], at: usize) -> usize {
+pub(super) fn line_at(lines: &[Line], at: usize) -> usize {
     lines.partition_point(|l| l.start <= at) - 1
 }
 

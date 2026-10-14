@@ -406,6 +406,84 @@ mod tests {
         );
     }
 
+    /// (depth, marker, text) of each item, in order.
+    fn items(md: &str) -> Vec<(usize, Marker, String)> {
+        blocks(md)
+            .into_iter()
+            .filter_map(|b| match b {
+                Block::ListItem {
+                    depth,
+                    marker,
+                    runs,
+                    ..
+                } => Some((
+                    depth,
+                    marker,
+                    runs.iter().map(|r| r.text.as_str()).collect(),
+                )),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn items_nested_by_the_list_keys_read_as_nested() {
+        // What Tab makes (bookshelf_core::text::lists): an item nested at
+        // the text of the one above, two columns past `- `, three past `1. `.
+        let b = Marker::Bullet;
+        let n = Marker::Number;
+        assert_eq!(
+            items("- a\n  - b\n    - c\n- d\n"),
+            vec![
+                (0, b, "a".into()),
+                (1, b, "b".into()),
+                (2, b, "c".into()),
+                (0, b, "d".into())
+            ]
+        );
+        assert_eq!(
+            items("1. a\n   1. b\n   2. c\n2. d\n"),
+            vec![
+                (0, n(1), "a".into()),
+                (1, n(1), "b".into()),
+                (1, n(2), "c".into()),
+                (0, n(2), "d".into())
+            ]
+        );
+        assert_eq!(
+            items("10. a\n    - b\n"),
+            vec![(0, n(10), "a".into()), (1, b, "b".into())]
+        );
+        assert_eq!(
+            items("1) a\n2) b\n   - c\n"),
+            vec![
+                (0, n(1), "a".into()),
+                (0, n(2), "b".into()),
+                (1, b, "c".into())
+            ],
+            "numbers with a parenthesis"
+        );
+        assert_eq!(
+            items("- a\n\t- b\n"),
+            vec![(0, b, "a".into()), (1, b, "b".into())],
+            "a tab nests too"
+        );
+        // A first item moved in by its marker's width is still a list.
+        assert_eq!(items("  - a\n  - b\n").len(), 2);
+        // Task boxes are shown as typed.
+        assert_eq!(
+            items("- [ ] a\n  - [x] b\n"),
+            vec![(0, b, "[ ] a".into()), (1, b, "[x] b".into())]
+        );
+        // An item ended by Enter on an empty one: the text after is a paragraph.
+        assert_eq!(
+            blocks("- a\n\nafter\n").last(),
+            Some(&Block::Paragraph {
+                runs: plain("after")
+            })
+        );
+    }
+
     #[test]
     fn a_loose_items_first_paragraph_is_its_text() {
         assert_eq!(

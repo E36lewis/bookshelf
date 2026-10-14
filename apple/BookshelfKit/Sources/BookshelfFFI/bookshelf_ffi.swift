@@ -3551,9 +3551,9 @@ public func FfiConverterTypeStyleSpan_lower(_ value: StyleSpan) -> RustBuffer {
 
 
 /**
- * One formatting button press: replace `start..end` with `replacement`
- * (as one undo step), then select `new_sel_start..new_sel_end` in the
- * edited text (equal: just place the caret). UTF-16 code units.
+ * One formatting button or list key press: replace `start..end` with
+ * `replacement` (as one undo step), then select `new_sel_start..new_sel_end`
+ * in the edited text (equal: just place the caret). UTF-16 code units.
  */
 public struct TextEdit: Equatable, Hashable {
     /**
@@ -4597,6 +4597,94 @@ public func FfiConverterTypeLineSpacing_lift(_ buf: RustBuffer) throws -> LineSp
 #endif
 public func FfiConverterTypeLineSpacing_lower(_ value: LineSpacing) -> RustBuffer {
     return FfiConverterTypeLineSpacing.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * A key the writing page's lists answer to: only these, with no other
+ * modifiers, and never while an input method is composing.
+ */
+
+public enum ListKey: Equatable, Hashable {
+    
+    /**
+     * Enter (Return): the next item, or the end of the list on an empty
+     * one. Not Shift+Enter, which is always a plain line break.
+     */
+    case enter
+    /**
+     * Tab: nest the items under the one above.
+     */
+    case indent
+    /**
+     * Shift+Tab: un-nest them.
+     */
+    case outdent
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ListKey: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeListKey: FfiConverterRustBuffer {
+    typealias SwiftType = ListKey
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ListKey {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .enter
+        
+        case 2: return .indent
+        
+        case 3: return .outdent
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ListKey, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .enter:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .indent:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .outdent:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeListKey_lift(_ buf: RustBuffer) throws -> ListKey {
+    return try FfiConverterTypeListKey.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeListKey_lower(_ value: ListKey) -> RustBuffer {
+    return FfiConverterTypeListKey.lower(value)
 }
 
 
@@ -6487,6 +6575,25 @@ public func formatExpandsToWord(action: FormatAction) -> Bool  {
 })
 }
 /**
+ * What pressing `key` does with `sel_start..sel_end` selected (equal: just
+ * the caret), in UTF-16 code units: Enter carries a list on, Tab and
+ * Shift+Tab nest and un-nest its items (the rules are in the core's
+ * `text::lists`). `None`: not a list key here, so the key does what it
+ * always does. An edit replacing nothing with nothing: the key was the
+ * list's but there's nothing to do, so swallow it and leave the text
+ * alone. Offsets past the end count as the end.
+ */
+public func listKeyEdit(text: String, selStart: UInt32, selEnd: UInt32, key: ListKey) -> TextEdit?  {
+    return try!  FfiConverterOptionTypeTextEdit.lift(try! rustCall() {
+    uniffi_bookshelf_ffi_fn_func_list_key_edit(
+        FfiConverterString.lower(text),
+        FfiConverterUInt32.lower(selStart),
+        FfiConverterUInt32.lower(selEnd),
+        FfiConverterTypeListKey_lower(key),$0
+    )
+})
+}
+/**
  * Markdown highlighting for the writing page. Each line is highlighted on
  * its own, so after an edit only the lines it touched need restyling.
  */
@@ -6573,6 +6680,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_bookshelf_ffi_checksum_func_format_expands_to_word() != 10693) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_func_list_key_edit() != 61337) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_bookshelf_ffi_checksum_func_markdown_spans() != 60121) {

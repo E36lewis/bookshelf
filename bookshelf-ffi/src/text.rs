@@ -1,9 +1,10 @@
 //! The writing page's text logic: Markdown highlighting, the formatting
-//! bar's edits, and Markdown laid out as blocks for the reading page. All
-//! offsets are UTF-16 code units, as NSTextView and RichEditBox count.
+//! bar's edits, the list keys, and Markdown laid out as blocks for the
+//! reading page. All offsets are UTF-16 code units, as NSTextView and
+//! RichEditBox count.
 
 use bookshelf_core::render;
-use bookshelf_core::text::{edit, highlight};
+use bookshelf_core::text::{edit, highlight, lists};
 
 use crate::types::count;
 
@@ -103,9 +104,9 @@ impl From<FormatAction> for edit::FormatAction {
     }
 }
 
-/// One formatting button press: replace `start..end` with `replacement`
-/// (as one undo step), then select `new_sel_start..new_sel_end` in the
-/// edited text (equal: just place the caret). UTF-16 code units.
+/// One formatting button or list key press: replace `start..end` with
+/// `replacement` (as one undo step), then select `new_sel_start..new_sel_end`
+/// in the edited text (equal: just place the caret). UTF-16 code units.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct TextEdit {
     /// Start of the text to replace.
@@ -131,14 +132,20 @@ pub fn format_edit(
     sel_end: u32,
     action: FormatAction,
 ) -> Option<TextEdit> {
-    let e = edit::format_edit_utf16(&text, sel_start as usize, sel_end as usize, action.into())?;
-    Some(TextEdit {
-        start: count(e.start),
-        end: count(e.end),
-        replacement: e.replacement,
-        new_sel_start: count(e.new_sel_start),
-        new_sel_end: count(e.new_sel_end),
-    })
+    edit::format_edit_utf16(&text, sel_start as usize, sel_end as usize, action.into())
+        .map(TextEdit::from)
+}
+
+impl From<edit::TextEdit> for TextEdit {
+    fn from(e: edit::TextEdit) -> Self {
+        Self {
+            start: count(e.start),
+            end: count(e.end),
+            replacement: e.replacement,
+            new_sel_start: count(e.new_sel_start),
+            new_sel_end: count(e.new_sel_end),
+        }
+    }
 }
 
 /// Whether, with nothing selected, `action` acts on the word around the
@@ -147,6 +154,36 @@ pub fn format_edit(
 #[uniffi::export]
 pub fn format_expands_to_word(action: FormatAction) -> bool {
     edit::FormatAction::from(action).expands_to_word()
+}
+
+/// A key the writing page's lists answer to: only these, with no other
+/// modifiers, and never while an input method is composing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum ListKey {
+    /// Enter (Return): the next item, or the end of the list on an empty
+    /// one. Not Shift+Enter, which is always a plain line break.
+    Enter,
+    /// Tab: nest the items under the one above.
+    Indent,
+    /// Shift+Tab: un-nest them.
+    Outdent,
+}
+
+/// What pressing `key` does with `sel_start..sel_end` selected (equal: just
+/// the caret), in UTF-16 code units: Enter carries a list on, Tab and
+/// Shift+Tab nest and un-nest its items (the rules are in the core's
+/// `text::lists`). `None`: not a list key here, so the key does what it
+/// always does. An edit replacing nothing with nothing: the key was the
+/// list's but there's nothing to do, so swallow it and leave the text
+/// alone. Offsets past the end count as the end.
+#[uniffi::export]
+pub fn list_key_edit(text: String, sel_start: u32, sel_end: u32, key: ListKey) -> Option<TextEdit> {
+    let key = match key {
+        ListKey::Enter => lists::ListKey::Enter,
+        ListKey::Indent => lists::ListKey::Indent,
+        ListKey::Outdent => lists::ListKey::Outdent,
+    };
+    lists::list_edit_utf16(&text, sel_start as usize, sel_end as usize, key).map(TextEdit::from)
 }
 
 /// A block of Markdown laid out for reading. The model is flat: lists are
@@ -341,6 +378,31 @@ mod tests {
             format_edit("a   b".into(), 1, 4, FormatAction::Italic),
             None
         );
+    }
+
+    #[test]
+    fn list_keys_count_utf16() {
+        // "- 📚": the emoji is two code units, so the end is 4.
+        let e = list_key_edit("- 📚".into(), 4, 4, ListKey::Enter).unwrap();
+        assert_eq!(
+            e,
+            TextEdit {
+                start: 4,
+                end: 4,
+                replacement: "\n- ".into(),
+                new_sel_start: 7,
+                new_sel_end: 7,
+            }
+        );
+        let e = list_key_edit("- a\n- b".into(), 7, 7, ListKey::Indent).unwrap();
+        assert_eq!((e.start, e.end, e.replacement.as_str()), (4, 4, "  "));
+        let e = list_key_edit("- a\n  - b".into(), 99, 99, ListKey::Outdent).unwrap();
+        assert_eq!((e.start, e.end, e.replacement.as_str()), (4, 6, ""));
+        // Not a list: the key does what it always does.
+        assert_eq!(list_key_edit("plain".into(), 5, 5, ListKey::Enter), None);
+        // Nothing to un-nest: the key is taken, and nothing changes.
+        let e = list_key_edit("- a".into(), 3, 3, ListKey::Outdent).unwrap();
+        assert_eq!((e.start, e.end, e.replacement.as_str()), (3, 3, ""));
     }
 
     #[test]

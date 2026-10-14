@@ -528,6 +528,11 @@ RustBuffer uniffi_bookshelf_ffi_fn_func_format_edit(RustBuffer text, uint32_t se
 int8_t uniffi_bookshelf_ffi_fn_func_format_expands_to_word(RustBuffer action, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_LIST_KEY_EDIT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_LIST_KEY_EDIT
+RustBuffer uniffi_bookshelf_ffi_fn_func_list_key_edit(RustBuffer text, uint32_t sel_start, uint32_t sel_end, RustBuffer key, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MARKDOWN_SPANS
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_FUNC_MARKDOWN_SPANS
 RustBuffer uniffi_bookshelf_ffi_fn_func_markdown_spans(RustBuffer text, RustCallStatus *_Nonnull out_status
@@ -897,6 +902,12 @@ uint16_t uniffi_bookshelf_ffi_checksum_func_format_edit(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EXPANDS_TO_WORD
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_FORMAT_EXPANDS_TO_WORD
 uint16_t uniffi_bookshelf_ffi_checksum_func_format_expands_to_word(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_LIST_KEY_EDIT
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_FUNC_LIST_KEY_EDIT
+uint16_t uniffi_bookshelf_ffi_checksum_func_list_key_edit(void
     
 );
 #endif
