@@ -13,14 +13,15 @@ enum Journal {
 }
 
 extension XCTestCase {
-    /// Launches the app on a journal of its own, in a fixed-size window.
+    /// Launches the app on a journal of its own, in a fixed-size window
+    /// (`size` is its content, "1000x700").
     @MainActor
-    func launch(_ journal: Journal, _ look: Look, _ extra: [String] = []) -> XCUIApplication {
+    func launch(_ journal: Journal, _ look: Look, _ extra: [String] = [], size: String = "1000x700") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             journal == .demo ? "-BookshelfDemoJournal" : "-BookshelfFreshJournal",
             "-BookshelfAppearance", look.rawValue,
-            "-BookshelfWindowSize", "1000x700",
+            "-BookshelfWindowSize", size,
         ] + extra
         app.launch()
         if !app.windows.firstMatch.waitForExistence(timeout: 8) {
@@ -41,7 +42,7 @@ extension XCTestCase {
         return app
     }
 
-    /// A book in the list, by title.
+    /// A book's card on the shelf, by title.
     @MainActor
     func entry(_ app: XCUIApplication, _ title: String) -> XCUIElement {
         app.descendants(matching: .any)["entry.\(title)"].firstMatch

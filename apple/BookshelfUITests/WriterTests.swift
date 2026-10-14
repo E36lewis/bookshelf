@@ -181,8 +181,11 @@ final class WriterTests: XCTestCase {
 
         app.buttons["page.back"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
+        app.buttons["book.back"].firstMatch.click()
         XCTAssertTrue(waitFor(entry(app, "Middlemarch")) { $0.contains("Dorothea deserved better") },
                       "the shelf's excerpt")
+        entry(app, "Middlemarch").click()
+        XCTAssertTrue(app.staticTexts["book.title"].waitForExistence(timeout: 5))
 
         app.typeKey(XCUIKeyboardKey.return.rawValue, modifierFlags: .command)
         XCTAssertTrue(text.waitForExistence(timeout: 5))
