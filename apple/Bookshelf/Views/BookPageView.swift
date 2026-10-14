@@ -1,38 +1,45 @@
 import SwiftUI
 import BookshelfKit
 
-/// The right-hand column: the selected book's page, or why there isn't one.
-struct DetailView: View {
+/// A book's page over the shelf, or a moment's wait while it's read.
+struct BookScreen: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        if let entry = model.selectedEntry, model.isListed(entry.summaryId) {
+        if let entry = model.selectedEntry {
             BookPageView(entry: entry)
-        } else if let removal = model.lastRemoval {
-            ContentUnavailableView {
-                Label("Removed “\(removal.title)”", systemImage: "trash")
-            } description: {
-                Text("Your summary and dates for this book are gone from your shelf. Undo brings everything back exactly as it was.")
-            } actions: {
-                Button("Undo") { model.undoLastRemoval() }
-                    .accessibilityIdentifier("removed.undo")
-            }
-        } else if model.visibleSections.isEmpty {
-            // The list already says the shelf is empty.
-            Color.clear
-        } else if model.selectedEntryID == nil {
-            ContentUnavailableView(
-                "No Book Selected", systemImage: "books.vertical",
-                description: Text("Choose a book to see its page, or add one with ⌘N."))
         } else {
-            // Loading: only for a moment.
             Color.clear
+                .pageBackground(Palette.paper)
+                .toolbar {
+                    ToolbarItem(placement: .navigation) { BookBackButton() }
+                }
+                .frame(minWidth: 600, minHeight: 480)
+                .onAppear { if model.selectedEntryID == nil { model.closeBook() } }
         }
     }
 }
 
-/// A book's page: the book, what it's about, when it was read, and the
-/// summary.
+/// Back to the shelf (Esc).
+struct BookBackButton: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Button {
+            model.closeBook()
+        } label: {
+            Label("Back to Shelf", systemImage: "chevron.backward")
+        }
+        .buttonStyle(BackButtonStyle())
+        .keyboardShortcut(.cancelAction)
+        .help("Back to your shelf (Esc)")
+        .accessibilityIdentifier("book.back")
+    }
+}
+
+/// A book's page, as on Linux: the book, what it's about, when it was
+/// read, and the summary, in one readable column. The header has back,
+/// the book's title, and a ⋯ menu.
 struct BookPageView: View {
     let entry: EntryDetail
 
@@ -44,66 +51,79 @@ struct BookPageView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 22) {
                 header
                 if let about = book.description, !about.isEmpty {
                     DisclosureGroup(isExpanded: $aboutOpen) {
                         Text(about)
                             .font(Typeface.text(model.headingFont, size: 14))
+                            .foregroundStyle(Palette.ink)
                             .lineSpacing(3)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.top, 8)
+                            .padding(.top, 10)
                     } label: {
                         Text("About this book")
-                            .font(.headline)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Palette.ink)
                             .accessibilityAddTraits(.isHeader)
                     }
+                    .tint(Palette.ink)
+                    .panel(padding: 14)
                     .accessibilityIdentifier("book.about")
                 }
                 ReadingDatesView(entry: entry)
                 summary
             }
-            .frame(maxWidth: 680, alignment: .leading)
-            .padding(.horizontal, 36)
-            .padding(.vertical, 32)
+            .frame(maxWidth: CGFloat(BookGrid.maxWidth), alignment: .leading)
+            .padding(.horizontal, ShelfPage.margin)
+            .padding(.top, 16)
+            .padding(.bottom, 40)
             .frame(maxWidth: .infinity)
         }
         .id(entry.summaryId)
+        .pageBackground(Palette.paper)
+        .navigationTitle(book.title)
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button {
-                    model.openWriter()
-                } label: {
-                    Label(entry.body.isEmpty ? "Write" : "Edit", systemImage: "square.and.pencil")
-                }
-                .help("Write or edit your summary (⌘↩)")
-                Button {
-                    model.openReader()
-                } label: {
-                    Label("Read", systemImage: "book.pages")
-                }
-                .help("Read your summary, without distractions (⌘R)")
+            ToolbarItem(placement: .navigation) {
+                BookBackButton()
+            }
+            ToolbarItem(placement: .principal) {
+                Text(book.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: 360)
+                    .accessibilityHidden(true)
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("Read It Again") { model.readAgain() }
                     Divider()
                     Button("Remove from My Shelf", role: .destructive) { model.removeSelected() }
                 } label: {
-                    Label("More", systemImage: "ellipsis.circle")
+                    Image(systemName: "ellipsis")
                 }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .tint(Palette.ink)
+                .fixedSize()
+                .modifier(CircleChrome())
                 .help("Read it again, or remove it from your shelf")
                 .accessibilityLabel("More")
                 .accessibilityIdentifier("book.more")
             }
         }
+        .frame(minWidth: 600, minHeight: 480)
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 24) {
-            CoverView(path: book.coverPath, title: book.title, author: book.author, width: 128)
+        HStack(alignment: .top, spacing: 20) {
+            CoverView(path: book.coverPath, title: book.title, author: book.author, width: 120)
             VStack(alignment: .leading, spacing: 6) {
                 Text(book.title)
                     .font(Typeface.title(model.headingFont, size: 28))
+                    .foregroundStyle(Palette.ink)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
@@ -113,20 +133,20 @@ struct BookPageView: View {
                     Text(subtitle)
                         .font(Typeface.text(model.headingFont, size: 17))
                         .italic()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.quietText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let author = book.author, !author.isEmpty {
                     Text(author)
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(model.accentText(for: colorScheme))
                         .padding(.top, 2)
                 }
                 let facts = Wording.bookFacts(book)
                 if !facts.isEmpty {
                     Text(facts)
-                        .font(.callout)
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.quietText)
                 }
                 Spacer(minLength: 0)
             }
@@ -135,15 +155,25 @@ struct BookPageView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("My Summary")
-                    .font(Typeface.title(model.headingFont, size: 20))
-                    .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .center, spacing: 8) {
+                GroupHeading(title: "My Summary", font: model.headingFont)
                     .accessibilityHeading(.h2)
                 Spacer()
-                Button(entry.body.isEmpty ? "Write" : "Edit") { model.openWriter() }
-                Button("Read") { model.openReader() }
-                    .disabled(entry.body.isEmpty)
+                Button {
+                    model.openReader()
+                } label: {
+                    Label("Read", systemImage: "book.pages")
+                }
+                .buttonStyle(PillButtonStyle())
+                .disabled(entry.body.isEmpty)
+                .help(model.help("Read your summary, without distractions", keys: MenuShortcuts.read))
+                Button {
+                    model.openWriter()
+                } label: {
+                    Label(entry.body.isEmpty ? "Write" : "Edit", systemImage: "square.and.pencil")
+                }
+                .buttonStyle(PillButtonStyle(kind: .primary))
+                .help(model.help("Write or edit your summary", keys: MenuShortcuts.write))
             }
             Button {
                 model.openWriter()
@@ -154,17 +184,15 @@ struct BookPageView: View {
                             .font(Typeface.text(model.headingFont, size: 15))
                             .italic()
                             .lineSpacing(5)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.quietText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         BlocksView(blocks: model.summaryBlocks, font: model.headingFont, size: 15, lineSpacing: 4)
+                            .foregroundStyle(Palette.ink)
                     }
                 }
-                .padding(22)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator))
-                .contentShape(RoundedRectangle(cornerRadius: 12))
+                .panel(padding: 22)
+                .contentShape(RoundedRectangle(cornerRadius: CardButtonStyle.radius))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(entry.body.isEmpty ? "My summary: nothing written yet" : "My summary")
@@ -184,38 +212,33 @@ struct ReadingDatesView: View {
         let calendar = model.calendar
         let started = entry.startedDate
         let finished = entry.finishedDate
-        GroupBox {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
-                DateRow(
-                    title: "Started", date: started,
-                    range: (Date.distantPast...(finished ?? .distantFuture)),
-                    calendar: calendar
-                ) { model.setDates(started: $0, finished: finished) }
-                DateRow(
-                    title: "Finished", date: finished,
-                    range: ((started ?? .distantPast)...Date.distantFuture),
-                    calendar: calendar
-                ) { model.setDates(started: started, finished: $0) }
+        VStack(alignment: .leading, spacing: 10) {
+            GroupHeading(title: "Reading Dates", font: model.headingFont)
+            VStack(alignment: .leading, spacing: 10) {
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                    DateRow(
+                        title: "Started", date: started,
+                        range: (Date.distantPast...(finished ?? .distantFuture)),
+                        calendar: calendar
+                    ) { model.setDates(started: $0, finished: finished) }
+                    DateRow(
+                        title: "Finished", date: finished,
+                        range: ((started ?? .distantPast)...Date.distantFuture),
+                        calendar: calendar
+                    ) { model.setDates(started: started, finished: $0) }
+                }
                 if let days = Wording.finishedIn(days: entry.days) {
-                    GridRow {
-                        Color.clear.frame(width: 1, height: 1)
-                        Label(days, systemImage: "flag.checkered")
-                            .foregroundStyle(.secondary)
-                            .gridCellColumns(3)
-                    }
+                    Label(days, systemImage: "flag.checkered")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.quietText)
                 }
             }
-            .padding(8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } label: {
-            Text("Reading Dates")
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
+            .panel(padding: 16)
         }
     }
 }
 
-/// One date: the day (a button that opens a calendar), Today, and Clear.
+/// One date: the day (a pill that opens a calendar), Today, and Clear.
 struct DateRow: View {
     let title: String
     let date: Date?
@@ -232,15 +255,17 @@ struct DateRow: View {
         let format = model.settings?.dateFormat ?? .long
         GridRow {
             Text(title)
-                .foregroundStyle(.primary)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.ink)
                 .gridColumnAlignment(.trailing)
             Button {
                 picking = true
             } label: {
                 Label(date.map { JournalDate.display($0, format: format, calendar: calendar) } ?? "Not set",
                       systemImage: "calendar")
-                    .frame(minWidth: 120, alignment: .leading)
+                    .frame(minWidth: 110, alignment: .leading)
             }
+            .buttonStyle(PillButtonStyle())
             .accessibilityLabel("\(title): \(date.map { JournalDate.display($0, format: .long, calendar: calendar) } ?? "not set")")
             .accessibilityHint("Opens a calendar")
             .popover(isPresented: $picking, arrowEdge: .bottom) {
@@ -250,6 +275,7 @@ struct DateRow: View {
                 }
             }
             Button("Today") { commit(today) }
+                .buttonStyle(PillButtonStyle())
                 .disabled(!range.contains(today) || date.map { calendar.isDate($0, inSameDayAs: today) } == true)
                 .accessibilityLabel("\(title) today")
             if date != nil {
@@ -257,7 +283,7 @@ struct DateRow: View {
                     commit(nil)
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.quietText)
                 }
                 .buttonStyle(.borderless)
                 .help("Clear this date")
@@ -286,9 +312,11 @@ struct CalendarPopover: View {
                 .labelsHidden()
             HStack {
                 Button("Clear Date") { onPick(nil) }
+                    .buttonStyle(PillButtonStyle())
                     .disabled(date == nil)
                 Spacer()
                 Button("Today") { onPick(calendar.startOfDay(for: Date())) }
+                    .buttonStyle(PillButtonStyle())
                     .disabled(!range.contains(calendar.startOfDay(for: Date())))
             }
         }

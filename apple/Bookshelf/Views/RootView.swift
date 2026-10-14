@@ -2,16 +2,23 @@ import AppKit
 import SwiftUI
 import BookshelfKit
 
-/// The main window: the welcome page, the shelves, or a book's reading
-/// or writing page.
+/// The main window: one page at a time, as on Linux. The profiles (or
+/// the welcome), a profile's shelves, a book's page, and its reading or
+/// writing page; each page's header is the window's toolbar.
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.undoManager) private var undoManager
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        @Bindable var model = model
         content
+            .sheet(isPresented: $model.isAddingBook) {
+                AddBookSheet()
+            }
+            // Outside the sheet, so it has the accent too.
             .tint(model.accent(for: colorScheme))
+            .environment(\.journalAccent, model.journalAccent(for: colorScheme))
             .onAppear { model.undoManager = model.undoManager ?? undoManager }
             .onChange(of: undoManager) { _, manager in model.undoManager = model.undoManager ?? manager }
             .alert(
@@ -28,6 +35,8 @@ struct RootView: View {
                 // removals there, so the menu names them.
                 if let windowUndo = window.undoManager { model.undoManager = windowUndo }
                 model.mainWindow = window
+                // The header is flat, as on Linux: no line under it.
+                window.titlebarSeparatorStyle = .none
                 if let size = model.options.windowSize {
                     window.setContentSize(size)
                     window.center()
@@ -42,14 +51,17 @@ struct RootView: View {
             ProgressView()
                 .controlSize(.large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .frame(minWidth: 760, minHeight: 520)
+                .frame(minWidth: 600, minHeight: 480)
+                .background(Palette.paper)
         case .failed(let message):
             StartupErrorView(message: message)
         case .welcome:
-            WelcomeView()
+            ProfilesView()
         case .ready:
             switch model.page {
-            case .shelves: MainSplitView()
+            case .profiles: ProfilesView()
+            case .shelves: ShelfPage()
+            case .book: BookScreen()
             case .reader: ReaderView()
             case .writer: WriterView()
             }
@@ -68,7 +80,7 @@ struct StartupErrorView: View {
         } description: {
             Text(message + "\n\nIf your journal file is damaged, daily backups are kept in the “backups” folder beside it.")
         }
-        .frame(minWidth: 760, minHeight: 520)
+        .frame(minWidth: 600, minHeight: 480)
     }
 }
 

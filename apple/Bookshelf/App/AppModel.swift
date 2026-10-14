@@ -20,9 +20,13 @@ final class AppModel {
         case ready
     }
 
-    /// What the main window shows over the shelves.
+    /// What the main window shows, one page at a time, as on Linux: the
+    /// profiles, then a profile's shelves, a book's page over them, and its
+    /// reading or writing page over that. Back goes one page down.
     enum Page: Equatable {
+        case profiles
         case shelves
+        case book
         case reader
         case writer
     }
@@ -54,15 +58,20 @@ final class AppModel {
     /// The core's Mac shortcuts, by title (`MenuShortcuts`).
     private(set) var keys: [String: KeyCombo] = [:]
 
-    /// The shelf in the sidebar.
+    /// The shelf whose tab is selected.
     private(set) var shelf: Shelf = .reading
     private(set) var shelves: [Shelf: ShelfView] = [:]
     private(set) var shelfSections: [Shelf: [ShelfSection]] = [:]
+    /// Whether the search field shows under the header.
+    private(set) var isSearchOpen = false
+    /// Asks the search field to take the keyboard focus (⌘F).
+    private(set) var searchFocusRequest = 0
     /// The shelf search, as typed.
     var searchText = ""
     /// Matches across every shelf; `nil` when not searching.
     private(set) var searchResults: [ShelfSection]?
 
+    /// The book whose page is open (or was last).
     private(set) var selectedEntryID: String?
     private(set) var entry: EntryDetail?
     private(set) var summaryBlocks: [Block] = []
@@ -74,13 +83,15 @@ final class AppModel {
     var focusMode = false
     /// Edit › Spelling and Grammar and Substitutions, for the writing page.
     let writingPreferences = WritingPreferences()
-    /// The entry just removed, until something else is picked: the book
-    /// page shows it with an Undo button.
+    /// The entry just removed, until another book is opened: the shelf
+    /// says so, with an Undo button.
     private(set) var lastRemoval: Removal?
 
     var problem: Problem?
     var isAddingBook = false
-    var isCreatingProfile = false
+    /// Asks the profiles page's form to take the keyboard focus (File ›
+    /// New Profile…).
+    var focusNewProfile = false
 
     let options = LaunchOptions.current
     @ObservationIgnored weak var undoManager: UndoManager?
@@ -154,8 +165,7 @@ final class AppModel {
             UserDefaults.standard.set(profile.id, forKey: Self.lastProfileKey)
             await apply(settings)
             shelf = settings.startShelf
-            searchText = ""
-            searchResults = nil
+            closeSearch()
             clearSelection()
             page = .shelves
             // Undoing a removal from someone else's shelves would be a surprise.
@@ -168,12 +178,38 @@ final class AppModel {
         }
     }
 
-    /// Switches profile from the sidebar's menu, saving any writing first.
+    /// Opens a profile from the profiles page: its shelves, as they were
+    /// if it's the one open already.
     func switchTo(_ profile: Profile) {
-        guard profile.id != self.profile?.id else { return }
+        guard profile.id != self.profile?.id else {
+            if phase == .ready { page = .shelves }
+            return
+        }
         Task {
             guard await leavePage() else { return }
             await openProfile(profile)
+        }
+    }
+
+    /// Back from the shelves: the profiles page, to switch profile or make
+    /// a new one. Any writing is saved first.
+    func showProfiles() {
+        Task {
+            guard await leavePage() else { return }
+            closeSearch()
+            page = .profiles
+        }
+    }
+
+    /// File › New Profile…: the profiles page, with its form ready to type in.
+    func newProfile() {
+        Task {
+            guard await leavePage() else { return }
+            if phase == .ready {
+                closeSearch()
+                page = .profiles
+            }
+            focusNewProfile = true
         }
     }
 
@@ -181,7 +217,6 @@ final class AppModel {
     func createProfile(name: String, email: String) async throws {
         guard let worker else { return }
         let made = try await worker.createProfile(named: name, email: email)
-        isCreatingProfile = false
         await leavePage()
         profiles = try await worker.profiles()
         await openProfile(made)
@@ -215,6 +250,13 @@ final class AppModel {
     func accentText(for scheme: ColorScheme) -> Color {
         guard let palettes else { return .accentColor }
         return Color(hex: scheme == .dark ? palettes.dark.text : palettes.light.text) ?? .accentColor
+    }
+
+    /// The accent as buttons, switches and focus rings use it.
+    func journalAccent(for scheme: ColorScheme) -> JournalAccent {
+        guard let palettes else { return .standard }
+        let palette = scheme == .dark ? palettes.dark : palettes.light
+        return JournalAccent(base: palette.bg, onFill: palette.fg, text: palette.text)
     }
 
     var headingFont: HeadingFont { settings?.headingFont ?? .serif }
@@ -283,7 +325,7 @@ final class AppModel {
 
     // MARK: Shelves and search
 
-    /// Reads all three shelves again (for the sidebar's counts too).
+    /// Reads all three shelves again.
     func reloadShelves() async throws {
         guard let worker, let profile else { return }
         let today = Date()
@@ -311,15 +353,22 @@ final class AppModel {
         }
     }
 
-    /// Shows a shelf in the list.
+    /// Shows a shelf (its tab, ⌘1–3), from whichever page is open. A
+    /// search stays, and filters this shelf too.
     func show(_ shelf: Shelf) {
-        if page != .shelves {
-            Task { await leavePage() }
-        }
-        searchText = ""
-        searchResults = nil
-        guard shelf != self.shelf else { return }
         self.shelf = shelf
+        guard page != .shelves else { return }
+        Task { await leaveToShelves() }
+    }
+
+    /// Back from a book's page (or its reading or writing page) to the
+    /// shelves. Returns whether it got there: a failed save can keep the
+    /// writing page open.
+    @discardableResult
+    func leaveToShelves() async -> Bool {
+        guard await leavePage() else { return false }
+        page = .shelves
+        return true
     }
 
     /// Runs the shelf search for what's typed now. A newer search makes an
@@ -331,40 +380,56 @@ final class AppModel {
         searchResults = found
     }
 
-    /// What the list shows: search results, or the shelf's sections.
+    /// What the shelf shows: its books, or while searching its matches
+    /// (without the year headings, as on Linux).
     var visibleSections: [ShelfSection] {
-        searchResults ?? shelfSections[shelf] ?? []
+        guard let searchResults else { return shelfSections[shelf] ?? [] }
+        return searchResults
+            .filter { $0.title == shelf.title }
+            .map { ShelfSection(id: $0.id, title: nil, detail: nil, entries: $0.entries) }
     }
 
     var isSearching: Bool { searchResults != nil }
 
-    /// Whether the list shows this entry: a search that leaves the open
-    /// book out hides its page too.
-    func isListed(_ id: String) -> Bool {
-        guard let searchResults else { return true }
-        return searchResults.contains { $0.entries.contains { $0.summaryId == id } }
-    }
-
-    /// Focuses the toolbar's search field (⌘F).
+    /// Opens the search field under the header and focuses it (⌘F), from
+    /// whichever page is open.
     func focusSearch() {
         Task {
             if page != .shelves {
-                guard await leavePage() else { return }
-                // Let the shelves, and their search field, come back first.
-                try? await Task.sleep(for: .milliseconds(100))
+                guard await leaveToShelves() else { return }
             }
-            SearchField.focus()
+            isSearchOpen = true
+            searchFocusRequest &+= 1
         }
     }
 
-    // MARK: The selected entry
+    /// The header's search button: opens the search field, or closes it.
+    func toggleSearch() {
+        if isSearchOpen {
+            closeSearch()
+        } else {
+            focusSearch()
+        }
+    }
 
-    /// Picks an entry in the list; `nil` picks nothing.
-    func select(_ id: String?) {
-        guard id != selectedEntryID else { return }
-        selectedEntryID = id
-        if id != nil { lastRemoval = nil }
-        guard let id else { return }
+    /// Closes the search field (Esc): every book shows again.
+    func closeSearch() {
+        isSearchOpen = false
+        searchText = ""
+        searchResults = nil
+    }
+
+    // MARK: The book's page
+
+    /// Opens a book's page over the shelf.
+    func openBook(_ id: String) {
+        lastRemoval = nil
+        if selectedEntryID != id {
+            selectedEntryID = id
+            entry = nil
+            summaryBlocks = []
+        }
+        page = .book
         Task { await loadEntry(id) }
     }
 
@@ -387,7 +452,10 @@ final class AppModel {
             summaryBlocks = blocks
             summaryPrompts = prompts
         } catch {
-            if selectedEntryID == id { show(error, title: "Couldn't open this book") }
+            guard selectedEntryID == id else { return }
+            show(error, title: "Couldn't open this book")
+            // Nothing to show: back to the shelf rather than an empty page.
+            if page == .book, selectedEntry == nil { page = .shelves }
         }
     }
 
@@ -397,8 +465,8 @@ final class AppModel {
         return entry
     }
 
-    /// Sets the reading dates; the book may move shelf, and the list
-    /// follows it there.
+    /// Sets the reading dates; the book may move shelf, and the tabs
+    /// follow it there.
     func setDates(started: Date?, finished: Date?) {
         guard let worker, let entry = selectedEntry else { return }
         let id = entry.summaryId
@@ -412,7 +480,7 @@ final class AppModel {
                     self.summaryPrompts = await JournalWorker.writingPrompts(for: saved.shelf)
                 }
                 try await self.reloadShelves()
-                if self.selectedEntryID == id, !self.isSearching, saved.shelf != self.shelf {
+                if self.selectedEntryID == id, saved.shelf != self.shelf {
                     self.shelf = saved.shelf
                     self.announce("Moved to \(saved.shelf.title)")
                 }
@@ -435,10 +503,9 @@ final class AppModel {
             let fresh = try await worker.readAgain(id)
             isAddingBook = false
             try await reloadShelves()
-            searchText = ""
-            searchResults = nil
+            closeSearch()
             shelf = .reading
-            select(fresh)
+            openBook(fresh)
             announce("New reading started today")
         } catch {
             show(error, title: "Couldn't start a new reading")
@@ -460,6 +527,8 @@ final class AppModel {
             if selectedEntryID == id {
                 selectedEntryID = nil
                 entry = nil
+                // Its page is gone: back to the shelf, which says so.
+                if page == .book { page = .shelves }
             }
             lastRemoval = removal
             registerUndo(of: removal)
@@ -503,10 +572,8 @@ final class AppModel {
             try await reloadShelves()
             let back = try await worker.entry(removal.summaryId)
             if page == .shelves {
-                searchText = ""
-                searchResults = nil
+                closeSearch()
                 shelf = back.shelf
-                select(removal.summaryId)
             }
             announce("Restored “\(removal.title)”")
         } catch {
@@ -514,9 +581,14 @@ final class AppModel {
         }
     }
 
-    /// The Undo button on the "Removed" page.
+    /// The Undo button on the shelf's "Removed" note.
     func undoLastRemoval() {
         undoManager?.undo()
+    }
+
+    /// Closes the "Removed" note. Edit › Undo still brings the book back.
+    func dismissRemoval() {
+        lastRemoval = nil
     }
 
     func announce(_ message: String) {
@@ -545,11 +617,10 @@ final class AppModel {
         do {
             let id = try await worker.addToShelf(shelf, for: profile.id, book: book.id)
             isAddingBook = false
-            searchText = ""
-            searchResults = nil
+            closeSearch()
             try await reloadShelves()
             self.shelf = shelf
-            select(id)
+            openBook(id)
             announce("Added “\(book.title)” to \(shelf.title)")
         } catch {
             show(error, title: "Couldn't add “\(book.title)”")
@@ -562,10 +633,9 @@ final class AppModel {
         do {
             let found = try await worker.entry(id)
             isAddingBook = false
-            searchText = ""
-            searchResults = nil
+            closeSearch()
             shelf = found.shelf
-            select(id)
+            openBook(id)
         } catch {
             show(error, title: "Couldn't open your entry")
         }
@@ -573,8 +643,9 @@ final class AppModel {
 
     // MARK: Reading and writing pages
 
+    /// Whether a book's page is showing, ready for the Book menu.
     var canOpenPages: Bool {
-        selectedEntry != nil && page == .shelves && !isAddingBook
+        selectedEntry != nil && page == .book && !isAddingBook
     }
 
     /// Opens the reader for the selected entry.
@@ -627,14 +698,22 @@ final class AppModel {
             rescue: { try await worker.rescueBody(title: title, body: $0) })
     }
 
-    /// Back to the shelves, saving the writing page first.
+    /// Back from the reading or writing page to the book's page, saving
+    /// the writing first.
     func closePage() {
         Task { await leavePage() }
     }
 
-    /// Leaves the reader or writer. The writer saves first; if that fails,
-    /// its text is rescued and an alert asks whether to keep writing.
-    /// Returns whether the page was left.
+    /// Back from the book's page to the shelf.
+    func closeBook() {
+        guard page == .book else { return }
+        page = .shelves
+    }
+
+    /// Leaves the reader or writer for the book's page; on any other page
+    /// it does nothing. The writer saves first; if that fails, its text is
+    /// rescued and an alert asks whether to keep writing. Returns whether
+    /// the page was left.
     @discardableResult
     func leavePage() async -> Bool {
         if let writer {
@@ -646,7 +725,7 @@ final class AppModel {
             if let id = selectedEntryID { await loadEntry(id) }
             try? await reloadShelves()
         }
-        page = .shelves
+        if page == .reader || page == .writer { page = .book }
         return true
     }
 

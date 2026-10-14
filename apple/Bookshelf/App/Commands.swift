@@ -30,6 +30,9 @@ struct BookshelfCommands: Commands {
             ShelfMenuItems(model: model)
             Divider()
         }
+        // The toolbar is how you get around (back, the shelf tabs), so it
+        // can't be hidden or rearranged.
+        CommandGroup(replacing: .toolbar) {}
         CommandGroup(after: .sidebar) {
             FocusModeMenuItem(model: model)
         }
@@ -50,10 +53,11 @@ private struct FileMenuItems: View {
     var body: some View {
         Button("Add a Book…") { model.isAddingBook = true }
             .keyboardShortcut(model.shortcut(MenuShortcuts.addBook))
-            .disabled(model.phase != .ready || model.page == .writer || model.isAddingBook)
+            .disabled(model.phase != .ready || model.page == .writer || model.page == .profiles || model.isAddingBook)
         Divider()
-        Button("New Profile…") { model.isCreatingProfile = true }
-            .disabled(model.phase != .ready || model.page != .shelves)
+        // The profiles page, with its form ready.
+        Button("New Profile…") { model.newProfile() }
+            .disabled((model.phase != .ready && model.phase != .welcome) || model.page == .writer || model.isAddingBook)
         Divider()
         // It saves as you type; this is for the reflex.
         Button("Save") { model.saveWriting() }
@@ -79,19 +83,19 @@ private struct BookMenuItems: View {
 
     var body: some View {
         let entry = model.selectedEntry
-        let onShelves = model.canOpenPages
+        let onBookPage = model.canOpenPages
         Button(entry?.body.isEmpty == false ? "Edit Summary" : "Write Summary") { model.openWriter() }
             .keyboardShortcut(model.shortcut(MenuShortcuts.write))
-            .disabled(!onShelves && model.page != .reader)
+            .disabled(!onBookPage && model.page != .reader)
         Button("Read Summary") { model.openReader() }
             .keyboardShortcut(model.shortcut(MenuShortcuts.read))
-            .disabled(!onShelves && !model.isWriting)
+            .disabled(!onBookPage && !model.isWriting)
         Divider()
         Button("Read It Again") { model.readAgain() }
-            .disabled(!onShelves)
+            .disabled(!onBookPage)
         Button("Remove from My Shelf") { remove() }
             .keyboardShortcut(.delete, modifiers: .command)
-            .disabled(!onShelves)
+            .disabled(!onBookPage)
     }
 
     /// ⌘⌫ also deletes to the start of the line while typing: then it's

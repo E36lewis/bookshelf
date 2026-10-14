@@ -14,66 +14,75 @@ struct DataSettingsTab: View {
     @State private var busy = false
 
     var body: some View {
-        Form {
-            Section("Export") {
-                LabeledContent {
+        SettingsPage {
+            SettingsGroup(title: "Export") {
+                SettingRow(
+                    title: "Export my summaries",
+                    detail: "Each summary becomes a Markdown file, in a “Bookshelf summaries” folder inside the folder you choose."
+                ) {
                     Button("Export…") { Task { await export() } }
+                        .buttonStyle(PillButtonStyle())
                         .disabled(exporting)
                         .accessibilityIdentifier("settings.export")
-                } label: {
-                    SettingLabel(
-                        "Export my summaries",
-                        detail: "Each summary becomes a Markdown file, in a “Bookshelf summaries” folder inside the folder you choose.")
                 }
                 if let exported {
-                    LabeledContent {
+                    RowRule()
+                    SettingRow(title: "Exported \(Wording.summaries(exported.count)).") {
                         Button("Show in Finder") { FolderPicker.reveal(URL(fileURLWithPath: exported.folder)) }
-                    } label: {
-                        Label("Exported \(Wording.summaries(exported.count)).", systemImage: "checkmark.circle.fill")
+                            .buttonStyle(PillButtonStyle())
                     }
                 }
                 if let exportProblem {
-                    Label(exportProblem, systemImage: "exclamationmark.circle.fill").foregroundStyle(.red)
+                    SettingNote(text: exportProblem, isProblem: true)
                 }
             }
-            Section("Daily Backups") {
+            SettingsGroup(title: "Daily Backups") {
                 if let backup {
-                    LabeledContent("Folder") {
+                    SettingRow(title: "Folder") {
                         Text(backup.shownFolder)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Palette.ink)
                             .textSelection(.enabled)
                             .multilineTextAlignment(.trailing)
                             .accessibilityIdentifier("settings.backupFolder")
                     }
-                    Label {
-                        Text(Wording.backup(backup.status, format: (model.settings ?? settings).dateFormat))
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: backup.status.available ? "clock.arrow.circlepath" : "externaldrive.badge.exclamationmark")
-                    }
-                    .foregroundStyle(backup.status.available ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
-                    HStack {
-                        Button("Change…") { Task { await changeFolder() } }
-                        if backup.status.isCustom {
-                            Button("Use Default") { Task { await useDefault() } }
+                    RowRule()
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label {
+                            Text(Wording.backup(backup.status, format: (model.settings ?? settings).dateFormat))
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: backup.status.available ? "clock.arrow.circlepath" : "externaldrive.badge.exclamationmark")
                         }
-                        Spacer()
-                        Button("Show in Finder") { FolderPicker.reveal(URL(fileURLWithPath: backup.status.folder)) }
-                            .disabled(!backup.status.available)
+                        .font(.system(size: 13))
+                        .foregroundStyle(backup.status.available ? Color.quietText : Color.errorText)
+                        HStack(spacing: 8) {
+                            Button("Change…") { Task { await changeFolder() } }
+                            if backup.status.isCustom {
+                                Button("Use Default") { Task { await useDefault() } }
+                            }
+                            Spacer()
+                            Button("Show in Finder") { FolderPicker.reveal(URL(fileURLWithPath: backup.status.folder)) }
+                                .disabled(!backup.status.available)
+                        }
+                        .buttonStyle(PillButtonStyle())
+                        .disabled(busy)
+                        Text("Keep them somewhere else, such as a USB drive or a folder that syncs: a backup on the same disk won't help if that disk fails.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.quietText)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .disabled(busy)
-                    Text("Keep them somewhere else, such as a USB drive or a folder that syncs: a backup on the same disk won't help if that disk fails.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 12)
                 } else {
-                    ProgressView().frame(maxWidth: .infinity)
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                 }
                 if let backupProblem {
-                    Label(backupProblem, systemImage: "exclamationmark.circle.fill").foregroundStyle(.red)
+                    SettingNote(text: backupProblem, isProblem: true)
                 }
             }
         }
-        .formStyle(.grouped)
         .task { await refresh() }
     }
 
