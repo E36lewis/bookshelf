@@ -266,6 +266,31 @@ public sealed class WritingBox
     }
 
     /// <summary>
+    /// Shift+Enter: a plain line break, as on Linux and the Mac. Left to
+    /// itself RichEdit puts its soft break (U+000B) in the text, which would
+    /// end up in the saved summary. False while an input method is composing.
+    /// </summary>
+    public bool PressLineBreak()
+    {
+        if (_composing) return false;
+        _byKeyboard = true;
+        CatchUp();
+        var clock = Stopwatch.StartNew();
+        var (start, end) = CurrentSelection();
+        var before = new EditorState(_text, start, end);
+        var oldBright = _bright;
+        var expected = _text[..start] + "\n" + _text[end..];
+        var change = Replace(new TextChange(start, end, start + 1), "\n", expected);
+        _history.RecordStep(before);
+        Select(start + 1, start + 1);
+        var lines = RestyleEdit(change, oldBright);
+        Note(clock, lines);
+        Edited?.Invoke();
+        QueueCaretUpdate();
+        return true;
+    }
+
+    /// <summary>
     /// Focus mode on or off. On: everything but the sentence being written is
     /// dimmed, and typing keeps its line mid-page. Only colors change, never
     /// the text, so undo doesn't see it.
@@ -302,7 +327,9 @@ public sealed class WritingBox
     {
         _box.Document.GetText(TextGetOptions.None, out var raw);
         if (_endsWithOwnBreak && raw.Length > 0 && raw[^1] == '\r') raw = raw[..^1];
-        return raw.Replace('\r', '\n');
+        // A soft break (U+000B) that got in some other way is a line break
+        // too; one character for one, so offsets stay put.
+        return raw.Replace('\r', '\n').Replace('\v', '\n');
     }
 
     private (int Start, int End) CurrentSelection()

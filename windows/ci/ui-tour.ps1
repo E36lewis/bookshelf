@@ -852,9 +852,12 @@ Step 'Writer: lists carry on with Enter, nest with Tab, un-nest with Shift+Tab, 
     Snap '41a-writer-lists'
     Keys '^z'
     Wait-EditorEnd "`n`n- apples" | Out-Null
-    # Shift+Enter is a line break of the box's own, never a new item.
+    # Shift+Enter is a plain line break, never a new item, and never
+    # RichEdit's soft break (U+000B), which would end up in the summary.
     Keys '+{ENTER}'
+    Start-Sleep -Milliseconds 300
     $raw = (Editor-Pattern).DocumentRange.GetText(-1)
+    if ($raw.Contains([char]0x0B)) { throw 'Shift+Enter put a soft break (U+000B) in the text' }
     $tail = $raw.Substring([Math]::Max(0, $raw.Length - 10))
     Write-Host ("      Shift+Enter after '- apples': ...{0}" -f (($tail.ToCharArray() | ForEach-Object { 'U+{0:X4}' -f [int]$_ }) -join ' '))
     if ($raw -match "apples\s+- ") { throw 'Shift+Enter started a new item' }

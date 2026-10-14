@@ -414,6 +414,10 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
         {
             e.Handled = true;
         }
+        else if (modifiers == VirtualKeyModifiers.Shift && key == VirtualKey.Enter && _writing is { } box && box.PressLineBreak())
+        {
+            e.Handled = true;
+        }
         else if (modifiers == VirtualKeyModifiers.Shift && key == VirtualKey.Tab)
         {
             e.Handled = true;
