@@ -208,13 +208,12 @@ final class WritingTextView: NSTextView {
     }
 
     private func isMouseEvent(_ event: NSEvent?) -> Bool {
-        switch event?.type {
-        case .leftMouseDown, .leftMouseDragged, .leftMouseUp, .rightMouseDown, .rightMouseUp,
-             .otherMouseDown, .otherMouseUp, .scrollWheel:
-            true
-        default:
-            false
-        }
+        guard let type = event?.type else { return false }
+        let mouse: [NSEvent.EventType] = [
+            .leftMouseDown, .leftMouseDragged, .leftMouseUp, .rightMouseDown, .rightMouseUp,
+            .otherMouseDown, .otherMouseUp, .scrollWheel,
+        ]
+        return mouse.contains(type)
     }
 
     /// UI tests: how many lines of the page show above and below the
