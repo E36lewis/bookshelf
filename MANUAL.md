@@ -59,7 +59,7 @@ Next time, just pick your name under **Who's reading?**
 
 You can also add an email address. It's optional: see *Your privacy* below for what it's used for.
 
-After that, Bookshelf opens with the last profile you used. To switch, use the profile menu at the top of the sidebar and pick a name under **Who's reading?** Anyone else who reads in your home can make their own profile there too, with **New Profile…** (it's also in the **File** menu).
+After that, Bookshelf opens with the last profile you used. To switch, press the back button (**‹**) at the top left of your shelves, and pick a name under **Who's reading?** Anyone else who reads in your home can make their own profile there too, under **New Profile** (**File › New Profile…** takes you there).
 <!-- /platform -->
 <!-- platform: windows -->
 
@@ -74,7 +74,7 @@ After that, Bookshelf opens with the last profile you used. To switch, select yo
 1. Press the **+** button at the top left, or **Ctrl+N**.
 <!-- /platform -->
 <!-- platform: mac -->
-1. Press the **+** button above your list of books, or **⌘N** (**File › Add a Book…**).
+1. Press the **+** button at the top left, or **⌘N** (**File › Add a Book…**).
 <!-- /platform -->
 <!-- platform: windows -->
 1. Press **Add a book** at the top of the shelf, or **Ctrl+N**.
@@ -99,7 +99,7 @@ That's it. The book's cover and description are fetched for you, and its page op
 Your books live on three shelves. Switch between them with the tabs at the top, or with the number keys **1**, **2** and **3**:
 <!-- /platform -->
 <!-- platform: mac -->
-Your books live on three shelves. Switch between them in the sidebar, or with **⌘1**, **⌘2** and **⌘3**:
+Your books live on three shelves. Switch between them with the tabs at the top of the window, or with **⌘1**, **⌘2** and **⌘3**:
 <!-- /platform -->
 <!-- platform: windows -->
 Your books live on three shelves. Switch between them in the left pane, or with **Ctrl+1**, **Ctrl+2** and **Ctrl+3**:
@@ -129,7 +129,7 @@ Press the magnifying glass, or **Ctrl+F**, or simply start typing on the home sc
 The number keys switch shelves, so to search for something that starts with a number (say, *1984*), press **Ctrl+F** first.
 <!-- /platform -->
 <!-- platform: mac -->
-Click the search field at the top of the window, or press **⌘F** (**Edit › Search Your Shelves**). Bookshelf searches titles, authors and everything you've written, across all three shelves at once. Clear the field, or press **Esc**, to see everything again.
+Press the magnifying glass at the top right, or **⌘F** (**Edit › Search Your Shelves**), and type in the field that opens under it. Bookshelf searches titles, authors and everything you've written, across all three shelves at once: each tab shows its shelf's matches. Press **Esc**, or the magnifying glass again, to see everything.
 <!-- /platform -->
 <!-- platform: windows -->
 Type in the **Search your shelves** box at the top of the window: click it, press **Ctrl+F**, or simply start typing on a shelf. Bookshelf searches titles, authors and everything you've written, across all three shelves at once, and each shelf in the left pane shows how many matches it has. Press **Esc** to clear the search and see everything again.
@@ -168,7 +168,7 @@ Dates are saved the moment you pick them. Once a book has both dates, Bookshelf 
 - **Write** (or **Edit**, once there's something written), or press **⌘↩** (Command-Return): opens the writing page. Clicking the summary itself does the same.
 - **Read**, or press **⌘R**: opens your summary on its own, for distraction-free reading.
 
-The same commands are in the **Book** menu. In your list of books, double-click a book (or select it and press Return) to read what you wrote, or to start writing if there's nothing yet.
+The same commands are in the **Book** menu. The back button (**‹**) at the top left, or **Esc**, takes you back to your shelf.
 <!-- /platform -->
 <!-- platform: windows -->
 - **Write** (or **Edit**, once there's something written), or press **Ctrl+E**: opens the writing page. Clicking the summary itself does the same.
@@ -181,7 +181,7 @@ The same commands are in the **Book** menu. In your list of books, double-click 
 Read a favourite twice? Choose **Read it again** from the **⋯** menu at the top right of the book's page. You get a fresh entry, started today, with its own dates and its own summary. Your first one stays as it was.
 <!-- /platform -->
 <!-- platform: mac -->
-Read a favourite twice? Choose **Read It Again** from the **⋯** menu at the top of the book's page (it's also in the **Book** menu, and when you right-click the book in your list). You get a fresh entry, started today, with its own dates and its own summary. Your first one stays as it was.
+Read a favourite twice? Choose **Read It Again** from the **⋯** menu at the top right of the book's page (it's also in the **Book** menu, and when you right-click the book on your shelf). You get a fresh entry, started today, with its own dates and its own summary. Your first one stays as it was.
 <!-- /platform -->
 <!-- platform: windows -->
 Read a favourite twice? Choose **Read it again** from the **⋯** menu next to **Write**. You get a fresh entry, started today, with its own dates and its own summary. Your first one stays as it was.
@@ -195,7 +195,7 @@ The same choice comes up if you add a book you've already logged.
 Choose **Remove from my shelf** from the **⋯** menu. Your summary and dates for that book are removed, and a message appears at the bottom of the window. Press **Undo** within ten seconds to bring everything back exactly as it was.
 <!-- /platform -->
 <!-- platform: mac -->
-Choose **Remove from My Shelf** from the **⋯** menu or the **Book** menu, or press **⌘⌫** (Command-Delete). Your summary and dates for that book are removed, and the page says so, with an **Undo** button that brings everything back exactly as it was. Changed your mind later? **Edit › Undo Remove** (**⌘Z**) still brings it back, until you switch profiles.
+Choose **Remove from My Shelf** from the **⋯** menu or the **Book** menu, or press **⌘⌫** (Command-Delete). Your summary and dates for that book are removed, and you're back on your shelf, where a note at the bottom says so, with an **Undo** button that brings everything back exactly as it was. Changed your mind later? **Edit › Undo Remove** (**⌘Z**) still brings it back, until you switch profiles.
 <!-- /platform -->
 <!-- platform: windows -->
 Choose **Remove from my shelf** from the **⋯** menu, or press **Delete**. Your summary and dates for that book are removed, and a notice appears at the bottom of the window. Press **Undo** within ten seconds (or **Ctrl+Z** on the shelf) to bring everything back exactly as it was.
@@ -302,7 +302,7 @@ Press **F11** or **Ctrl+Shift+Enter**, or the full screen button above the page,
 The reading page shows your summary nicely formatted, with nothing around it. Press **F11** for full screen; the title bar disappears too. **Esc** brings you back. To make a change, press the pencil button at the top.
 <!-- /platform -->
 <!-- platform: mac -->
-The reading page shows your summary nicely formatted, with nothing around it. Press **⌃⌘F** for full screen; the toolbar hides too. **Esc** leaves full screen, and pressed again takes you back to your shelf. To make a change, press **Edit**, or **⌘↩**.
+The reading page shows your summary nicely formatted, with nothing around it. Press **⌃⌘F** for full screen; the toolbar hides too. **Esc** leaves full screen, and pressed again takes you back to the book's page. To make a change, press **Edit**, or **⌘↩**.
 <!-- /platform -->
 <!-- platform: windows -->
 The reading page shows your summary nicely formatted, with nothing around it. Press **F11** or **Ctrl+Shift+Enter**, or the full screen button at the top right, for full screen; the title bar disappears too. **Esc** brings you back. To make a change, press the pencil button at the top right.
@@ -314,7 +314,7 @@ The reading page shows your summary nicely formatted, with nothing around it. Pr
 Open Settings with the gear button on the home screen, or **Ctrl+,** (Ctrl and comma). Every change is saved and applied immediately, and each profile has its own settings.
 <!-- /platform -->
 <!-- platform: mac -->
-Open Settings with **Bookshelf › Settings…**, or **⌘,** (Command and comma), or **Profile Settings…** in the profile menu. Every change is saved and applied immediately, and each profile has its own settings. There's a tab for each part below: **Profile**, **Appearance**, **Writing**, **Reading Log** and **Data**.
+Open Settings with the gear button at the top right of your shelves, **Bookshelf › Settings…**, or **⌘,** (Command and comma). Every change is saved and applied immediately, and each profile has its own settings. There's a tab for each part below: **Profile**, **Appearance**, **Writing**, **Reading Log** and **Data**.
 <!-- /platform -->
 <!-- platform: windows -->
 Open Settings with **Settings** at the bottom of the left pane, or **Ctrl+,** (Ctrl and comma). Every change is saved and applied immediately, and each profile has its own settings.
@@ -589,7 +589,8 @@ The menus show these next to their commands, so you can always look one up there
 - **⌘⌫**: remove a book from your shelf, on its page
 - **⌘Z**, **⇧⌘Z**: undo and redo, including removing a book
 - **⌘F** while writing: find words in your summary
-- **Esc** while reading: back to your shelf
+- **Esc** on a book's page: back to your shelf; while reading: back to the book's page
+- **Esc** while searching: close the search
 <!-- /platform -->
 <!-- platform: windows -->
 Press **Ctrl+?** in Bookshelf (on most keyboards that's **Ctrl+Shift+/**) to see these at any time.
