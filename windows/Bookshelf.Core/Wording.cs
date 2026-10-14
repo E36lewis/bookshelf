@@ -9,10 +9,10 @@ namespace Bookshelf.Core;
 /// </summary>
 public static class ShelfText
 {
-    /// <summary>The shelves in the order of the navigation pane and Ctrl+1/2/3.</summary>
+    /// <summary>The shelves in the order of the tabs and Ctrl+1/2/3.</summary>
     public static readonly Shelf[] All = [Shelf.Reading, Shelf.Finished, Shelf.Eventually];
 
-    /// <summary>The shelf's name in the navigation pane (and the shortcuts list).</summary>
+    /// <summary>The shelf's name on its tab (and the shortcuts list).</summary>
     public static string Name(Shelf shelf) => shelf switch
     {
         Shelf.Reading => "Reading",

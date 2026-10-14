@@ -2,7 +2,8 @@
     x:Class="Bookshelf.Pages.ManualPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:pages="using:Bookshelf.Pages">
+    xmlns:pages="using:Bookshelf.Pages"
+    Foreground="{ThemeResource JournalInkBrush}">
 
     <!-- The user manual: contents on the left, the text on the right. -->
     <Grid>
@@ -46,7 +47,7 @@
                 <DataTemplate x:DataType="pages:ContentsItem">
                     <TextBlock
                         Margin="{x:Bind Indent}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Foreground="{ThemeResource JournalMutedBrush}"
                         Text="{x:Bind Title}"
                         TextTrimming="CharacterEllipsis" />
                 </DataTemplate>

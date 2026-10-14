@@ -2,82 +2,149 @@
     x:Class="Bookshelf.Pages.BookPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:pages="using:Bookshelf.Pages">
+    xmlns:pages="using:Bookshelf.Pages"
+    Foreground="{ThemeResource JournalInkBrush}">
 
-    <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="BookPage">
-        <StackPanel
-            MaxWidth="860"
-            Padding="40,28,40,48"
-            HorizontalAlignment="Stretch"
-            Spacing="8">
+    <pages:BookshelfPage.Resources>
+        <ResourceDictionary>
+            <!-- "About this book" folds away in a panel like the others. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#E3E5E6" />
+                    <SolidColorBrush x:Key="ExpanderContentBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#E3E5E6" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#1C222C" />
+                    <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#292E37" />
+                    <SolidColorBrush x:Key="ExpanderContentBackground" Color="#1C222C" />
+                    <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#292E37" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast" />
+            </ResourceDictionary.ThemeDictionaries>
+            <ThemeShadow x:Key="CoverShadow" />
+        </ResourceDictionary>
+    </pages:BookshelfPage.Resources>
 
-            <InfoBar
-                x:Name="Problem"
-                Margin="0,0,0,12"
-                IsOpen="False"
-                Severity="Error" />
+    <Grid>
+        <!-- In a narrow window, Write, Read and More go under the cover. -->
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="560" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="Actions.(Grid.Column)" Value="0" />
+                        <Setter Target="Actions.(Grid.ColumnSpan)" Value="2" />
+                        <Setter Target="CoverFrame.(Grid.RowSpan)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+        <ScrollViewer x:Name="Scroller" AutomationProperties.AutomationId="BookPage">
+            <StackPanel
+                MaxWidth="{StaticResource ReadableWidth}"
+                Padding="16,24,16,48"
+                HorizontalAlignment="Stretch"
+                Spacing="8">
 
-            <!-- The book: cover, title, author, details, and what to do. -->
-            <Grid ColumnSpacing="28">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <!-- Decoration: the title is right beside it. -->
-                <Border
-                    x:Name="CoverFrame"
-                    Width="128"
-                    Height="192"
-                    VerticalAlignment="Top"
-                    AutomationProperties.AccessibilityView="Raw"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="6">
-                    <Grid>
-                        <Grid x:Name="CoverStandIn">
-                            <Rectangle Width="7" HorizontalAlignment="Left" Fill="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.8" />
-                            <TextBlock
-                                x:Name="CoverInitial"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontSize="52"
-                                Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        </Grid>
-                        <Image x:Name="CoverImage" Stretch="UniformToFill" />
-                    </Grid>
-                </Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Top" Spacing="4">
-                    <TextBlock
-                        x:Name="BookTitle"
-                        AutomationProperties.AutomationId="BookTitle"
-                        AutomationProperties.HeadingLevel="Level1"
-                        IsTextSelectionEnabled="True"
-                        Style="{StaticResource PageTitleStyle}" />
-                    <TextBlock
-                        x:Name="Subtitle"
-                        IsTextSelectionEnabled="True"
-                        Style="{StaticResource SubtitleTextBlockStyle}"
-                        FontWeight="Normal"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextWrapping="Wrap" />
-                    <TextBlock
-                        x:Name="Author"
+                <InfoBar
+                    x:Name="Problem"
+                    Margin="0,0,0,12"
+                    IsOpen="False"
+                    Severity="Error" />
+
+                <!-- The book: cover, title, author, details, and what to do. -->
+                <Grid ColumnSpacing="28">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <!-- Decoration: the title is right beside it. -->
+                    <Border
+                        x:Name="CoverFrame"
+                        Grid.RowSpan="2"
+                        Width="128"
+                        Height="192"
                         Margin="0,4,0,0"
-                        IsTextSelectionEnabled="True"
-                        Style="{StaticResource BodyStrongTextBlockStyle}" />
-                    <TextBlock
-                        x:Name="Details"
-                        IsTextSelectionEnabled="True"
-                        Style="{StaticResource CaptionSecondaryStyle}" />
+                        VerticalAlignment="Top"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Background="{ThemeResource JournalCoverStandInBrush}"
+                        BorderBrush="{ThemeResource JournalRuleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4,7,7,4"
+                        Shadow="{StaticResource CoverShadow}"
+                        Translation="0,0,12">
+                        <Grid>
+                            <Grid x:Name="CoverStandIn">
+                                <Rectangle Width="7" HorizontalAlignment="Left" Fill="{ThemeResource JournalAccentFillBrush}" Opacity="0.8" />
+                                <TextBlock
+                                    x:Name="CoverInitial"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontSize="52"
+                                    Foreground="{ThemeResource JournalMutedBrush}" />
+                            </Grid>
+                            <Image x:Name="CoverImage" Stretch="UniformToFill" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Spacing="4">
+                        <TextBlock
+                            x:Name="BookTitle"
+                            AutomationProperties.AutomationId="BookTitle"
+                            AutomationProperties.HeadingLevel="Level1"
+                            FontSize="28"
+                            IsTextSelectionEnabled="True"
+                            LineHeight="32"
+                            Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock
+                            x:Name="Subtitle"
+                            FontSize="16"
+                            FontStyle="Italic"
+                            Foreground="{ThemeResource JournalMutedBrush}"
+                            IsTextSelectionEnabled="True"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="Author"
+                            Margin="0,4,0,0"
+                            FontSize="15"
+                            FontWeight="Bold"
+                            Foreground="{ThemeResource JournalAccentTextBrush}"
+                            IsTextSelectionEnabled="True"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="Details"
+                            FontSize="13"
+                            Foreground="{ThemeResource JournalMutedBrush}"
+                            IsTextSelectionEnabled="True"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
 
-                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal" Spacing="8">
+                    <StackPanel
+                        x:Name="Actions"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Margin="0,18,0,0"
+                        VerticalAlignment="Top"
+                        Orientation="Horizontal"
+                        Spacing="8">
                         <Button
                             x:Name="WriteButton"
                             AutomationProperties.AutomationId="WriteButton"
                             AutomationProperties.Name="Write"
                             Click="OnWrite"
-                            Style="{StaticResource AccentButtonStyle}">
+                            Style="{StaticResource PrimaryButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon FontSize="14" Glyph="&#xE70F;" />
                                 <TextBlock x:Name="WriteLabel" Text="Write" />
@@ -87,7 +154,8 @@
                             x:Name="ReadButton"
                             AutomationProperties.AutomationId="ReadButton"
                             AutomationProperties.Name="Read"
-                            Click="OnRead">
+                            Click="OnRead"
+                            Style="{StaticResource PillButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon FontSize="14" Glyph="&#xE736;" />
                                 <TextBlock Text="Read" />
@@ -97,6 +165,7 @@
                             x:Name="MoreButton"
                             AutomationProperties.AutomationId="MoreButton"
                             AutomationProperties.Name="More options"
+                            Style="{StaticResource CircleButtonStyle}"
                             ToolTipService.ToolTip="More options">
                             <FontIcon FontSize="14" Glyph="&#xE712;" />
                             <Button.Flyout>
@@ -120,104 +189,132 @@
                             </Button.Flyout>
                         </Button>
                     </StackPanel>
-                </StackPanel>
-            </Grid>
+                </Grid>
 
-            <Expander
-                x:Name="About"
-                Margin="0,24,0,0"
-                HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left"
-                Header="About this book">
+                <Expander
+                    x:Name="About"
+                    Margin="0,28,0,0"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    CornerRadius="16"
+                    Header="About this book">
+                    <TextBlock
+                        x:Name="Description"
+                        FontSize="15"
+                        IsTextSelectionEnabled="True"
+                        LineHeight="22"
+                        TextWrapping="Wrap" />
+                </Expander>
+
+                <!-- When it was read. Saved the moment a date is picked. -->
                 <TextBlock
-                    x:Name="Description"
-                    IsTextSelectionEnabled="True"
-                    Style="{StaticResource BodyTextBlockStyle}"
-                    TextWrapping="Wrap" />
-            </Expander>
+                    x:Name="DatesHeading"
+                    AutomationProperties.HeadingLevel="Level2"
+                    Style="{StaticResource SectionTitleStyle}"
+                    Text="Reading dates" />
+                <Border Padding="20,16,20,16" Style="{StaticResource PanelStyle}">
+                    <Grid ColumnSpacing="10" RowSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="80" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-            <!-- When it was read. Saved the moment a date is picked. -->
-            <TextBlock
-                AutomationProperties.HeadingLevel="Level2"
-                Style="{StaticResource SectionTitleStyle}"
-                Text="Reading dates" />
-            <Border Style="{StaticResource CardStyle}" Padding="20,16,20,16">
-                <Grid ColumnSpacing="12" RowSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" MinWidth="80" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
+                        <TextBlock VerticalAlignment="Center" FontSize="15" Text="Started" />
+                        <CalendarDatePicker
+                            x:Name="StartedPicker"
+                            Grid.Column="1"
+                            MinWidth="180"
+                            AutomationProperties.Name="Started"
+                            CornerRadius="16"
+                            DateChanged="OnStartedChanged"
+                            PlaceholderText="Not started" />
+                        <Button
+                            x:Name="StartedToday"
+                            Grid.Column="2"
+                            AutomationProperties.Name="Started today"
+                            Click="OnStartedToday"
+                            Content="Today"
+                            Style="{StaticResource PillButtonStyle}" />
+                        <Button
+                            x:Name="StartedClear"
+                            Grid.Column="3"
+                            AutomationProperties.Name="Clear the start date"
+                            Click="OnStartedClear"
+                            Style="{StaticResource CircleButtonStyle}"
+                            ToolTipService.ToolTip="Clear date">
+                            <FontIcon FontSize="12" Glyph="&#xE711;" />
+                        </Button>
 
-                    <TextBlock VerticalAlignment="Center" Text="Started" />
-                    <CalendarDatePicker
-                        x:Name="StartedPicker"
-                        Grid.Column="1"
-                        MinWidth="180"
-                        AutomationProperties.Name="Started"
-                        DateChanged="OnStartedChanged"
-                        PlaceholderText="Not started" />
-                    <Button Grid.Column="2" Click="OnStartedToday" Content="Today" x:Name="StartedToday"
-                            AutomationProperties.Name="Started today" />
-                    <Button Grid.Column="3" Click="OnStartedClear" x:Name="StartedClear"
-                            AutomationProperties.Name="Clear the start date" ToolTipService.ToolTip="Clear date">
-                        <FontIcon FontSize="12" Glyph="&#xE711;" />
-                    </Button>
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center" FontSize="15" Text="Finished" />
+                        <CalendarDatePicker
+                            x:Name="FinishedPicker"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            MinWidth="180"
+                            AutomationProperties.Name="Finished"
+                            CornerRadius="16"
+                            DateChanged="OnFinishedChanged"
+                            PlaceholderText="Not finished" />
+                        <Button
+                            x:Name="FinishedToday"
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            AutomationProperties.Name="Finished today"
+                            Click="OnFinishedToday"
+                            Content="Today"
+                            Style="{StaticResource PillButtonStyle}" />
+                        <Button
+                            x:Name="FinishedClear"
+                            Grid.Row="1"
+                            Grid.Column="3"
+                            AutomationProperties.Name="Clear the finish date"
+                            Click="OnFinishedClear"
+                            Style="{StaticResource CircleButtonStyle}"
+                            ToolTipService.ToolTip="Clear date">
+                            <FontIcon FontSize="12" Glyph="&#xE711;" />
+                        </Button>
 
-                    <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Finished" />
-                    <CalendarDatePicker
-                        x:Name="FinishedPicker"
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        MinWidth="180"
-                        AutomationProperties.Name="Finished"
-                        DateChanged="OnFinishedChanged"
-                        PlaceholderText="Not finished" />
-                    <Button Grid.Row="1" Grid.Column="2" Click="OnFinishedToday" Content="Today" x:Name="FinishedToday"
-                            AutomationProperties.Name="Finished today" />
-                    <Button Grid.Row="1" Grid.Column="3" Click="OnFinishedClear" x:Name="FinishedClear"
-                            AutomationProperties.Name="Clear the finish date" ToolTipService.ToolTip="Clear date">
-                        <FontIcon FontSize="12" Glyph="&#xE711;" />
-                    </Button>
+                        <TextBlock
+                            x:Name="DaysText"
+                            Grid.Row="2"
+                            Grid.ColumnSpan="5"
+                            AutomationProperties.LiveSetting="Polite"
+                            Style="{StaticResource CaptionSecondaryStyle}" />
+                    </Grid>
+                </Border>
 
-                    <TextBlock
-                        x:Name="DaysText"
-                        Grid.Row="2"
-                        Grid.ColumnSpan="5"
-                        AutomationProperties.LiveSetting="Polite"
-                        Style="{StaticResource CaptionSecondaryStyle}" />
-                </Grid>
-            </Border>
-
-            <!-- What was written, laid out like a page. Clicking it opens the writer. -->
-            <TextBlock
-                AutomationProperties.HeadingLevel="Level2"
-                Style="{StaticResource SectionTitleStyle}"
-                Text="My summary" />
-            <Border
-                x:Name="SummaryCard"
-                Padding="32,28,32,32"
-                AutomationProperties.Name="My summary. Select to write."
-                Style="{StaticResource CardStyle}"
-                Tapped="OnSummaryTapped">
-                <Grid>
-                    <RichTextBlock x:Name="Preview" AutomationProperties.AutomationId="SummaryPreview" />
-                    <TextBlock
-                        x:Name="NothingYet"
-                        FontStyle="Italic"
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        Style="{StaticResource BodyTextBlockStyle}"
-                        Text="Nothing written yet. Select Write to begin."
-                        Visibility="Collapsed" />
-                </Grid>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                <!-- What was written, laid out like a page. Clicking it opens the writer. -->
+                <TextBlock
+                    x:Name="SummaryHeading"
+                    AutomationProperties.HeadingLevel="Level2"
+                    Style="{StaticResource SectionTitleStyle}"
+                    Text="My summary" />
+                <Border
+                    x:Name="SummaryCard"
+                    Padding="32,28,32,32"
+                    AutomationProperties.Name="My summary. Select to write."
+                    Style="{StaticResource PanelStyle}"
+                    Tapped="OnSummaryTapped">
+                    <Grid>
+                        <RichTextBlock x:Name="Preview" AutomationProperties.AutomationId="SummaryPreview" />
+                        <TextBlock
+                            x:Name="NothingYet"
+                            FontStyle="Italic"
+                            Foreground="{ThemeResource JournalMutedBrush}"
+                            Style="{StaticResource BodyTextBlockStyle}"
+                            Text="Nothing written yet. Select Write to begin."
+                            Visibility="Collapsed" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </pages:BookshelfPage>

@@ -2,7 +2,8 @@
     x:Class="Bookshelf.Pages.ReaderPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:pages="using:Bookshelf.Pages">
+    xmlns:pages="using:Bookshelf.Pages"
+    Foreground="{ThemeResource JournalInkBrush}">
 
     <!-- The summary on its own: one calm, centered column. -->
     <Grid>
@@ -33,7 +34,7 @@
                     x:Name="NothingYet"
                     Margin="0,28,0,0"
                     FontStyle="Italic"
-                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                    Foreground="{ThemeResource JournalMutedBrush}"
                     Text="Nothing written yet."
                     Visibility="Collapsed" />
             </StackPanel>
@@ -44,12 +45,12 @@
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
             Orientation="Horizontal"
-            Spacing="4">
+            Spacing="8">
             <Button
                 x:Name="EditButton"
                 AutomationProperties.Name="Edit this summary"
                 Click="OnEdit"
-                Style="{StaticResource SubtleButtonStyle}"
+                Style="{StaticResource CircleButtonStyle}"
                 ToolTipService.ToolTip="Edit this summary">
                 <FontIcon FontSize="16" Glyph="&#xE70F;" />
             </Button>
@@ -58,7 +59,7 @@
                 AutomationProperties.AutomationId="FullScreenButton"
                 AutomationProperties.Name="Full screen"
                 Click="OnFullScreen"
-                Style="{StaticResource SubtleButtonStyle}">
+                Style="{StaticResource CircleButtonStyle}">
                 <FontIcon x:Name="FullScreenIcon" FontSize="16" Glyph="&#xE740;" />
             </Button>
         </StackPanel>

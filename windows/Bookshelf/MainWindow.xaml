@@ -1,124 +1,238 @@
 <Window
     x:Class="Bookshelf.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Bookshelf.Controls">
 
-    <!-- The shell: a title bar with search, the shelves on the left, pages
-         in the frame, and notices (like "Removed · Undo") at the bottom. -->
-    <Grid x:Name="Root" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+    <!-- The shell, as in the GTK app: one row across the top of the window
+         (it's also the title bar: Back and Add a book on the left, the
+         three shelves in the middle, Search and Settings on the right), the
+         search under it when it's open, pages in the frame, and notices
+         (like "Removed · Undo") at the bottom. -->
+    <Grid x:Name="Root" Background="{ThemeResource JournalPaperBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar
-            x:Name="AppTitleBar"
-            Title="Bookshelf"
-            IsBackButtonVisible="True"
-            IsBackButtonEnabled="False"
-            IsPaneToggleButtonVisible="True"
-            BackRequested="OnBackRequested"
-            PaneToggleRequested="OnPaneToggleRequested">
-            <TitleBar.IconSource>
-                <FontIconSource Glyph="&#xE736;" />
-            </TitleBar.IconSource>
-            <TitleBar.Content>
-                <AutoSuggestBox
-                    x:Name="SearchBox"
-                    MinWidth="240"
-                    MaxWidth="440"
-                    HorizontalAlignment="Stretch"
+        <!-- The writing and reading pages sit on the page's white, header and all. -->
+        <Border
+            x:Name="PageBackdrop"
+            Grid.RowSpan="3"
+            Background="{ThemeResource JournalCardBrush}"
+            Visibility="Collapsed" />
+
+        <!-- The title bar: dragged anywhere but its buttons (MainWindow.UpdatePassthrough). -->
+        <Grid x:Name="Header" Height="48" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftInsetColumn" Width="0" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="RightInsetColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel
+                x:Name="LeftButtons"
+                Grid.Column="1"
+                Margin="6,0,0,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="4">
+                <Button
+                    x:Name="BackButton"
+                    AutomationProperties.AutomationId="BackButton"
+                    AutomationProperties.Name="Back"
+                    Click="OnBack"
+                    Style="{StaticResource BackButtonStyle}"
+                    Visibility="Collapsed">
+                    <FontIcon FontSize="16" Glyph="&#xE72B;" />
+                </Button>
+                <Button
+                    x:Name="AddButton"
+                    AutomationProperties.AutomationId="AddBookButton"
+                    AutomationProperties.Name="Add a book"
+                    Click="OnAddBook"
+                    Style="{StaticResource CircleButtonStyle}"
+                    Visibility="Collapsed">
+                    <FontIcon FontSize="16" Glyph="&#xE710;" />
+                </Button>
+            </StackPanel>
+
+            <!-- With no profile open: the app's name. -->
+            <StackPanel
+                x:Name="AppTitle"
+                Grid.Column="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="8">
+                <Image
+                    x:Name="AppIcon"
+                    Width="16"
+                    Height="16"
                     VerticalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource JournalInkBrush}"
+                    Text="Bookshelf" />
+                <TextBlock
+                    x:Name="AppChannel"
+                    VerticalAlignment="Center"
+                    Foreground="{ThemeResource JournalMutedBrush}"
+                    Text="Preview"
+                    Visibility="Collapsed" />
+            </StackPanel>
+
+            <!-- The shelves: a tab list to Narrator (Controls/ShelfTabs.cs). -->
+            <controls:ShelfTabList
+                x:Name="Tabs"
+                Grid.Column="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                AutomationProperties.AutomationId="ShelfTabs"
+                AutomationProperties.Name="Shelves"
+                Orientation="Horizontal"
+                Spacing="6"
+                TabFocusNavigation="Once"
+                Visibility="Collapsed"
+                XYFocusKeyboardNavigation="Enabled">
+                <controls:ShelfTab
+                    x:Name="ReadingTab"
+                    AutomationProperties.AutomationId="ReadingShelf"
+                    AutomationProperties.Name="Reading"
+                    AutomationProperties.PositionInSet="1"
+                    AutomationProperties.SizeOfSet="3"
+                    Checked="OnTabChecked"
+                    Click="OnTabClick"
+                    GroupName="Shelves"
+                    Style="{StaticResource ShelfTabStyle}"
+                    Tag="Reading">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <FontIcon FontSize="14" Glyph="&#xE736;" />
+                        <TextBlock x:Name="ReadingLabel" Text="Reading" />
+                    </StackPanel>
+                </controls:ShelfTab>
+                <controls:ShelfTab
+                    x:Name="FinishedTab"
+                    AutomationProperties.AutomationId="FinishedShelf"
+                    AutomationProperties.Name="Finished"
+                    AutomationProperties.PositionInSet="2"
+                    AutomationProperties.SizeOfSet="3"
+                    Checked="OnTabChecked"
+                    Click="OnTabClick"
+                    GroupName="Shelves"
+                    Style="{StaticResource ShelfTabStyle}"
+                    Tag="Finished">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <FontIcon FontSize="14" Glyph="&#xE930;" />
+                        <TextBlock x:Name="FinishedLabel" Text="Finished" />
+                    </StackPanel>
+                </controls:ShelfTab>
+                <controls:ShelfTab
+                    x:Name="EventuallyTab"
+                    AutomationProperties.AutomationId="EventuallyShelf"
+                    AutomationProperties.Name="Eventually"
+                    AutomationProperties.PositionInSet="3"
+                    AutomationProperties.SizeOfSet="3"
+                    Checked="OnTabChecked"
+                    Click="OnTabClick"
+                    GroupName="Shelves"
+                    Style="{StaticResource ShelfTabStyle}"
+                    Tag="Eventually">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <FontIcon FontSize="14" Glyph="&#xE8A4;" />
+                        <TextBlock x:Name="EventuallyLabel" Text="Eventually" />
+                    </StackPanel>
+                </controls:ShelfTab>
+            </controls:ShelfTabList>
+
+            <StackPanel
+                x:Name="RightButtons"
+                Grid.Column="3"
+                Margin="0,0,6,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="4"
+                Visibility="Collapsed">
+                <ToggleButton
+                    x:Name="SearchButton"
+                    AutomationProperties.AutomationId="SearchButton"
+                    AutomationProperties.Name="Search your shelves"
+                    Checked="OnSearchToggled"
+                    Style="{StaticResource CircleToggleButtonStyle}"
+                    Unchecked="OnSearchToggled">
+                    <FontIcon FontSize="16" Glyph="&#xE721;" />
+                </ToggleButton>
+                <Button
+                    x:Name="SettingsButton"
+                    AutomationProperties.AutomationId="SettingsButton"
+                    AutomationProperties.Name="Settings"
+                    Click="OnSettings"
+                    Style="{StaticResource CircleButtonStyle}">
+                    <FontIcon FontSize="16" Glyph="&#xE713;" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- The search: a field on the page, in line with the shelf's column. -->
+        <Grid
+            x:Name="SearchBar"
+            Grid.Row="1"
+            Padding="16,4,16,10"
+            Visibility="Collapsed">
+            <Grid MaxWidth="688" HorizontalAlignment="Stretch">
+                <TextBox
+                    x:Name="SearchBox"
+                    Padding="40,7,6,6"
                     AutomationProperties.AutomationId="SearchBox"
                     AutomationProperties.Name="Search your shelves"
-                    PlaceholderText="Search your shelves"
-                    QueryIcon="Find"
-                    TextChanged="OnSearchTextChanged"
-                    QuerySubmitted="OnSearchSubmitted"
-                    PreviewKeyDown="OnSearchKeyDown" />
-            </TitleBar.Content>
-        </TitleBar>
-
-        <NavigationView
-            x:Name="Nav"
-            Grid.Row="1"
-            PaneDisplayMode="Auto"
-            OpenPaneLength="260"
-            IsBackButtonVisible="Collapsed"
-            IsPaneToggleButtonVisible="False"
-            IsSettingsVisible="True"
-            IsTitleBarAutoPaddingEnabled="False"
-            ItemInvoked="OnNavItemInvoked">
-            <NavigationView.MenuItems>
-                <NavigationViewItem x:Name="ReadingItem" Content="Reading" Tag="Reading"
-                                    AutomationProperties.AutomationId="ReadingShelf">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE736;" />
-                    </NavigationViewItem.Icon>
-                    <NavigationViewItem.InfoBadge>
-                        <InfoBadge x:Name="ReadingBadge" Visibility="Collapsed"
-                                   Style="{ThemeResource InformationalValueInfoBadgeStyle}" />
-                    </NavigationViewItem.InfoBadge>
-                </NavigationViewItem>
-                <NavigationViewItem x:Name="FinishedItem" Content="Finished" Tag="Finished"
-                                    AutomationProperties.AutomationId="FinishedShelf">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE930;" />
-                    </NavigationViewItem.Icon>
-                    <NavigationViewItem.InfoBadge>
-                        <InfoBadge x:Name="FinishedBadge" Visibility="Collapsed"
-                                   Style="{ThemeResource InformationalValueInfoBadgeStyle}" />
-                    </NavigationViewItem.InfoBadge>
-                </NavigationViewItem>
-                <NavigationViewItem x:Name="EventuallyItem" Content="Eventually" Tag="Eventually"
-                                    AutomationProperties.AutomationId="EventuallyShelf">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xE8A4;" />
-                    </NavigationViewItem.Icon>
-                    <NavigationViewItem.InfoBadge>
-                        <InfoBadge x:Name="EventuallyBadge" Visibility="Collapsed"
-                                   Style="{ThemeResource InformationalValueInfoBadgeStyle}" />
-                    </NavigationViewItem.InfoBadge>
-                </NavigationViewItem>
-            </NavigationView.MenuItems>
-
-            <NavigationView.FooterMenuItems>
-                <NavigationViewItem x:Name="ProfileItem" SelectsOnInvoked="False"
-                                    AutomationProperties.AutomationId="ProfileButton">
-                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="-6,0,0,0">
-                        <PersonPicture x:Name="ProfilePicture" Width="28" Height="28" />
-                        <TextBlock x:Name="ProfileName" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <FlyoutBase.AttachedFlyout>
-                        <MenuFlyout x:Name="ProfileMenu" Placement="RightEdgeAlignedBottom" />
-                    </FlyoutBase.AttachedFlyout>
-                </NavigationViewItem>
-            </NavigationView.FooterMenuItems>
-
-            <Grid>
-                <Frame x:Name="ContentFrame" Navigated="OnNavigated" NavigationFailed="OnNavigationFailed" />
-                <!-- Floats over the page, so it gets a solid background of its own. -->
-                <Border
-                    x:Name="NoticeHost"
-                    MaxWidth="640"
-                    Margin="24"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
-                    CornerRadius="{StaticResource OverlayCornerRadius}"
-                    Translation="0,0,24"
-                    Visibility="Collapsed">
-                    <Border.Shadow>
-                        <ThemeShadow />
-                    </Border.Shadow>
-                    <InfoBar
-                        x:Name="Notice"
-                        AutomationProperties.AutomationId="Notice"
-                        IsOpen="False"
-                        IsClosable="True"
-                        Closed="OnNoticeClosed" />
-                </Border>
+                    InputScope="Search"
+                    IsSpellCheckEnabled="False"
+                    KeyDown="OnSearchKeyDown"
+                    PlaceholderText="Title, author, or something you wrote"
+                    Style="{StaticResource FieldTextBoxStyle}"
+                    TextChanged="OnSearchTextChanged" />
+                <FontIcon
+                    Margin="14,0,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    FontSize="16"
+                    Foreground="{ThemeResource JournalMutedBrush}"
+                    Glyph="&#xE721;"
+                    IsHitTestVisible="False" />
             </Grid>
-        </NavigationView>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Frame x:Name="ContentFrame" Navigated="OnNavigated" NavigationFailed="OnNavigationFailed" />
+            <!-- Floats over the page, so it gets a solid background of its own. -->
+            <Border
+                x:Name="NoticeHost"
+                MaxWidth="640"
+                Margin="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Background="{ThemeResource JournalCardBrush}"
+                BorderBrush="{ThemeResource JournalRuleBrush}"
+                BorderThickness="1"
+                CornerRadius="16"
+                Translation="0,0,24"
+                Visibility="Collapsed">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <InfoBar
+                    x:Name="Notice"
+                    AutomationProperties.AutomationId="Notice"
+                    IsClosable="True"
+                    IsOpen="False"
+                    Closed="OnNoticeClosed" />
+            </Border>
+        </Grid>
     </Grid>
 </Window>
