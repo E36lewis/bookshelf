@@ -73,6 +73,8 @@ final class AppModel {
 
     /// The book whose page is open (or was last).
     private(set) var selectedEntryID: String?
+    /// The book whose page was just left: its card takes the focus back.
+    @ObservationIgnored private(set) var returningTo: String?
     private(set) var entry: EntryDetail?
     private(set) var summaryBlocks: [Block] = []
     private(set) var summaryPrompts = ""
@@ -704,10 +706,17 @@ final class AppModel {
         Task { await leavePage() }
     }
 
-    /// Back from the book's page to the shelf.
+    /// Back from the book's page to the shelf, where its card takes the
+    /// focus again.
     func closeBook() {
         guard page == .book else { return }
+        returningTo = selectedEntryID
         page = .shelves
+    }
+
+    /// The card that took the focus back (or isn't on the shelf showing).
+    func returned() {
+        returningTo = nil
     }
 
     /// Leaves the reader or writer for the book's page; on any other page

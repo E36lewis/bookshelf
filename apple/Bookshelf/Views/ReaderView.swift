@@ -70,6 +70,16 @@ struct ReaderView: View {
                 .help("Back to the book's page (Esc)")
                 .accessibilityIdentifier("page.back")
             }
+            // The book's title in the middle, as on Linux; it also keeps
+            // Edit at the right.
+            ToolbarItem(placement: .principal) {
+                Text(entry.book.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: 360)
+                    .accessibilityHidden(true)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     model.openWriter()

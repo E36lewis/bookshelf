@@ -138,8 +138,9 @@ public enum ShelfLayout {
 /// three cards a row in a column of readable width, the same width each,
 /// with a short row centered.
 public enum BookGrid {
-    /// The widest the shelf's column gets, in points.
-    public static let maxWidth: Double = 672
+    /// The widest the shelf's column gets, in points: a 720 pt clamp
+    /// less 16 pt either side, as on Linux.
+    public static let maxWidth: Double = 688
     /// Space between cards, across and down.
     public static let gap: Double = 16
 

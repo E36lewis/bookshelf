@@ -78,8 +78,8 @@ enum Palette {
     static let field = mutedShade.mixed(with: cardShade, 0.15).color
 
     /// A card under the pointer, and pressed.
-    static let cardHover = cardShade.mixed(with: inkShade, 0.035).color
-    static let cardPressed = cardShade.mixed(with: inkShade, 0.07).color
+    static let cardHover = cardShade.mixed(with: inkShade, 0.025).color
+    static let cardPressed = cardShade.mixed(with: inkShade, 0.06).color
     /// A button or tab under the pointer, and pressed.
     static let controlHover = cardShade.mixed(with: inkShade, 0.07).color
     static let controlPressed = cardShade.mixed(with: inkShade, 0.14).color
@@ -321,16 +321,21 @@ struct ShelfTabStyle: ButtonStyle {
     }
 }
 
-/// A book on the shelf: a card, a touch darker under the pointer.
+/// A book on the shelf: a card, a touch darker under the pointer, with
+/// the accent's ring 2 pt outside it while it has the keyboard focus.
 struct CardButtonStyle: ButtonStyle {
-    static let radius: CGFloat = 12
+    static let radius: CGFloat = 16
+
+    var isFocused = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Card(configuration: configuration)
+        Card(configuration: configuration, isFocused: isFocused)
     }
 
     private struct Card: View {
         let configuration: Configuration
+        let isFocused: Bool
+        @Environment(\.journalAccent) private var accent
         @State private var hovering = false
 
         var body: some View {
@@ -339,8 +344,12 @@ struct CardButtonStyle: ButtonStyle {
                 .padding(16)
                 .background(shape.fill(fill))
                 .overlay(shape.strokeBorder(hovering ? Palette.field : Palette.edge, lineWidth: 1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: CardButtonStyle.radius + 4, style: .continuous)
+                        .strokeBorder(accent.text, lineWidth: 2)
+                        .padding(-4)
+                        .opacity(isFocused ? 1 : 0))
                 .contentShape(shape)
-                .contentShape(.focusEffect, shape)
                 .onHover { hovering = $0 }
                 .animation(.easeOut(duration: 0.12), value: hovering)
         }

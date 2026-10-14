@@ -7,7 +7,7 @@ import BookshelfKit
 /// books as a grid of cards, and the search field when it's open.
 struct ShelfPage: View {
     /// Space either side of the shelf's column, in points.
-    static let margin: CGFloat = 24
+    static let margin: CGFloat = 16
 
     @Environment(AppModel.self) private var model
     @Environment(\.openSettings) private var openSettings
@@ -36,6 +36,9 @@ struct ShelfPage: View {
                     }
                     .buttonStyle(BackButtonStyle())
                     .help("Back to the profiles")
+                    // Each named on its own: in one toolbar item, SwiftUI
+                    // gives every button the first one's name.
+                    .accessibilityLabel("Back to Profiles")
                     .accessibilityIdentifier("shelf.back")
                     Button {
                         model.isAddingBook = true
@@ -44,6 +47,7 @@ struct ShelfPage: View {
                     }
                     .buttonStyle(CircleButtonStyle())
                     .help(model.help("Add a book", keys: MenuShortcuts.addBook))
+                    .accessibilityLabel("Add a Book")
                     .accessibilityIdentifier("toolbar.addBook")
                 }
             }
@@ -59,6 +63,7 @@ struct ShelfPage: View {
                     }
                     .buttonStyle(CircleButtonStyle(isOn: model.isSearchOpen))
                     .help(model.help("Search your shelves", keys: MenuShortcuts.search))
+                    .accessibilityLabel("Search")
                     .accessibilityAddTraits(model.isSearchOpen ? .isSelected : [])
                     .accessibilityIdentifier("toolbar.search")
                     Button {
@@ -68,6 +73,7 @@ struct ShelfPage: View {
                     }
                     .buttonStyle(CircleButtonStyle())
                     .help(model.help("Settings", keys: MenuShortcuts.settings))
+                    .accessibilityLabel("Settings")
                     .accessibilityIdentifier("toolbar.settings")
                 }
             }
@@ -78,8 +84,7 @@ struct ShelfPage: View {
 }
 
 /// The three shelves as pills, each with its icon and name; the shelf
-/// showing is filled with ink. VoiceOver reads them as the Shelves group,
-/// the one showing as selected.
+/// showing is filled with ink. VoiceOver reads the one showing as selected.
 struct ShelfTabs: View {
     @Environment(AppModel.self) private var model
 
@@ -152,8 +157,8 @@ struct ShelfSearchField: View {
 }
 
 /// The shelf's heading, then its books as cards, a year at a time on the
-/// Finished shelf: up to three a row in a readable column, with a short
-/// row centered.
+/// Finished shelf: up to three a row in a readable column, every row
+/// centered, every card as tall as the tallest.
 struct ShelfGrid: View {
     let sections: [ShelfSection]
 
@@ -163,9 +168,43 @@ struct ShelfGrid: View {
         GeometryReader { geometry in
             let width = max(0, min(geometry.size.width - 2 * ShelfPage.margin, CGFloat(BookGrid.maxWidth)))
             let columns = BookGrid.columns(forWidth: Double(width))
-            let cardWidth = CGFloat(BookGrid.cardWidth(columns: columns, in: Double(width)))
-            // 2:3 covers, as wide as the card allows up to 112 pt.
-            let coverWidth = max(64, min(112, ((cardWidth - 32) * 0.6).rounded()))
+            ShelfColumn(sections: sections, width: width, columns: columns)
+                // Another shelf, search or layout measures its cards afresh.
+                .id("\(model.shelf.title)|\(model.searchText)|\(columns)|\(model.headingFont)")
+        }
+    }
+}
+
+/// A row of cards, named after the books in it.
+private struct CardRow: Identifiable {
+    let id: String
+    let entries: [ShelfEntry]
+}
+
+/// The tallest card measured so far.
+private struct CardHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+/// The grid at one width.
+private struct ShelfColumn: View {
+    let sections: [ShelfSection]
+    let width: CGFloat
+    let columns: Int
+
+    @Environment(AppModel.self) private var model
+    /// Every card takes the tallest one's height, so the rows line up. It
+    /// only grows: cards are measured as they scroll into view.
+    @State private var cardHeight: CGFloat = 0
+
+    var body: some View {
+        let cardWidth = CGFloat(BookGrid.cardWidth(columns: columns, in: Double(width)))
+        let gap = CGFloat(BookGrid.gap)
+        ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     heading
@@ -176,30 +215,49 @@ struct ShelfGrid: View {
                     ForEach(sections) { section in
                         if let title = section.title {
                             SectionHeader(title: title, detail: section.detail)
-                                .padding(.top, section.id == sections.first?.id ? 4 : 14)
-                                .padding(.bottom, 10)
+                                .padding(.top, 22)
+                                .padding(.bottom, 12)
                         }
-                        ForEach(BookGrid.rows(section.entries, columns: columns), id: \.first?.id) { row in
-                            HStack(alignment: .top, spacing: CGFloat(BookGrid.gap)) {
-                                ForEach(row) { entry in
-                                    EntryCard(entry: entry, coverWidth: coverWidth)
+                        ForEach(rows(section)) { row in
+                            HStack(alignment: .top, spacing: gap) {
+                                ForEach(row.entries) { entry in
+                                    EntryCard(entry: entry, height: cardHeight)
                                         .frame(width: cardWidth)
                                 }
                             }
-                            // Every card in a row as tall as the tallest.
-                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity)
-                            .padding(.bottom, CGFloat(BookGrid.gap))
+                            .padding(.bottom, gap)
                         }
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(model.isSearching ? "Matches on \(model.shelf.title)" : "Books on \(model.shelf.title)")
                 .frame(width: width)
                 .padding(.horizontal, ShelfPage.margin)
                 .padding(.top, 12)
                 .padding(.bottom, 64)
                 .frame(maxWidth: .infinity)
             }
-            .accessibilityLabel(model.isSearching ? "Matches on \(model.shelf.title)" : "Books on \(model.shelf.title)")
+            .onPreferenceChange(CardHeightKey.self) { tallest in
+                if tallest > cardHeight { cardHeight = tallest }
+            }
+            .onAppear {
+                // Back from a book's page: its card comes into view, and
+                // takes the focus (`EntryCard`).
+                guard let id = model.returningTo else { return }
+                let row = sections.flatMap { rows($0) }.first { $0.entries.contains { $0.summaryId == id } }
+                if let row {
+                    proxy.scrollTo(row.id, anchor: .center)
+                } else {
+                    model.returned()
+                }
+            }
+        }
+    }
+
+    private func rows(_ section: ShelfSection) -> [CardRow] {
+        BookGrid.rows(section.entries, columns: columns).map { entries in
+            CardRow(id: entries.map(\.summaryId).joined(separator: "|"), entries: entries)
         }
     }
 
@@ -293,10 +351,13 @@ struct EmptyShelf: View {
 /// VoiceOver; click, Space or Return opens the book's page.
 struct EntryCard: View {
     let entry: ShelfEntry
-    let coverWidth: CGFloat
+    /// The tallest card's height on the shelf, which this one takes too.
+    let height: CGFloat
 
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
+    @FocusState private var focused: Bool
+    @AccessibilityFocusState private var voiceOverFocused: Bool
 
     var body: some View {
         let font = model.headingFont
@@ -304,46 +365,53 @@ struct EntryCard: View {
             model.openBook(entry.summaryId)
         } label: {
             VStack(spacing: 0) {
-                CoverView(path: entry.coverPath, title: entry.title, width: coverWidth)
-                    .padding(.bottom, 12)
+                CoverView(path: entry.coverPath, title: entry.title, width: 104)
+                    .padding(.bottom, 14)
                 Text(entry.title)
                     .font(Typeface.title(font, size: 16))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(2)
                 if let author = entry.author, !author.isEmpty {
                     Text(author)
-                        .font(.system(size: 13))
+                        .font(.system(size: 14))
                         .foregroundStyle(Color.quietText)
                         .lineLimit(1)
-                        .padding(.top, 3)
+                        .padding(.top, 2)
                 }
                 if !entry.meta.isEmpty {
                     Text(entry.meta.uppercased())
-                        .font(.system(size: 10.5, weight: .bold))
-                        .tracking(0.6)
+                        .font(.system(size: 10.7, weight: .bold))
+                        .tracking(0.32)
                         .foregroundStyle(model.accentText(for: colorScheme))
                         .lineLimit(1)
-                        .padding(.top, 6)
+                        .padding(.top, 4)
                 }
                 if !entry.excerpt.isEmpty {
                     Text(entry.excerpt)
-                        .font(Typeface.text(font, size: 13))
-                        .foregroundStyle(Color.quietText)
+                        .font(Typeface.text(font, size: 13.2))
+                        .foregroundStyle(Palette.ink.opacity(0.82))
                         .lineLimit(3)
                         .padding(.top, 8)
                 } else if let note = entry.emptyNote {
                     Text(note)
-                        .font(Typeface.text(font, size: 13))
+                        .font(Typeface.text(font, size: 13.2))
                         .italic()
                         .foregroundStyle(Color.quietText)
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .padding(.top, 8)
                 }
             }
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity)
+            .background(GeometryReader { geometry in
+                Color.clear.preference(key: CardHeightKey.self, value: geometry.size.height)
+            })
+            .frame(minHeight: height, alignment: .top)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(isFocused: focused))
+        .focused($focused)
+        .focusEffectDisabled()
+        .accessibilityFocused($voiceOverFocused)
         .onKeyPress(.return) {
             model.openBook(entry.summaryId)
             return .handled
@@ -357,12 +425,20 @@ struct EntryCard: View {
         .accessibilityLabel(accessibilityText)
         .accessibilityHint("Opens the book's page")
         .accessibilityIdentifier("entry.\(entry.title)")
+        .task {
+            // Back from this book's page: the focus comes back here.
+            guard model.returningTo == entry.summaryId else { return }
+            try? await Task.sleep(for: .milliseconds(150))
+            focused = true
+            voiceOverFocused = true
+            model.returned()
+        }
     }
 
-    /// "Dune, by Frank Herbert. Finished Sep 5, 2026 · 10 days. Spice…"
+    /// "Dune. By Frank Herbert. Finished Sep 5, 2026 · 10 days. Spice…"
     private var accessibilityText: String {
         var parts = [entry.title]
-        if let author = entry.author, !author.isEmpty { parts[0] += ", by \(author)" }
+        if let author = entry.author, !author.isEmpty { parts.append("By \(author)") }
         if !entry.meta.isEmpty { parts.append(entry.meta) }
         if !entry.excerpt.isEmpty {
             parts.append(entry.excerpt)

@@ -210,10 +210,11 @@ final class ScreenshotTests: XCTestCase {
     @MainActor func testNarrowWindowLight() throws { try narrowWindow(.light) }
     @MainActor func testNarrowWindowDark() throws { try narrowWindow(.dark) }
 
-    /// A narrow window: two cards to a row, and the last one centered.
+    /// A narrow window (588 pt for the grid): two cards to a row, and the
+    /// last one centered.
     @MainActor
     private func narrowWindow(_ look: Look) throws {
-        let app = launch(.demo, look, size: "640x720")
+        let app = launch(.demo, look, size: "620x720")
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 30))
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(entry(app, "Piranesi").waitForExistence(timeout: 5))
@@ -324,6 +325,7 @@ final class ScreenshotTests: XCTestCase {
         let avery = app.buttons["profile.Avery"]
         XCTAssertTrue(avery.waitForExistence(timeout: 5))
         try audit("profiles")
+        checkContrast("Profiles' lede", app.staticTexts["profiles.lede"].firstMatch)
         checkToolbar("profiles")
         avery.click()
         XCTAssertTrue(entry(app, "The Left Hand of Darkness").waitForExistence(timeout: 10))
@@ -431,6 +433,9 @@ final class ScreenshotTests: XCTestCase {
             // under 4.5:1.
             if text == "Started" || text == "Finished" || text.hasSuffix(" pages") { return true }
             if element.identifier == "writer.status" { return true }
+            // The profiles page's line under "Who's reading?" is that same
+            // gray, on the paper; measured too.
+            if element.identifier == "profiles.lede" { return true }
             // A book's card is one element over its cover (a colored block
             // with light lettering) and four lines of text, so the audit's
             // verdict swings with the cover and the date: near miss one day,

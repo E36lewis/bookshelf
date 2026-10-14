@@ -23,6 +23,7 @@ struct ProfilesView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(Color.quietText)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("profiles.lede")
                 }
                 .padding(.bottom, 12)
                 if !welcome {
