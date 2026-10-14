@@ -43,7 +43,10 @@ struct DataSettingsTab: View {
                             .font(.system(size: 13))
                             .foregroundStyle(Palette.ink)
                             .textSelection(.enabled)
-                            .multilineTextAlignment(.trailing)
+                            .lineLimit(1)
+                            // The folder's own name stays in view.
+                            .truncationMode(.middle)
+                            .help(backup.shownFolder)
                             .accessibilityIdentifier("settings.backupFolder")
                     }
                     RowRule()

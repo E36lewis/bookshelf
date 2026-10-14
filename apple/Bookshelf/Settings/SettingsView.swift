@@ -490,6 +490,7 @@ struct WritingSettingsTab: View {
                     .font(Typeface.writing(live.writingFont, size: live.textSize))
                     .foregroundStyle(Palette.ink)
                     .lineSpacing(model.layout?.wrapPoints ?? 4)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 12)
                     .accessibilityLabel("Preview of your writing font")
             }

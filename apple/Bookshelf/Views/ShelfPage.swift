@@ -27,55 +27,51 @@ struct ShelfPage: View {
         .pageBackground(Palette.paper)
         .navigationTitle(model.shelf.title)
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                HStack(spacing: 8) {
-                    Button {
-                        model.showProfiles()
-                    } label: {
-                        Label("Back to Profiles", systemImage: "chevron.backward")
-                    }
-                    .buttonStyle(BackButtonStyle())
-                    .help("Back to the profiles")
-                    // Each named on its own: in one toolbar item, SwiftUI
-                    // gives every button the first one's name.
-                    .accessibilityLabel("Back to Profiles")
-                    .accessibilityIdentifier("shelf.back")
-                    Button {
-                        model.isAddingBook = true
-                    } label: {
-                        Label("Add a Book", systemImage: "plus")
-                    }
-                    .buttonStyle(CircleButtonStyle())
-                    .help(model.help("Add a book", keys: MenuShortcuts.addBook))
-                    .accessibilityLabel("Add a Book")
-                    .accessibilityIdentifier("toolbar.addBook")
+            ToolbarItemGroup(placement: .navigation) {
+                Button {
+                    model.showProfiles()
+                } label: {
+                    Label("Back to Profiles", systemImage: "chevron.backward")
                 }
+                .buttonStyle(BackButtonStyle())
+                .help("Back to the profiles")
+                // Each its own toolbar item, and named: buttons sharing one
+                // item all took the first one's name.
+                .accessibilityLabel("Back to Profiles")
+                .accessibilityIdentifier("shelf.back")
+                Button {
+                    model.isAddingBook = true
+                } label: {
+                    Label("Add a Book", systemImage: "plus")
+                }
+                .buttonStyle(CircleButtonStyle())
+                .help(model.help("Add a book", keys: MenuShortcuts.addBook))
+                .accessibilityLabel("Add a Book")
+                .accessibilityIdentifier("toolbar.addBook")
             }
             ToolbarItem(placement: .principal) {
                 ShelfTabs()
             }
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 8) {
-                    Button {
-                        model.toggleSearch()
-                    } label: {
-                        Label("Search", systemImage: "magnifyingglass")
-                    }
-                    .buttonStyle(CircleButtonStyle(isOn: model.isSearchOpen))
-                    .help(model.help("Search your shelves", keys: MenuShortcuts.search))
-                    .accessibilityLabel("Search")
-                    .accessibilityAddTraits(model.isSearchOpen ? .isSelected : [])
-                    .accessibilityIdentifier("toolbar.search")
-                    Button {
-                        openSettings()
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                    .buttonStyle(CircleButtonStyle())
-                    .help(model.help("Settings", keys: MenuShortcuts.settings))
-                    .accessibilityLabel("Settings")
-                    .accessibilityIdentifier("toolbar.settings")
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    model.toggleSearch()
+                } label: {
+                    Label("Search", systemImage: "magnifyingglass")
                 }
+                .buttonStyle(CircleButtonStyle(isOn: model.isSearchOpen))
+                .help(model.help("Search your shelves", keys: MenuShortcuts.search))
+                .accessibilityLabel("Search")
+                .accessibilityAddTraits(model.isSearchOpen ? .isSelected : [])
+                .accessibilityIdentifier("toolbar.search")
+                Button {
+                    openSettings()
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .buttonStyle(CircleButtonStyle())
+                .help(model.help("Settings", keys: MenuShortcuts.settings))
+                .accessibilityLabel("Settings")
+                .accessibilityIdentifier("toolbar.settings")
             }
         }
         .task(id: model.searchText) { await model.runSearch() }
@@ -169,9 +165,31 @@ struct ShelfGrid: View {
             let width = max(0, min(geometry.size.width - 2 * ShelfPage.margin, CGFloat(BookGrid.maxWidth)))
             let columns = BookGrid.columns(forWidth: Double(width))
             ShelfColumn(sections: sections, width: width, columns: columns)
-                // Another shelf, search or layout measures its cards afresh.
-                .id("\(model.shelf.title)|\(model.searchText)|\(columns)|\(model.headingFont)")
+                // Other cards, or another layout, are measured afresh.
+                .id([cardsKey, columns])
         }
+    }
+
+    /// Everything the cards' heights depend on: who, which shelf, the
+    /// search, the font and each card's words.
+    private var cardsKey: Int {
+        var hasher = Hasher()
+        hasher.combine(model.profile?.id)
+        hasher.combine(model.shelf.title)
+        hasher.combine(model.searchText)
+        hasher.combine(model.headingFont)
+        for section in sections {
+            hasher.combine(section.id)
+            for entry in section.entries {
+                hasher.combine(entry.summaryId)
+                hasher.combine(entry.title)
+                hasher.combine(entry.author)
+                hasher.combine(entry.meta)
+                hasher.combine(entry.excerpt)
+                hasher.combine(entry.emptyNote)
+            }
+        }
+        return hasher.finalize()
     }
 }
 
@@ -384,6 +402,11 @@ struct EntryCard: View {
                         .tracking(0.32)
                         .foregroundStyle(model.accentText(for: colorScheme))
                         .lineLimit(1)
+                        // The Mac's bold is a little wider than Linux's: a
+                        // long date line shrinks a touch, to fit a third of
+                        // the column, rather than lose its end.
+                        .allowsTightening(true)
+                        .minimumScaleFactor(0.85)
                         .padding(.top, 4)
                 }
                 if !entry.excerpt.isEmpty {
