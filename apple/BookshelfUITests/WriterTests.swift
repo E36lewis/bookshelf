@@ -160,6 +160,77 @@ final class WriterTests: XCTestCase {
         XCTAssertTrue(italic.exists, "no Italic button on the toolbar")
     }
 
+    /// Lists carry on with Return, nest with Tab and un-nest with Shift-Tab,
+    /// each taken back by one ⌘Z; Return on an empty item ends the list.
+    /// While writing, the caret keeps a few lines clear of the page's
+    /// bottom and top edges.
+    @MainActor
+    func testListKeysAndTheRoomAroundTheCaret() throws {
+        let app = launch(.demo, .light, ["-BookshelfStyleProbe"])
+        let text = openWriter(app, "Middlemarch")
+        let tab = XCUIKeyboardKey.tab.rawValue
+
+        app.typeText("- apples\n")
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- " }, "after Return: \(text.value ?? "")")
+        app.typeText("pears")
+        app.typeKey(tab, modifierFlags: [])
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n  - pears" }, "after Tab: \(text.value ?? "")")
+        app.typeKey(tab, modifierFlags: .shift)
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- pears" }, "after Shift-Tab: \(text.value ?? "")")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n  - pears" }, "⌘Z after Shift-Tab: \(text.value ?? "")")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- pears" }, "⌘Z after Tab: \(text.value ?? "")")
+
+        // Return on an empty item ends the list, leaving a blank line.
+        let lineEnd = XCUIKeyboardKey.rightArrow.rawValue
+        app.typeKey(lineEnd, modifierFlags: .command) // undo selected what it put back
+        app.typeText("\n")
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- pears\n- " }, "\(text.value ?? "")")
+        app.typeText("\n")
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- pears\n\n" }, "ending the list: \(text.value ?? "")")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(waitFor(text) { $0 == "- apples\n- pears\n- " }, "⌘Z after ending the list: \(text.value ?? "")")
+        app.typeKey(lineEnd, modifierFlags: .command)
+        app.typeText("\n")
+
+        // Numbers count on; ⌘Z takes back just the new item.
+        app.typeText("1. one\n")
+        XCTAssertTrue(waitFor(text) { $0.hasSuffix("\n\n1. one\n2. ") }, "numbered: \(text.value ?? "")")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(waitFor(text) { $0.hasSuffix("\n\n1. one") }, "⌘Z in a numbered list: \(text.value ?? "")")
+        keep(app, "31-writer-lists", .light)
+
+        // Writing on and on: the caret stays clear of the bottom...
+        let caret = app.staticTexts["writer.caret"]
+        XCTAssertTrue(caret.waitForExistence(timeout: 5))
+        // (Return twice at the list's end: a new item, then no list.)
+        app.typeKey(XCUIKeyboardKey.downArrow.rawValue, modifierFlags: .command)
+        app.typeText("\n\n" + String(repeating: "Another line of the summary.\n", count: 40) + "The last line")
+        sleep(1)
+        let atEnd = caretRoom(caret)
+        note("\(caret.value ?? "")", named: "caret-room-end")
+        XCTAssertGreaterThanOrEqual(atEnd.below, 2, "lines below the caret: \(caret.value ?? "")")
+        keep(app, "32-writer-caret-room", .light)
+        // ...and of the top, going back up.
+        for _ in 0..<30 { app.typeKey(XCUIKeyboardKey.upArrow.rawValue, modifierFlags: []) }
+        sleep(1)
+        let up = caretRoom(caret)
+        note("\(caret.value ?? "")", named: "caret-room-up")
+        XCTAssertGreaterThanOrEqual(up.above, 2, "lines above the caret: \(caret.value ?? "")")
+    }
+
+    /// The probe's "above=12.0 below=3.0": lines of the page above and below the caret's line.
+    @MainActor
+    private func caretRoom(_ probe: XCUIElement) -> (above: Double, below: Double) {
+        var found: [String: Double] = [:]
+        for pair in (probe.value as? String ?? "").split(separator: " ") {
+            let parts = pair.split(separator: "=")
+            if parts.count == 2, let value = Double(parts[1]) { found[String(parts[0])] = value }
+        }
+        return (found["above"] ?? -1, found["below"] ?? -1)
+    }
+
     /// Typing saves by itself after a pause; leaving and coming back finds
     /// the text, and the shelf shows it.
     @MainActor

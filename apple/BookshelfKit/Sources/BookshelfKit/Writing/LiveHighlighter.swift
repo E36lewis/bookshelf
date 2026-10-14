@@ -97,6 +97,26 @@ extension NSTextView {
         return true
     }
 
+    /// A list key in a list, with the core's `list_key_edit`: Return starts
+    /// the next item (or ends the list on an empty one), Tab and Shift-Tab
+    /// nest and un-nest. One undoable step. Returns false when the key
+    /// isn't the list's here, so it does what it always does.
+    @discardableResult
+    public func applyListKey(_ key: ListKey) -> Bool {
+        guard let edit = listKeyEdit(text: string, selection: selectedRange(), key: key) else { return false }
+        // Nothing to replace: the key is the list's, with nothing to do.
+        guard edit.range.length > 0 || !edit.replacement.isEmpty else { return true }
+        // Its own undo step: not merged with the typing before or after it.
+        breakUndoCoalescing()
+        guard shouldChangeText(in: edit.range, replacementString: edit.replacement) else { return true }
+        textStorage?.replaceCharacters(in: edit.range, with: edit.replacement)
+        didChangeText()
+        setSelectedRange(edit.newSelection)
+        breakUndoCoalescing()
+        scrollRangeToVisible(selectedRange())
+        return true
+    }
+
     /// The word at `location`, as a double-click would select it, or the
     /// one just before it (a caret at the end of a word). Spaces and
     /// punctuation aren't a word: then just the caret.

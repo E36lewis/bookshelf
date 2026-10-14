@@ -270,6 +270,42 @@ final class WritingTests: XCTestCase {
         XCTAssertTrue(page.textView.string.hasSuffix("`three`"), page.textView.string)
     }
 
+    func testListKeysAreOneUndoStepEach() {
+        let page = Page("", styler: styler())
+        page.type("- a")
+        page.step { XCTAssertTrue(page.textView.applyListKey(.enter)) }
+        XCTAssertEqual(page.textView.string, "- a\n- ")
+        XCTAssertEqual(page.textView.selectedRange(), NSRange(location: 6, length: 0))
+        page.type("b")
+        page.step { XCTAssertTrue(page.textView.applyListKey(.indent)) }
+        XCTAssertEqual(page.textView.string, "- a\n  - b")
+        XCTAssertEqual(page.style(at: 6), .marks, "the nested marker is dimmed")
+        page.step { XCTAssertTrue(page.textView.applyListKey(.outdent)) }
+        XCTAssertEqual(page.textView.string, "- a\n- b")
+        page.undo.undo()
+        XCTAssertEqual(page.textView.string, "- a\n  - b", "one step undoes Shift-Tab")
+        page.undo.undo()
+        XCTAssertEqual(page.textView.string, "- a\n- b", "one step undoes Tab")
+
+        // An empty item ends the list.
+        page.textView.setSelectedRange(NSRange(location: 7, length: 0))
+        page.step { page.textView.applyListKey(.enter) }
+        page.step { page.textView.applyListKey(.enter) }
+        XCTAssertEqual(page.textView.string, "- a\n- b\n\n")
+        page.undo.undo()
+        XCTAssertEqual(page.textView.string, "- a\n- b\n- ")
+
+        // Not a list: the key does what it always does.
+        let plain = Page("plain", styler: styler())
+        XCTAssertFalse(plain.textView.applyListKey(.enter))
+        XCTAssertFalse(plain.textView.applyListKey(.indent))
+        // Shift-Tab on an outer item: taken, nothing changes, no undo step.
+        let outer = Page("- a", styler: styler())
+        XCTAssertTrue(outer.textView.applyListKey(.outdent))
+        XCTAssertEqual(outer.textView.string, "- a")
+        XCTAssertFalse(outer.undo.canUndo)
+    }
+
     func testTheWordAtTheCaret() {
         let page = Page("Hello, world!  x", styler: styler())
         XCTAssertEqual(page.textView.wordRange(at: 2), NSRange(location: 0, length: 5))

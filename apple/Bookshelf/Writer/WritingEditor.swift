@@ -81,6 +81,23 @@ struct WritingEditor: NSViewRepresentable {
             session.update(view.string)
             page?.updateStyleProbe()
         }
+
+        /// Return, Tab and Shift-Tab in a list: the next item, nesting and
+        /// un-nesting (the core's rules). Anywhere else, with Shift-Return
+        /// (always a plain line break) and while an input method is
+        /// composing, they do what they always do.
+        func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            let key: ListKey
+            switch selector {
+            case #selector(NSResponder.insertNewline(_:)): key = .enter
+            case #selector(NSResponder.insertTab(_:)): key = .indent
+            case #selector(NSResponder.insertBacktab(_:)): key = .outdent
+            default: return false
+            }
+            let held = NSApp.currentEvent?.modifierFlags.intersection([.shift, .control, .option, .command]) ?? []
+            guard !textView.hasMarkedText(), key == .outdent || held.isEmpty else { return false }
+            return textView.applyListKey(key)
+        }
     }
 }
 
@@ -120,6 +137,9 @@ final class WritingPageView: NSView {
             addSubview(probe)
             self.styleProbe = probe
             updateStyleProbe()
+            let caret = CaretProbe(frame: NSRect(x: 1, y: 0, width: 1, height: 1))
+            caret.measure = { [weak textView] in textView?.caretRoomDescription() ?? "" }
+            addSubview(caret)
         }
     }
 
@@ -259,4 +279,15 @@ final class StyleProbe: NSView {
     override func accessibilityRole() -> NSAccessibility.Role? { .staticText }
     override func accessibilityValue() -> Any? { text }
     override func accessibilityIdentifier() -> String { "writer.styles" }
+}
+
+/// For UI tests, beside the style probe: how many lines show above and
+/// below the caret's line, measured when asked.
+final class CaretProbe: NSView {
+    var measure: (@MainActor () -> String)?
+
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityRole() -> NSAccessibility.Role? { .staticText }
+    override func accessibilityValue() -> Any? { measure?() ?? "" }
+    override func accessibilityIdentifier() -> String { "writer.caret" }
 }

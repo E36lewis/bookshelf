@@ -73,6 +73,15 @@ public func formatEdit(text: String, selection: NSRange, action: FormatAction) -
     return BookshelfFFI.formatEdit(text: text, selStart: start, selEnd: end, action: action)
 }
 
+/// What a list key (Return, Tab, Shift-Tab) does with `selection` (as
+/// NSTextView reports it) selected. `nil` means it isn't the list's key
+/// here; an edit of nothing, that it is but there's nothing to do.
+public func listKeyEdit(text: String, selection: NSRange, key: ListKey) -> TextEdit? {
+    let start = UInt32(clamping: max(selection.location, 0))
+    let end = UInt32(clamping: max(selection.location + selection.length, 0))
+    return BookshelfFFI.listKeyEdit(text: text, selStart: start, selEnd: end, key: key)
+}
+
 extension CoreError {
     /// The error as a sentence to show people.
     public var userMessage: String {

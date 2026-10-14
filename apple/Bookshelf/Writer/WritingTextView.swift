@@ -2,8 +2,9 @@ import AppKit
 import BookshelfKit
 
 /// The writing page's text view (TextKit 1, plain text): one centered
-/// column with room below the last line, the prompts on an empty page,
-/// focus mode, typewriter scrolling, and the page's own undo history.
+/// column with room below the last line, a few lines kept clear around the
+/// caret, the prompts on an empty page, focus mode, typewriter scrolling,
+/// and the page's own undo history.
 final class WritingTextView: NSTextView {
     /// Space above the first line.
     var topMargin: CGFloat = 36 {
@@ -41,6 +42,7 @@ final class WritingTextView: NSTextView {
 
     private var wasEmpty = true
     private var centeringScheduled = false
+    private var caretRoomScheduled = false
 
     private var isEmpty: Bool { (textStorage?.length ?? 0) == 0 }
 
@@ -96,7 +98,7 @@ final class WritingTextView: NSTextView {
             wasEmpty = isEmpty
             needsDisplay = true
         }
-        if isFocusing { scheduleCentering() }
+        if isFocusing { scheduleCentering() } else { scheduleCaretRoom() }
     }
 
     // MARK: Focus mode
@@ -105,9 +107,13 @@ final class WritingTextView: NSTextView {
         _ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool
     ) {
         super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
-        guard isFocusing, !stillSelecting else { return }
-        refreshFocus()
-        scheduleCentering()
+        guard !stillSelecting else { return }
+        if isFocusing {
+            refreshFocus()
+            scheduleCentering()
+        } else {
+            scheduleCaretRoom()
+        }
     }
 
     /// Dims all but the current sentence, with the layout manager's
@@ -170,6 +176,55 @@ final class WritingTextView: NSTextView {
                 scrollView.reflectScrolledClipView(clip)
             }
         }
+    }
+
+    // MARK: Room around the caret
+
+    /// Lines kept clear between the caret and the top and bottom of the page.
+    static let caretRoomLines: CGFloat = 3
+
+    /// After an edit or a caret move from the keyboard, once the text view
+    /// has shown the caret itself: a few lines around it come into view too,
+    /// so writing never happens at the page's very edge. Not for clicks and
+    /// drags (the page stays where the mouse put it), selections, or focus
+    /// mode (which keeps the line mid-page).
+    private func scheduleCaretRoom() {
+        guard !isFocusing, !caretRoomScheduled, !isMouseEvent(NSApp.currentEvent) else { return }
+        caretRoomScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            caretRoomScheduled = false
+            keepCaretClear()
+        }
+    }
+
+    private func keepCaretClear() {
+        guard !isFocusing, selectedRange().length == 0, let line = caretLineRect(),
+              let clip = enclosingScrollView?.contentView else { return }
+        let room = Self.caretRoomLines * line.height
+        // A window too short for the room just keeps the caret in view.
+        guard line.height + 2 * room <= clip.bounds.height else { return }
+        _ = scrollToVisible(line.insetBy(dx: 0, dy: -room))
+    }
+
+    private func isMouseEvent(_ event: NSEvent?) -> Bool {
+        switch event?.type {
+        case .leftMouseDown, .leftMouseDragged, .leftMouseUp, .rightMouseDown, .rightMouseUp,
+             .otherMouseDown, .otherMouseUp, .scrollWheel:
+            true
+        default:
+            false
+        }
+    }
+
+    /// UI tests: how many lines of the page show above and below the
+    /// caret's line ("above=12.0 below=3.0").
+    func caretRoomDescription() -> String {
+        guard let line = caretLineRect(), let clip = enclosingScrollView?.contentView else { return "" }
+        let visible = clip.documentVisibleRect
+        let above = (line.minY - visible.minY) / line.height
+        let below = (visible.maxY - line.maxY) / line.height
+        return String(format: "above=%.1f below=%.1f", above, below)
     }
 
     /// The line the caret is on, in the text view's coordinates.
