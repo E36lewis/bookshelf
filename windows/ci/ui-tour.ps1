@@ -151,6 +151,28 @@ function List-Items([string] $Id) {
     return @($list.FindAll($Scope::Descendants, $isItem))
 }
 
+# The books on the shelf: one card (a button) each, in the grid.
+function Shelf-Cards {
+    $grid = Find-Id 'ShelfList'
+    $isCard = New-Object Windows.Automation.PropertyCondition($A::AutomationIdProperty, 'BookCard')
+    return @($grid.FindAll($Scope::Descendants, $isCard))
+}
+
+# Where the cards are on screen, row by row.
+function Card-Boxes {
+    return @(Shelf-Cards | ForEach-Object { $_.Current.BoundingRectangle } | Sort-Object { [int]$_.Y }, { [int]$_.X })
+}
+
+function Is-Selected([string] $Id) {
+    (Find-Id $Id).GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected
+}
+
+# Resizes the window (in pixels), as dragging its edge does.
+function Resize-Window([double] $Width, [double] $Height) {
+    $script:window.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern).Resize($Width, $Height)
+    Start-Sleep -Seconds 1
+}
+
 # Real key presses (see RealInput.cs), written as for SendKeys: '^b', '{F11}'.
 function Keys([string] $Keys) {
     [Win]::SetForegroundWindow($script:hwnd) | Out-Null
@@ -385,7 +407,7 @@ function Long-Text {
 function Open-Book([string] $Shelf, [string] $Title) {
     Keys $Shelf
     Start-Sleep -Milliseconds 500
-    $item = List-Items 'ShelfList' | Where-Object { $_.Current.Name -like "$Title*" } | Select-Object -First 1
+    $item = Shelf-Cards | Where-Object { $_.Current.Name -like "$Title*" } | Select-Object -First 1
     if (-not $item) { throw "no '$Title' on the shelf" }
     $item.SetFocus()
     Keys '{ENTER}'
@@ -436,20 +458,87 @@ Stop-Bookshelf
 # ---- Avery: the default look, books everywhere ------------------------------
 Start-Bookshelf @('--demo-journal')
 
-Step 'Reading shelf lists books' {
+Step 'Reading shelf shows its books as cards' {
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
-    $items = List-Items 'ShelfList'
+    $items = Shelf-Cards
     if ($items.Count -lt 2) { throw "only $($items.Count) books on Reading" }
     Write-Host ("      " + (($items | ForEach-Object { $_.Current.Name }) -join ' | '))
     if (-not ($items | Where-Object { $_.Current.Name -like 'The Left Hand of Darkness*' })) { throw 'no Left Hand of Darkness' }
+    # Two books: a short row, in the middle of the column.
+    $boxes = Card-Boxes
+    $grid = (Find-Id 'ShelfList').Current.BoundingRectangle
+    $middle = ($boxes[0].X + $boxes[1].X + $boxes[1].Width) / 2
+    if ([Math]::Abs($middle - ($grid.X + $grid.Width / 2)) -gt 3) { throw "the row's middle is at $middle, the grid's at $($grid.X + $grid.Width / 2)" }
     Snap '01-reading'
     Check-Names 'a shelf'
+}
+Step 'The shelves are tabs, and a click opens one' {
+    $tabs = Find-Id 'ShelfTabs'
+    if ($tabs.Current.ControlType -ne [Windows.Automation.ControlType]::Tab) { throw "the shelves are a $($tabs.Current.ControlType.ProgrammaticName), not a tab list" }
+    $reading = Find-Id 'ReadingShelf'
+    if ($reading.Current.ControlType -ne [Windows.Automation.ControlType]::TabItem) { throw "Reading is a $($reading.Current.ControlType.ProgrammaticName), not a tab" }
+    if (-not (Is-Selected 'ReadingShelf')) { throw 'Reading is not the selected tab' }
+    if (Is-Selected 'FinishedShelf') { throw 'Finished is selected too' }
+    # A real click: the header is the title bar, and its buttons still take clicks.
+    Click-Id 'FinishedShelf'
+    Wait-Name 'ShelfHeading' 'Finished' | Out-Null
+    if (-not (Is-Selected 'FinishedShelf')) { throw 'Finished is not selected after clicking it' }
+    Keys '^1'
+    Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    if (-not (Is-Selected 'ReadingShelf')) { throw 'Ctrl+1 did not select Reading' }
 }
 Step 'Ctrl+2: Finished, by year' {
     Keys '^2'
     Wait-Name 'ShelfHeading' 'Finished' | Out-Null
-    if ((List-Items 'ShelfList').Count -lt 4) { throw 'fewer than 4 finished books' }
+    if ((Shelf-Cards).Count -lt 4) { throw 'fewer than 4 finished books' }
     Snap '02-finished'
+}
+Step 'Three to a row, all the same width, a short row in the middle' {
+    # Searching drops the year headings: all four finished books in one grid.
+    Keys '^f'
+    Keys 'e'
+    Wait-Name 'ShelfCount' '4 matches' | Out-Null
+    $boxes = Card-Boxes
+    $grid = (Find-Id 'ShelfList').Current.BoundingRectangle
+    Write-Host ("      cards: " + (($boxes | ForEach-Object { "$([int]$_.X),$([int]$_.Y) $([int]$_.Width)x$([int]$_.Height)" }) -join ' | ') + "; grid $([int]$grid.X)..$([int]($grid.X + $grid.Width))")
+    if ([Math]::Abs($boxes[0].Y - $boxes[2].Y) -gt 1 -or $boxes[3].Y -le $boxes[0].Y) { throw 'not three to a row' }
+    if (@($boxes | Where-Object { [Math]::Abs($_.Width - $boxes[0].Width) -gt 1 }).Count) { throw 'the cards are not all the same width' }
+    if ([Math]::Abs($boxes[0].X - $grid.X) -gt 2 -or [Math]::Abs($boxes[2].X + $boxes[2].Width - $grid.X - $grid.Width) -gt 2) { throw 'the full row does not fill the column' }
+    if ([Math]::Abs($boxes[3].X + $boxes[3].Width / 2 - ($grid.X + $grid.Width / 2)) -gt 3) { throw 'the last row is not in the middle' }
+    if ($grid.Width -gt 692) { throw "the column is $($grid.Width) wide, more than 688" }
+    Snap '02b-grid-rows'
+    Keys '{ESC}'
+    Keys '{ESC}'
+    Wait-Gone 'SearchBox'
+}
+Step 'Narrow windows: two to a row, then one, the tabs as icons' {
+    $before = $script:window.Current.BoundingRectangle
+    Resize-Window 620 $before.Height
+    try {
+        $boxes = Card-Boxes
+        if ($boxes.Count -lt 2 -or [Math]::Abs($boxes[0].Y - $boxes[1].Y) -gt 1) { throw 'not two to a row' }
+        if ($boxes.Count -ge 3 -and [Math]::Abs($boxes[0].Y - $boxes[2].Y) -le 1) { throw 'three to a row in a narrow window' }
+        Snap '02c-finished-narrow'
+        Check-Names 'a narrow window'
+        Resize-Window 420 $before.Height
+        $boxes = Card-Boxes
+        if ($boxes.Count -ge 2 -and [Math]::Abs($boxes[0].Y - $boxes[1].Y) -le 1) { throw 'two to a row in a 420 px window' }
+        Snap '02d-finished-one-column'
+        Check-Names 'a very narrow window'
+        Open-Book '^2' 'Dune'
+        Snap '04b-book-narrow'
+        Keys '%{LEFT}'
+        Wait-Name 'ShelfHeading' 'Finished' | Out-Null
+    }
+    finally { Resize-Window $before.Width $before.Height }
+}
+Step 'Back from a book: the focus is on its card' {
+    Open-Book '^2' 'A Wizard of Earthsea'
+    Keys '%{LEFT}'
+    Wait-Name 'ShelfHeading' 'Finished' | Out-Null
+    Start-Sleep -Milliseconds 500
+    $focused = [Windows.Automation.AutomationElement]::FocusedElement.Current
+    if ($focused.AutomationId -ne 'BookCard' -or $focused.Name -notlike 'A Wizard of Earthsea*') { throw "the focus is on '$($focused.Name)' ($($focused.AutomationId))" }
 }
 Step 'Ctrl+3: Someday' {
     Keys '^3'
@@ -459,7 +548,7 @@ Step 'Ctrl+3: Someday' {
 Step 'Open a book' {
     Keys '^2'
     Wait-Name 'ShelfHeading' 'Finished' | Out-Null
-    $first = (List-Items 'ShelfList')[0]
+    $first = (Shelf-Cards)[0]
     $first.SetFocus()
     Keys '{ENTER}'
     Wait-Name 'BookTitle' 'Dune' | Out-Null
@@ -477,15 +566,15 @@ Step 'Ctrl+R: read' {
 }
 Step 'F11 or Ctrl+Shift+Enter: full screen, Esc to leave' {
     Keys '{F11}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Start-Sleep -Seconds 1
     Snap '06-reader-full-screen'
     Keys '{ESC}'
-    Find-Id 'SearchBox' 5 | Out-Null
+    Find-Id 'SettingsButton' 5 | Out-Null
     Keys '^+{ENTER}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Keys '{ESC}'
-    Find-Id 'SearchBox' 5 | Out-Null
+    Find-Id 'SettingsButton' 5 | Out-Null
 }
 Step 'Alt+Left, then Ctrl+E: write' {
     Keys '%{LEFT}'
@@ -564,19 +653,19 @@ Step 'Ctrl+N: add a book' {
     Keys '{ESC}'
 }
 Step 'Delete, then Undo' {
-    $before = (List-Items 'ShelfList').Count
-    (List-Items 'ShelfList')[0].SetFocus()
+    $before = (Shelf-Cards).Count
+    (Shelf-Cards)[0].SetFocus()
     Keys '{ENTER}'
     Find-Id 'BookTitle' | Out-Null
     Keys '{DELETE}'
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
     Start-Sleep -Seconds 1
-    $after = (List-Items 'ShelfList').Count
+    $after = (Shelf-Cards).Count
     if ($after -ne $before - 1) { throw "$before books before removing, $after after" }
     Snap '15-removed-undo'
     Keys '^z'
     Start-Sleep -Seconds 1
-    $restored = (List-Items 'ShelfList').Count
+    $restored = (Shelf-Cards).Count
     if ($restored -ne $before) { throw "$restored books after Undo, not $before" }
 }
 Step 'Type to search' {
@@ -585,20 +674,32 @@ Step 'Type to search' {
     Keys '^f'
     Keys 'earthsea'
     Wait-Name 'ShelfCount' '1 match' | Out-Null
+    # One book: a card on its own, in the middle.
+    if ((Shelf-Cards).Count -ne 1) { throw "$((Shelf-Cards).Count) cards for one match" }
     Snap '16-search'
     Keys '{ESC}'
-}
-Step 'Profile menu' {
-    (Find-Id 'ProfileButton').SetFocus()
-    Keys '{ENTER}'
-    # (Windows PowerShell reads this file as ANSI: keep names ASCII.)
-    $isMenuItem = New-Object Windows.Automation.PropertyCondition($A::ControlTypeProperty, [Windows.Automation.ControlType]::MenuItem)
-    Start-Sleep -Seconds 1
-    $names = @($A::RootElement.FindAll($Scope::Descendants, $isMenuItem) | ForEach-Object { $_.Current.Name })
-    Write-Host ("      menu: " + ($names -join ' | '))
-    if (-not ($names | Where-Object { $_ -like 'New profile*' })) { throw 'no profile menu' }
-    Snap '17-profile-menu'
     Keys '{ESC}'
+    Wait-Gone 'SearchBox'
+}
+Step 'Back from a shelf: the profiles' {
+    Keys '%{LEFT}'
+    Wait-Name 'WelcomeHeading' "Who's reading?" | Out-Null
+    $rows = Find-Id 'ProfilesList'
+    $isButton = New-Object Windows.Automation.PropertyCondition($A::ControlTypeProperty, [Windows.Automation.ControlType]::Button)
+    $names = @($rows.FindAll($Scope::Descendants, $isButton) | ForEach-Object { $_.Current.Name })
+    Write-Host ("      profiles: " + ($names -join ' | '))
+    if (($names -join ',') -ne 'Avery,Jo,Sam') { throw "the profiles are '$($names -join ', ')'" }
+    Find-Id 'NewProfileName' | Out-Null
+    Wait-Gone 'ShelfTabs'
+    Snap '17-profiles'
+    Check-Names 'the profiles page'
+    # A real click on a profile opens its shelves.
+    $avery = $rows.FindFirst($Scope::Descendants, (New-Object Windows.Automation.PropertyCondition($A::NameProperty, 'Avery')))
+    $r = $avery.Current.BoundingRectangle
+    [Win]::SetForegroundWindow($script:hwnd) | Out-Null
+    [RealInput]::Click([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+    Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    if (-not (Is-Selected 'ReadingShelf')) { throw 'Reading is not selected' }
 }
 Stop-Bookshelf
 
@@ -750,17 +851,17 @@ Step 'Writer: full screen with F11 or Ctrl+Shift+Enter, and Esc' {
     if ($keys -ne 'F11 or Ctrl+Shift+Enter') { throw "the full screen button's keys are '$keys'" }
     $text = Editor-Text
     Keys '{F11}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Keys '{ESC}'
-    Find-Id 'SearchBox' | Out-Null
+    Find-Id 'SettingsButton' | Out-Null
     Keys '^+{ENTER}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Keys '^+{ENTER}'
-    Find-Id 'SearchBox' 5 | Out-Null
+    Find-Id 'SettingsButton' 5 | Out-Null
     Keys '^+{ENTER}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Keys '{ESC}'
-    Find-Id 'SearchBox' 5 | Out-Null
+    Find-Id 'SettingsButton' 5 | Out-Null
     if ((Editor-Text) -ne $text) { throw 'the full screen keys changed the text' }
     Wait-Focused 'Editor'
 }
@@ -864,11 +965,11 @@ Step 'Writer: focus mode keeps the line mid-page' {
 }
 Step 'Writer: F11 full screen, Esc to leave' {
     Keys '{F11}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Start-Sleep -Seconds 1
     Snap '45-writer-full-screen'
     Keys '{ESC}'
-    Find-Id 'SearchBox' | Out-Null
+    Find-Id 'SettingsButton' | Out-Null
     Keys '^+f'
     $toggle = (Find-Id 'FocusModeButton').GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
     if ($toggle.Current.ToggleState -ne [Windows.Automation.ToggleState]::Off) { throw 'Focus is still pressed' }
@@ -945,14 +1046,25 @@ Stop-Bookshelf
 Start-Bookshelf @('--demo-journal', '--demo-profile', 'Sam')
 Step 'Dark theme' {
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    # One book: a card on its own, in the middle.
+    if ((Shelf-Cards).Count -ne 1) { throw "$((Shelf-Cards).Count) cards on Sam's Reading" }
     Snap '20-dark-reading'
     Keys '^2'
     Wait-Name 'ShelfHeading' 'Finished' | Out-Null
     Snap '21-dark-finished'
-    (List-Items 'ShelfList')[0].SetFocus()
+    (Shelf-Cards)[0].SetFocus()
     Keys '{ENTER}'
     Find-Id 'BookTitle' | Out-Null
     Snap '22-dark-book'
+    Keys '^,'
+    Find-Id 'SettingsScroller' | Out-Null
+    Snap '23-dark-settings'
+    Keys '^f'
+    Keys 'dune'
+    Wait-Name 'ShelfCount' '1 match' | Out-Null
+    Snap '24-dark-search'
+    Keys '{ESC}'
+    Keys '{ESC}'
 }
 Step 'Dark writer: Markdown, focus mode, full screen' {
     Open-Writer '^1' 'To the Lighthouse'
@@ -967,11 +1079,11 @@ Step 'Dark writer: Markdown, focus mode, full screen' {
     $focused = Lit-Pixels -Dark
     Snap '51-dark-writer-focus'
     Keys '{F11}'
-    Wait-Gone 'SearchBox'
+    Wait-Gone 'SettingsButton'
     Start-Sleep -Seconds 1
     Snap '53-dark-writer-full-screen'
     Keys '{ESC}'
-    Find-Id 'SearchBox' 5 | Out-Null
+    Find-Id 'SettingsButton' 5 | Out-Null
     Keys '^+f'
     Wait-Look { param($v) $v.focus -eq 'off' -and [int]$v.dimmed -eq 0 } 'Dark, focus mode off, some text is still dimmed' 3 | Out-Null
     $after = Lit-Pixels -Dark
@@ -1055,12 +1167,26 @@ try {
     Start-Sleep -Seconds 3
     Start-Bookshelf @('--demo-journal')
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    Snap '62-high-contrast-reading'
+    Keys '^2'
+    Wait-Name 'ShelfHeading' 'Finished' | Out-Null
+    Snap '63-high-contrast-finished'
+    Open-Book '^2' 'Dune'
+    Snap '64-high-contrast-book'
+    Keys '^,'
+    Find-Id 'SettingsScroller' | Out-Null
+    Snap '65-high-contrast-settings'
     Open-Writer '^2' 'Dune'
     Keys '^{HOME}'
     Snap '60-high-contrast-writer'
     Keys '{DOWN 4}^+f'
     Start-Sleep -Seconds 1
     Snap '61-high-contrast-focus'
+    Keys '^1'
+    Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
+    Keys '%{LEFT}'
+    Wait-Name 'WelcomeHeading' "Who's reading?" | Out-Null
+    Snap '66-high-contrast-profiles'
     Write-Host 'ok    High Contrast screenshots'
 }
 catch { Write-Host "skip  High Contrast screenshots: $_" }
