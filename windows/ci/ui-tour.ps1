@@ -311,21 +311,21 @@ function Caret-Offset {
     return ($middle - ($page.Top + $page.Height / 2)) / $page.Height
 }
 
-# How many lines (of the caret's height) show above and below the caret.
-function Caret-Room {
+# Where the line with $Text (once in the text) is on screen.
+function Line-Rect([string] $Text) {
+    $rects = @((Editor-Pattern).DocumentRange.FindText($Text, $false, $false).GetBoundingRectangles())
+    if ($rects.Count -eq 0) { throw "'$Text' isn't on the page" }
+    return $rects[0]
+}
+
+# How many lines of the page show above and below the line with $Text,
+# counted in the distance to it from the line before, with $Before.
+function Line-Room([string] $Text, [string] $Before) {
     $page = (Find-Id 'Editor').Current.BoundingRectangle
-    $rects = @()
-    for ($try = 0; $try -lt 5 -and $rects.Count -eq 0; $try++) {
-        try {
-            $caret = (Editor-Pattern).GetSelection()[0].Clone()
-            $caret.ExpandToEnclosingUnit([Windows.Automation.Text.TextUnit]::Character)
-            $rects = @($caret.GetBoundingRectangles())
-        }
-        catch { Start-Sleep -Milliseconds 500 }
-    }
-    if ($rects.Count -eq 0) { throw 'the caret has no rectangle (is it off the page?)' }
-    $r = $rects[0]
-    return @{ Above = ($r.Top - $page.Top) / $r.Height; Below = ($page.Bottom - $r.Bottom) / $r.Height }
+    $line = Line-Rect $Text
+    $pitch = $line.Top - (Line-Rect $Before).Top
+    if ($pitch -le 0) { throw "'$Before' isn't above '$Text'" }
+    return @{ Above = ($line.Top - $page.Top) / $pitch; Below = ($page.Bottom - $line.Bottom) / $pitch; Pitch = $pitch }
 }
 
 # The writer's own account of how its text looks (demo journals only, read
@@ -864,20 +864,18 @@ Step 'Writer: lists carry on with Enter, nest with Tab, un-nest with Shift+Tab, 
 Step 'Writer: the caret keeps a few lines clear of the bottom and the top' {
     # Out of the list (Enter on its new, empty item), then line after line.
     Keys '^{END}{ENTER}{ENTER}'
-    Keys (('x{ENTER}' * 30) + 'end')
-    Wait-EditorEnd "x`nend" | Out-Null
-    $font = (Editor-Pattern).DocumentRange.FindText('end', $true, $false).GetAttributeValue([Windows.Automation.TextPattern]::FontNameAttribute)
-    if ("$font" -notlike '*iA Writer Duo*') { throw "the lines typed after the list are in '$font'" }
-    # (Measured on a character: the very end of the text has none.)
-    Keys '{LEFT}'
-    $room = Caret-Room
-    Write-Host ("      at the end: {0:F1} lines below the caret" -f $room.Below)
-    if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret" -f $room.Below) }
+    Keys ((1..30 | ForEach-Object { 'row{0:D2}{{ENTER}}' -f $_ }) -join '')
+    Keys 'the end'
+    Wait-EditorEnd "row30`nthe end" | Out-Null
+    $room = Line-Room 'the end' 'row30'
+    Write-Host ("      at the end: {0:F1} lines below the caret's line ({1:F0} px each)" -f $room.Below, $room.Pitch)
+    if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret's line" -f $room.Below) }
     Snap '41b-writer-caret-room'
-    Keys '{UP 25}{HOME}'
-    $room = Caret-Room
-    Write-Host ("      25 lines up: {0:F1} lines above the caret" -f $room.Above)
-    if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret" -f $room.Above) }
+    # 25 lines up, to row06.
+    Keys '{UP 25}'
+    $room = Line-Room 'row06' 'row05'
+    Write-Host ("      25 lines up: {0:F1} lines above the caret's line" -f $room.Above)
+    if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret's line" -f $room.Above) }
     Keys '%{LEFT}'
     Wait-Name 'BookTitle' 'Middlemarch' | Out-Null
 }

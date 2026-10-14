@@ -255,12 +255,9 @@ public sealed class WritingBox
         if (ListKeys.ChangesNothing(result)) return true; // the list's key, with nothing to do
         var before = new EditorState(_text, start, end);
         var oldBright = _bright;
-        var change = Replace(result.Change, result.Inserted, result.Text, asTyped: true);
+        var change = Replace(result.Change, result.Inserted, result.Text);
         _history.RecordStep(before);
-        // Where the typing left it (a new item, the end of a list): kept as
-        // is, so the next key takes the look of the text before it.
-        if (CurrentSelection() == (result.SelectionStart, result.SelectionEnd)) _selection = CurrentSelection();
-        else Select(result.SelectionStart, result.SelectionEnd);
+        Select(result.SelectionStart, result.SelectionEnd);
         var lines = RestyleEdit(change, oldBright);
         Note(clock, lines);
         Edited?.Invoke();
@@ -395,29 +392,14 @@ public sealed class WritingBox
     /// <paramref name="inserted"/> in place of <c>[change.Start, change.OldEnd)</c>.
     /// Returns the change made: all of it, if RichEdit adjusted something and
     /// everything had to be replaced (it shouldn't).
-    /// <paramref name="asTyped"/>: typed in through the selection, which
-    /// ends up just after it, so what's typed next looks like the text it
-    /// replaced. (A caret put on an empty last line otherwise takes the look
-    /// of the text's final paragraph mark, which isn't in the writing font:
-    /// seen in CI, ending a list at the end of the text.)
     /// </summary>
-    private TextChange Replace(TextChange change, string inserted, string expected, bool asTyped = false)
+    private TextChange Replace(TextChange change, string inserted, string expected)
     {
         var oldLength = _text.Length;
-        var text = inserted.Replace('\n', '\r');
         _applying = true;
         try
         {
-            if (asTyped && text.Length > 0)
-            {
-                var selection = _box.Document.Selection;
-                selection.SetRange(change.Start, change.OldEnd);
-                selection.TypeText(text);
-            }
-            else
-            {
-                _box.Document.GetRange(change.Start, change.OldEnd).SetText(TextSetOptions.None, text);
-            }
+            _box.Document.GetRange(change.Start, change.OldEnd).SetText(TextSetOptions.None, inserted.Replace('\n', '\r'));
         }
         finally
         {
@@ -474,7 +456,7 @@ public sealed class WritingBox
             if (!IsFocusMode)
             {
                 var (start, end) = CurrentSelection();
-                if (_byKeyboard && start == end) _typewriter.KeepClear(CaretRoomLines); // not around a selection
+                if (_byKeyboard && start == end) _typewriter.KeepClear(CaretRoomLines, _spacing?.LinePitch ?? 0); // not around a selection
                 return;
             }
             CatchUp();

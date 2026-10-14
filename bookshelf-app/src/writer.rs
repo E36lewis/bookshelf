@@ -651,7 +651,8 @@ fn keep_caret_clear(tv: &gtk::TextView, scroll: &gtk::ScrolledWindow) -> bool {
         return true;
     };
     let line = f64::from(caret.height().max(1));
-    let room = CARET_ROOM_LINES * line;
+    // A line of the page is the caret's height and the gap below a line.
+    let room = CARET_ROOM_LINES * (line + f64::from(tv.pixels_below_lines().max(0)));
     let adj = scroll.vadjustment();
     let page = adj.page_size();
     let (top, bottom) = (f64::from(at.y()) - room, f64::from(at.y()) + line + room);

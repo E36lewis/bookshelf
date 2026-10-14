@@ -43,10 +43,10 @@ internal sealed class Typewriter(RichEditBox box)
     /// show above and below the caret's line, as far as the page allows (a
     /// window too short for them just keeps the caret where it is).
     /// </summary>
-    public void KeepClear(double lines)
+    public void KeepClear(double lines, double linePitch)
     {
         if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine() is not { } line) return;
-        var room = lines * line.Height;
+        var room = lines * Math.Max(line.Height, linePitch); // the caret is a row high; a line has its space after too
         var (top, bottom) = (line.Top - room, line.Top + line.Height + room);
         if (bottom - top > scroller.ViewportHeight) return;
         var target = scroller.VerticalOffset;
