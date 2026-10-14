@@ -9,7 +9,9 @@ namespace Bookshelf.Writing;
 /// <summary>
 /// Typewriter scrolling for focus mode: keeps the line being written in the
 /// middle of the page, by scrolling the RichEditBox's own ScrollViewer.
-/// Without Windows' animation effects, it jumps instead of gliding.
+/// Without Windows' animation effects, it jumps instead of gliding. Out of
+/// focus mode, it keeps a few lines clear around the caret instead
+/// (<see cref="KeepClear"/>).
 /// </summary>
 /// <remarks>
 /// RichEdit gives the caret's place measured from the top of the whole text,
@@ -36,6 +38,25 @@ internal sealed class Typewriter(RichEditBox box)
         scroller.ChangeView(null, target, null, disableAnimation: !_ui.AnimationsEnabled);
     }
 
+    /// <summary>
+    /// Scrolls just enough that <paramref name="lines"/> lines of the page
+    /// show above and below the caret's line, as far as the page allows (a
+    /// window too short for them just keeps the caret where it is).
+    /// </summary>
+    public void KeepClear(double lines)
+    {
+        if (Scroller is not { ViewportHeight: > 0 } scroller || CaretLine() is not { } line) return;
+        var room = lines * line.Height;
+        var (top, bottom) = (line.Top - room, line.Top + line.Height + room);
+        if (bottom - top > scroller.ViewportHeight) return;
+        var target = scroller.VerticalOffset;
+        if (bottom > target + scroller.ViewportHeight) target = bottom - scroller.ViewportHeight;
+        else if (top < target) target = top;
+        target = Math.Clamp(target, 0, scroller.ScrollableHeight);
+        if (Math.Abs(target - scroller.VerticalOffset) < 1) return;
+        scroller.ChangeView(null, target, null, disableAnimation: true);
+    }
+
     private void Note(string what)
     {
         if (!LogScrolls || _logged >= 12) return;
@@ -50,10 +71,13 @@ internal sealed class Typewriter(RichEditBox box)
     }
 
     /// <summary>The middle of the caret's line, in pixels from the top of the text; null if it can't be told.</summary>
-    private double? CaretY()
+    private double? CaretY() => CaretLine() is { } line ? line.Top + line.Height / 2 : null;
+
+    /// <summary>The top and height of the caret's line, in pixels from the top of the text; null if it can't be told.</summary>
+    private (double Top, double Height)? CaretLine()
     {
         box.Document.Selection.GetRect(PointOptions.ClientCoordinates, out var rect, out _);
-        return rect.Height > 0 ? rect.Y + rect.Height / 2 : null;
+        return rect.Height > 0 ? (rect.Y, rect.Height) : null;
     }
 
     private ScrollViewer? Scroller

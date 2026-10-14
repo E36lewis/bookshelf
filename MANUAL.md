@@ -29,6 +29,7 @@ Choose **Help › Bookshelf Help**, or press **⌘?**, to open this manual. The 
   - [It saves as you type](#it-saves-as-you-type)
   - [Prompts on an empty page](#prompts-on-an-empty-page)
   - [Formatting](#formatting)
+  - [Lists](#lists)
   - [Focus mode](#focus-mode)
   - [Full screen](#full-screen)
 - [Reading](#reading)
@@ -205,6 +206,8 @@ Choose **Remove from my shelf** from the **⋯** menu, or press **Delete**. Your
 
 The writing page is deliberately calm: one column of text and nothing else.
 
+As you type, and as you move with the arrow keys, the page keeps about three lines of space between the line you're on and the bottom of the window (and the top), so you're never writing at the very edge. There's room below the last line for this too. It works the same in full screen; in focus mode, the line you're on stays in the middle instead. Scrolling with the mouse or trackpad is left alone.
+
 <!-- platform: mac -->
 **⌘Z** and **⇧⌘Z** undo and redo your typing, and **⌘F** finds words in your summary (**Edit › Find**). **Edit › Spelling and Grammar** checks your spelling when you ask it to.
 <!-- /platform -->
@@ -270,6 +273,33 @@ Select some text first and the button applies to the whole selection. Pressing t
 
 <!-- platform: mac -->
 The same commands are in the **Format** menu.
+<!-- /platform -->
+
+### Lists
+
+Start a line with `- ` for a bulleted list (`* ` and `+ ` work too), `1. ` for a numbered one, or `- [ ] ` for a to-do list, and then just keep writing:
+
+<!-- platform: linux, windows -->
+- **Enter** starts the next item: the same bullet, the next number, or an empty box. In the middle of an item, the rest of the line moves into the new one.
+- **Enter** on an empty item ends the list, leaving a blank line. On an empty item nested inside another, it moves the item out one level instead.
+- **Tab** nests an item under the one above it, and **Shift+Tab** brings it back out. Select several items to move them all at once.
+- **Shift+Enter** starts a new line without a new item.
+
+Each of these is one step of **Ctrl+Z**.
+<!-- /platform -->
+<!-- platform: mac -->
+- **Return** starts the next item: the same bullet, the next number, or an empty box. In the middle of an item, the rest of the line moves into the new one.
+- **Return** on an empty item ends the list, leaving a blank line. On an empty item nested inside another, it moves the item out one level instead.
+- **Tab** nests an item under the one above it, and **⇧Tab** (Shift-Tab) brings it back out. Select several items to move them all at once.
+- **⇧Return** (Shift-Return) starts a new line without a new item.
+
+Each of these is one step of **⌘Z**.
+<!-- /platform -->
+<!-- platform: linux, mac -->
+On other lines, and inside a code block (between two lines of ```` ``` ````), these keys work as they always do: **Tab** types a tab.
+<!-- /platform -->
+<!-- platform: windows -->
+On other lines, and inside a code block (between two lines of ```` ``` ````), these keys work as they always do: **Tab** types a tab, and **Shift+Tab** moves to the formatting bar.
 <!-- /platform -->
 
 ### Focus mode

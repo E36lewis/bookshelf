@@ -65,4 +65,13 @@ public static class CoreValues
     /// </summary>
     public static TextEdit? FormatEdit(string text, int selStart, int selEnd, FormatAction action) =>
         BookshelfFfiMethods.FormatEdit(text, (uint)Math.Max(selStart, 0), (uint)Math.Max(selEnd, 0), action);
+
+    /// <summary>
+    /// What a list key (Enter, Tab, Shift+Tab) does with
+    /// <paramref name="selStart"/>..<paramref name="selEnd"/> selected. Null
+    /// means it isn't the list's key here; an edit of nothing, that it is
+    /// but there's nothing to do.
+    /// </summary>
+    public static TextEdit? ListKeyEdit(string text, int selStart, int selEnd, ListKey key) =>
+        BookshelfFfiMethods.ListKeyEdit(text, (uint)Math.Max(selStart, 0), (uint)Math.Max(selEnd, 0), key);
 }

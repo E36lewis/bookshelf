@@ -368,8 +368,10 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
     /// The RichEditBox keeps keys from keyboard accelerators, so the writing
     /// page's own keys are handled here, from the core's shortcuts table:
     /// Ctrl+S saves, Ctrl+B, I and K format, Ctrl+Shift+F is focus mode, F11
-    /// or Ctrl+Shift+Enter and Esc go in and out of full screen. Shift+Tab
-    /// goes to the formatting bar (Tab types a tab, for nested lists). The
+    /// or Ctrl+Shift+Enter and Esc go in and out of full screen. In a list,
+    /// Enter starts the next item and Tab and Shift+Tab nest and un-nest
+    /// (<see cref="WritingBox.PressListKey"/>); elsewhere Shift+Tab goes to
+    /// the formatting bar and Tab types a tab. The
     /// box also has Ctrl shortcuts for alignment and line spacing (Ctrl+E,
     /// R, L, J, 1, 2, 5) that would format the text behind the Markdown's
     /// back; those do nothing. (Ctrl+1/2/3 switch shelves, as everywhere:
@@ -408,6 +410,10 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             NoteKey(command.ShortcutTitle!, "the editor's key handler");
             Format(command);
         }
+        else if (ListKeyFor(key, modifiers) is { } listKey && _writing is { } writing && writing.PressListKey(listKey))
+        {
+            e.Handled = true;
+        }
         else if (modifiers == VirtualKeyModifiers.Shift && key == VirtualKey.Tab)
         {
             e.Handled = true;
@@ -419,6 +425,15 @@ public sealed partial class WriterPage : BookshelfPage, IGuardsClose
             e.Handled = true;
         }
     }
+
+    /// <summary>Enter, Tab and Shift+Tab, the keys a list answers to (not Shift+Enter: a plain line break).</summary>
+    private static ListKey? ListKeyFor(VirtualKey key, VirtualKeyModifiers modifiers) => (key, modifiers) switch
+    {
+        (VirtualKey.Enter, VirtualKeyModifiers.None) => ListKey.Enter,
+        (VirtualKey.Tab, VirtualKeyModifiers.None) => ListKey.Indent,
+        (VirtualKey.Tab, VirtualKeyModifiers.Shift) => ListKey.Outdent,
+        _ => null,
+    };
 
     /// <summary>A writing key that came by the editor's own keyboard accelerators instead.</summary>
     private static void ByAccelerator(string title, Action action)

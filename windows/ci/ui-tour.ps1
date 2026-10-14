@@ -16,7 +16,8 @@
 #
 # The writing page gets a tour of its own: highlighting as you type, the
 # formatting keys (Ctrl+B, I, K) and bar, one-step undo, headings bigger by
-# level, prompts, a 10,000-word speed check (written to writer-speed.txt
+# level, the list keys (Enter, Tab, Shift+Tab), the room kept around the
+# caret, prompts, a 10,000-word speed check (written to writer-speed.txt
 # beside the screenshots), focus mode (checked against the writer's own
 # account of its formatting, and the pixels on screen) and full screen
 # (F11, Ctrl+Shift+Enter, Esc); then saving as the window closes (across a
@@ -308,6 +309,23 @@ function Caret-Offset {
     if ($rects.Count -eq 0) { throw 'the caret has no rectangle (is it off the page?)' }
     $middle = $rects[0].Top + $rects[0].Height / 2
     return ($middle - ($page.Top + $page.Height / 2)) / $page.Height
+}
+
+# How many lines (of the caret's height) show above and below the caret.
+function Caret-Room {
+    $page = (Find-Id 'Editor').Current.BoundingRectangle
+    $rects = @()
+    for ($try = 0; $try -lt 5 -and $rects.Count -eq 0; $try++) {
+        try {
+            $caret = (Editor-Pattern).GetSelection()[0].Clone()
+            $caret.ExpandToEnclosingUnit([Windows.Automation.Text.TextUnit]::Character)
+            $rects = @($caret.GetBoundingRectangles())
+        }
+        catch { Start-Sleep -Milliseconds 500 }
+    }
+    if ($rects.Count -eq 0) { throw 'the caret has no rectangle (is it off the page?)' }
+    $r = $rects[0]
+    return @{ Above = ($r.Top - $page.Top) / $r.Height; Below = ($page.Bottom - $r.Bottom) / $r.Height }
 }
 
 # The writer's own account of how its text looks (demo journals only, read
@@ -798,6 +816,63 @@ Step 'Writer: the changes save by themselves' {
     $text = $preview.GetCurrentPattern([Windows.Automation.TextPattern]::Pattern).DocumentRange.GetText(-1)
     if ($text -notlike '*A bold move.*') { throw "the book page doesn't show the new text" }
     Write-Host "      $words words saved"
+}
+Step 'Writer: lists carry on with Enter, nest with Tab, un-nest with Shift+Tab, each undone by one Ctrl+Z' {
+    Open-Writer '^2' 'Middlemarch' # its notes end with a numbered list, at 3.
+    Keys '^{END}{ENTER}'
+    Wait-EditorEnd "perfect.`n4." | Out-Null
+    Keys 'Its letters{ENTER}'
+    Wait-EditorEnd "`n4. Its letters`n5." | Out-Null
+    Keys '{TAB}'
+    Wait-EditorEnd "letters`n   5." | Out-Null
+    Wait-Focused 'Editor' # Tab nests the item; it doesn't leave the text
+    Keys '+{TAB}'
+    Wait-EditorEnd "letters`n5." | Out-Null
+    Wait-Focused 'Editor'
+    Keys '^z'
+    Wait-EditorEnd "letters`n   5." | Out-Null
+    Keys '^z'
+    Wait-EditorEnd "letters`n5." | Out-Null
+    Keys '^z'
+    $undone = Wait-EditorEnd "`n4. Its letters"
+    if ($undone -match '5\.') { throw 'one Ctrl+Z after Enter left the new item' }
+    Write-Host '      Enter -> 5., Tab -> nested, Shift+Tab -> back; Ctrl+Z took back each'
+    # Enter on an empty item ends the list: a blank line, then the caret.
+    Keys '{ENTER}{ENTER}after'
+    Wait-EditorEnd "Its letters`n`nafter" | Out-Null
+    Keys '^z'
+    Keys '^z'
+    Wait-EditorEnd "letters`n5." | Out-Null
+    # Bullets carry on as they are.
+    Keys '{ENTER}- apples{ENTER}'
+    Wait-EditorEnd "`n`n- apples`n-" | Out-Null
+    Snap '41a-writer-lists'
+    Keys '^z'
+    Wait-EditorEnd "`n`n- apples" | Out-Null
+    # Shift+Enter is a line break of the box's own, never a new item.
+    Keys '+{ENTER}'
+    $raw = (Editor-Pattern).DocumentRange.GetText(-1)
+    $tail = $raw.Substring([Math]::Max(0, $raw.Length - 10))
+    Write-Host ("      Shift+Enter after '- apples': ...{0}" -f (($tail.ToCharArray() | ForEach-Object { 'U+{0:X4}' -f [int]$_ }) -join ' '))
+    if ($raw -match "apples\s+- ") { throw 'Shift+Enter started a new item' }
+    Keys '{BACKSPACE}'
+    Wait-EditorEnd "`n`n- apples" | Out-Null
+}
+Step 'Writer: the caret keeps a few lines clear of the bottom and the top' {
+    # Out of the list (Enter on its new, empty item), then line after line.
+    Keys '^{END}{ENTER}{ENTER}'
+    Keys (('x{ENTER}' * 30) + 'end')
+    Wait-EditorEnd "x`nend" | Out-Null
+    $room = Caret-Room
+    Write-Host ("      at the end: {0:F1} lines below the caret" -f $room.Below)
+    if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret" -f $room.Below) }
+    Snap '41b-writer-caret-room'
+    Keys '{UP 25}'
+    $room = Caret-Room
+    Write-Host ("      25 lines up: {0:F1} lines above the caret" -f $room.Above)
+    if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret" -f $room.Above) }
+    Keys '%{LEFT}'
+    Wait-Name 'BookTitle' 'Middlemarch' | Out-Null
 }
 Step 'Writer: prompts on an empty page' {
     Open-Writer '^1' 'Piranesi'

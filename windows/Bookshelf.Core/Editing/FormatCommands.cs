@@ -47,7 +47,12 @@ public static class FormatCommands
         var a = Math.Clamp(Math.Min(selStart, selEnd), 0, text.Length);
         var b = Math.Clamp(Math.Max(selStart, selEnd), 0, text.Length);
         if (a == b && BookshelfFfiMethods.FormatExpandsToWord(action)) (a, b) = WordBounds.Around(text, a);
-        if (CoreValues.FormatEdit(text, a, b, action) is not { } edit) return null;
+        return CoreValues.FormatEdit(text, a, b, action) is { } edit ? Result(text, edit) : null;
+    }
+
+    /// <summary>The core's edit of <paramref name="text"/> as a result to apply, its offsets kept within the text.</summary>
+    public static FormatResult Result(string text, TextEdit edit)
+    {
         var start = (int)Math.Min(edit.Start, (uint)text.Length);
         var end = (int)Math.Clamp(edit.End, (uint)start, (uint)text.Length);
         var (change, inserted) = TextDiff.Narrow(text, start, end, edit.Replacement);

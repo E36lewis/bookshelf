@@ -21,10 +21,11 @@ namespace Bookshelf;
 /// <item>Markdown highlighting from the shared Rust core, redone only for the
 /// lines an edit touched, so long texts stay fast; recolored when the theme
 /// changes, and plain in High Contrast.</item>
-/// <item>The formatting bar's edits (<see cref="Format"/>), each one step
-/// of undo.</item>
+/// <item>The formatting bar's edits (<see cref="Format"/>) and the list keys
+/// (<see cref="PressListKey"/>), each one step of undo.</item>
 /// <item>Focus mode: everything but the current sentence dimmed, and the
-/// caret's line kept mid-page (<see cref="Typewriter"/>).</item>
+/// caret's line kept mid-page (<see cref="Typewriter"/>). Otherwise, a few
+/// lines kept clear around the caret as you type and move it with keys.</item>
 /// <item>Bookshelf's own text-only undo (Ctrl+Z, Ctrl+Y / Ctrl+Shift+Z): the
 /// box's built-in undo also records the highlighting, so it's switched off.
 /// Highlighting and dimming never touch it.</item>
@@ -50,6 +51,11 @@ public sealed class WritingBox
     private bool _backgroundQueued;
     private bool _endsWithOwnBreak; // RichEdit's GetText gives its final paragraph mark too
     private (float Above, float Below) _room; // points, before the first line and after the last
+    private bool _composing; // an input method is composing: its keys are its own
+    private bool _byKeyboard; // the last key or click was a key: caret moves may scroll the page
+
+    /// <summary>Lines kept clear between the caret and the top and bottom of the page while writing.</summary>
+    private const double CaretRoomLines = 3;
 
     /// <summary>A long text's lines around the caret are highlighted at once, this many each way; the rest when idle.</summary>
     private const int LinesNow = 60;
@@ -103,6 +109,11 @@ public sealed class WritingBox
             QueueCaretUpdate();
         };
         _box.PreviewKeyDown += OnPreviewKeyDown;
+        // A click (handled by the box itself, hence handledEventsToo) moves
+        // the caret where the person wants it: the page stays put.
+        _box.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler((_, _) => _byKeyboard = false), handledEventsToo: true);
+        _box.TextCompositionStarted += (_, _) => _composing = true;
+        _box.TextCompositionEnded += (_, _) => _composing = false;
         _box.Paste += OnPaste;
         // Light, dark and High Contrast each have their own colors. (A
         // desktop app can't watch AccessibilitySettings; Windows' colors
@@ -227,6 +238,34 @@ public sealed class WritingBox
     }
 
     /// <summary>
+    /// Enter, Tab or Shift+Tab in a list, with the core's rules: the next
+    /// item (or the end of the list, on an empty one), nesting, un-nesting.
+    /// One replacement, one step of undo. False when the key isn't the
+    /// list's here (or an input method is composing), so it does what it
+    /// always does.
+    /// </summary>
+    public bool PressListKey(ListKey key)
+    {
+        if (_composing) return false;
+        _byKeyboard = true; // the page's key handler took it first
+        CatchUp(); // work on the text as it is, the last key included
+        var clock = Stopwatch.StartNew();
+        var (start, end) = CurrentSelection();
+        if (ListKeys.Apply(_text, start, end, key) is not { } result) return false;
+        if (ListKeys.ChangesNothing(result)) return true; // the list's key, with nothing to do
+        var before = new EditorState(_text, start, end);
+        var oldBright = _bright;
+        var change = Replace(result.Change, result.Inserted, result.Text);
+        _history.RecordStep(before);
+        Select(result.SelectionStart, result.SelectionEnd);
+        var lines = RestyleEdit(change, oldBright);
+        Note(clock, lines);
+        Edited?.Invoke();
+        QueueCaretUpdate();
+        return true;
+    }
+
+    /// <summary>
     /// Focus mode on or off. On: everything but the sentence being written is
     /// dimmed, and typing keeps its line mid-page. Only colors change, never
     /// the text, so undo doesn't see it.
@@ -308,6 +347,7 @@ public sealed class WritingBox
 
     private void OnPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        _byKeyboard = true;
         if (!IsDown(VirtualKey.Control) || IsDown(VirtualKey.Menu)) return;
         var shift = IsDown(VirtualKey.Shift);
         if (e.Key == VirtualKey.Z && !shift)
@@ -402,17 +442,23 @@ public sealed class WritingBox
 
     /// <summary>
     /// After the caret moves (and any typing has landed): in focus mode,
-    /// brightens the sentence it's now in and keeps its line mid-page. Done
-    /// once per burst of events, when the dispatcher is idle.
+    /// brightens the sentence it's now in and keeps its line mid-page;
+    /// otherwise, after a key, keeps a few lines clear around it. Done once
+    /// per burst of events, when the dispatcher is idle.
     /// </summary>
     private void QueueCaretUpdate()
     {
-        if (!IsFocusMode || _caretUpdateQueued) return;
+        if (_caretUpdateQueued || !(IsFocusMode || _byKeyboard)) return;
         _caretUpdateQueued = true;
         _box.DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
             _caretUpdateQueued = false;
-            if (!IsFocusMode) return;
+            if (!IsFocusMode)
+            {
+                var (start, end) = CurrentSelection();
+                if (_byKeyboard && start == end) _typewriter.KeepClear(CaretRoomLines); // not around a selection
+                return;
+            }
             CatchUp();
             var next = SentenceBounds.Around(_text, CurrentSelection().Start);
             if (next != _bright)

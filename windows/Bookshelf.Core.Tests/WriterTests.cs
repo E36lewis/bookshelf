@@ -217,6 +217,57 @@ public class FormattingTests
     }
 }
 
+public class ListKeyTests
+{
+    /// <summary>Presses <paramref name="key"/> in <paramref name="marked"/> (‸ caret, «…» selection); "(nothing)" if it isn't the list's key.</summary>
+    private static string Press(string marked, ListKey key)
+    {
+        var caret = marked.IndexOf('‸');
+        var (text, start, end) = caret >= 0
+            ? (marked.Remove(caret, 1), caret, caret)
+            : (marked.Remove(marked.IndexOf('«'), 1).Remove(marked.IndexOf('»') - 1, 1), marked.IndexOf('«'), marked.IndexOf('»') - 1);
+        var result = ListKeys.Apply(text, start, end, key);
+        if (result is null) return "(nothing)";
+        Assert.Equal(result.Text, string.Concat(text.AsSpan(0, result.Change.Start), result.Inserted, text.AsSpan(result.Change.OldEnd)));
+        var (a, b) = (result.SelectionStart, result.SelectionEnd);
+        return a == b ? result.Text.Insert(a, "‸") : result.Text.Insert(b, "»").Insert(a, "«");
+    }
+
+    [Fact]
+    public void EnterCarriesTheListOn()
+    {
+        Assert.Equal("- a\n- ‸", Press("- a‸", ListKey.Enter));
+        Assert.Equal("1. a\n2. ‸", Press("1. a‸", ListKey.Enter));
+        Assert.Equal("- [x] a\n- [ ] ‸", Press("- [x] a‸", ListKey.Enter));
+        Assert.Equal("- a\n- ‸b", Press("- a‸b", ListKey.Enter));
+        Assert.Equal("- 📚\n- ‸", Press("- 📚‸", ListKey.Enter)); // two UTF-16 units, as C# counts
+        Assert.Equal("(nothing)", Press("plain‸", ListKey.Enter));
+        Assert.Equal("(nothing)", Press("```\n- a‸", ListKey.Enter));
+    }
+
+    [Fact]
+    public void EnterOnAnEmptyItemEndsTheList()
+    {
+        Assert.Equal("- a\n\n‸", Press("- a\n- ‸", ListKey.Enter));
+        Assert.Equal("- a\n  - b\n- ‸", Press("- a\n  - b\n  - ‸", ListKey.Enter)); // nested: one level out
+    }
+
+    [Fact]
+    public void TabNestsAndShiftTabUnNests()
+    {
+        Assert.Equal("- a\n  - b‸", Press("- a\n- b‸", ListKey.Indent));
+        Assert.Equal("1. a\n   2. b‸", Press("1. a\n2. b‸", ListKey.Indent));
+        Assert.Equal("- a\n- b‸", Press("- a\n  - b‸", ListKey.Outdent));
+        Assert.Equal("- a\n«  - b\n  - c»", Press("- a\n«- b\n- c»", ListKey.Indent));
+        Assert.Equal("(nothing)", Press("plain‸", ListKey.Indent));
+        // Shift+Tab on an outer item: the key is taken, the text stays.
+        var outer = ListKeys.Apply("- a", 3, 3, ListKey.Outdent);
+        Assert.NotNull(outer);
+        Assert.True(ListKeys.ChangesNothing(outer!));
+        Assert.False(ListKeys.ChangesNothing(ListKeys.Apply("- a", 3, 3, ListKey.Enter)!));
+    }
+}
+
 public class FormattingUndoTests
 {
     private static readonly DateTime T0 = new(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
