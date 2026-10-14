@@ -1,32 +1,36 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Bookshelf.Controls;
 using Bookshelf.Core;
 using Bookshelf.Ffi;
 using Bookshelf.Pages;
 using Bookshelf.Services;
-using Microsoft.UI.Composition.SystemBackdrops;
-using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.Foundation;
 using Windows.Graphics;
 using Windows.System;
 using WinRT.Interop;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace Bookshelf;
 
 /// <summary>
-/// The app's one window: the title bar with the search, the shelves and
-/// the profile in the navigation pane, pages in the frame, and notices.
+/// The app's one window, laid out as the GTK app is: a row across the top
+/// (Back and Add a book, the three shelves as tabs, Search and Settings)
+/// that's also the title bar, the search under it when it's open, pages in
+/// one frame (the profiles, then a shelf, a book, its writing and reading
+/// pages), and notices.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -37,6 +41,10 @@ public sealed partial class MainWindow : Window
     private RemovedEntry? _removed; // the last removal, while its Undo is offered
     private bool _canClose;
     private bool _closing;
+    private bool _syncingTabs; // the tabs are being set from code, not by the person
+    private bool _compactTabs; // icons only: the window is too narrow for the shelves' names
+    private double _tabsFullWidth; // the tabs with their names
+    private RectInt32[] _passthrough = [];
 
     internal MainWindow(LaunchOptions options)
     {
@@ -44,25 +52,29 @@ public sealed partial class MainWindow : Window
         _options = options;
         StartupLog.Step("Loading MainWindow.xaml");
         InitializeComponent();
+        // The taskbar's name for the window. "Bookshelf" alone is a release;
+        // anything else says it's a preview (in the header too).
         Title = AppFolders.AppName;
-        // "Bookshelf" alone is a release; anything else says it's a preview.
-        if (AppFolders.BuildChannel == Channel.Preview) AppTitleBar.Subtitle = "Preview";
-        // The taskbar's name for the window, whatever the title bar shows.
-        Root.Loaded += (_, _) => Title = AppFolders.AppName;
+        if (AppFolders.BuildChannel == Channel.Preview) AppChannel.Visibility = Visibility.Visible;
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        SetTitleBar(Header);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        Header.SizeChanged += (_, _) => LayOutHeader();
+        LeftButtons.SizeChanged += (_, _) => LayOutHeader();
+        RightButtons.SizeChanged += (_, _) => LayOutHeader();
+        AppTitle.SizeChanged += (_, _) => LayOutHeader();
+        Tabs.SizeChanged += OnTabsSizeChanged;
+        Header.LayoutUpdated += (_, _) => UpdatePassthrough();
         _ = SetIconsAsync();
-        SetBackdrop();
         PlaceWindow();
         AppWindow.Closing += OnClosing;
         Activated += OnActivated;
         _noticeTimer = DispatcherQueue.CreateTimer();
         _noticeTimer.IsRepeating = false;
         _noticeTimer.Tick += (_, _) => Notice.IsOpen = false;
-        SetShellVisible(false);
+        SetTips();
+        UpdateChrome();
         AddKeyboardShortcuts();
-        SearchBox.Loaded += (_, _) => NameTextBox(SearchBox);
         StartupLog.Step("Checking the bundled fonts");
         Look.LoadFonts();
         Look.Apply(null, Root, AppWindow);
@@ -100,14 +112,11 @@ public sealed partial class MainWindow : Window
                 StartupLog.Step("Demo journal: saving the writing page will fail (--demo-save-fails)");
             }
             _session = new Session(journal);
-            _session.ShelvesChanged += UpdateBadges;
-            _session.SearchChanged += UpdateBadges;
-            _session.ProfileChanged += UpdateProfileItem;
 
             var profiles = await _session.LoadProfilesAsync();
             var state = await Task.Run(() => AppState.Load(journal.DataDirectory));
             open ??= profiles.FirstOrDefault(p => p.Id == state.LastProfileId) ?? profiles.FirstOrDefault();
-            if (open is null) ShowWelcome(firstRun: true);
+            if (open is null) ShowProfiles(); // the first run: Welcome
             else await OpenProfileAsync(open);
 
             Backups.Start(journal, DispatcherQueue);
@@ -118,7 +127,6 @@ public sealed partial class MainWindow : Window
         {
             var message = e is CoreException core ? core.UserMessage() : e.Message;
             StartupLog.Step($"Couldn't open the journal: {message}");
-            SetShellVisible(false);
             ContentFrame.Navigate(typeof(ProblemPage), message);
         }
     }
@@ -155,19 +163,10 @@ public sealed partial class MainWindow : Window
 
     // ---- window ---------------------------------------------------------------
 
-    /// <summary>Mica on Windows 11; Windows 10 keeps the root's solid theme background.</summary>
-    private void SetBackdrop()
-    {
-        if (!MicaController.IsSupported()) return;
-        SystemBackdrop = new MicaBackdrop();
-        Root.ClearValue(Panel.BackgroundProperty);
-        StartupLog.Step("Mica backdrop");
-    }
-
     /// <summary>
-    /// The app icon on the window (taskbar, Alt+Tab) and in the title bar,
-    /// from the copy of Bookshelf.ico unpacked next to Bookshelf.dll. If it
-    /// can't be read, the title bar keeps its book glyph.
+    /// The app icon on the window (taskbar, Alt+Tab) and beside its name in
+    /// the header, from the copy of Bookshelf.ico unpacked next to
+    /// Bookshelf.dll. If it can't be read, the header shows the name alone.
     /// </summary>
     private async Task SetIconsAsync()
     {
@@ -181,7 +180,7 @@ public sealed partial class MainWindow : Window
             {
                 await icon.SetSourceAsync(file.AsRandomAccessStream());
             }
-            AppTitleBar.IconSource = new ImageIconSource { ImageSource = icon };
+            AppIcon.Source = icon;
         }
         catch (Exception e)
         {
@@ -210,7 +209,7 @@ public sealed partial class MainWindow : Window
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             _windowed = presenter;
-            presenter.PreferredMinimumWidth = (int)(560 * scale);
+            presenter.PreferredMinimumWidth = (int)(420 * scale);
             presenter.PreferredMinimumHeight = (int)(480 * scale);
         }
     }
@@ -235,17 +234,155 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    /// <summary>The navigation pane and search, hidden until there's a profile.</summary>
-    private void SetShellVisible(bool visible)
+    /// <summary>Applies the open profile's theme, accent and fonts (with none open, the neutral look).</summary>
+    internal void ApplyLook() => Look.Apply(_session?.Settings, Root, AppWindow);
+
+    // ---- the header -------------------------------------------------------------
+
+    /// <summary>
+    /// What the header and the window show for the page and the profile:
+    /// the shelf buttons only with a profile open (the app's name without
+    /// one), Back when there's somewhere to go back to, the search when it's
+    /// open, and nothing but the page in full screen.
+    /// </summary>
+    private void UpdateChrome()
     {
-        Nav.IsPaneVisible = visible && !IsFullScreen;
-        AppTitleBar.IsPaneToggleButtonVisible = visible;
-        AppTitleBar.IsBackButtonVisible = visible;
-        SearchBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        var profile = _session?.Profile is not null;
+        var fullScreen = IsFullScreen;
+        Header.Visibility = fullScreen ? Visibility.Collapsed : Visibility.Visible;
+        BackButton.Visibility = ContentFrame.CanGoBack ? Visibility.Visible : Visibility.Collapsed;
+        var shelfButtons = profile ? Visibility.Visible : Visibility.Collapsed;
+        AddButton.Visibility = shelfButtons;
+        Tabs.Visibility = shelfButtons;
+        RightButtons.Visibility = shelfButtons;
+        AppTitle.Visibility = profile ? Visibility.Collapsed : Visibility.Visible;
+        SearchBar.Visibility = profile && !fullScreen && SearchButton.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        PageBackdrop.Visibility = (ContentFrame.Content is ReaderPage or WriterPage) ? Visibility.Visible : Visibility.Collapsed;
+        SyncTabs();
     }
 
-    /// <summary>Applies the open profile's theme, accent and fonts.</summary>
-    internal void ApplyLook() => Look.Apply(_session?.Settings, Root, AppWindow);
+    private (ShelfTab Tab, Shelf Shelf)[] TabShelves() =>
+        [(ReadingTab, Shelf.Reading), (FinishedTab, Shelf.Finished), (EventuallyTab, Shelf.Eventually)];
+
+    /// <summary>The tab of the shelf the page belongs to: its shelf, or none (Settings, the manual).</summary>
+    private void SyncTabs()
+    {
+        Shelf? open = _session?.Profile is not null && (ContentFrame.Content is ShelfPage or BookPage or ReaderPage or WriterPage)
+            ? Session.CurrentShelf
+            : null;
+        _syncingTabs = true;
+        try
+        {
+            foreach (var (tab, shelf) in TabShelves()) tab.IsChecked = shelf == open;
+        }
+        finally
+        {
+            _syncingTabs = false;
+        }
+    }
+
+    /// <summary>Tooltips with each button's keys, from the core's Windows table.</summary>
+    private void SetTips()
+    {
+        foreach (var (tab, shelf) in TabShelves()) SetTip(tab, ShelfText.Name(shelf), ShelfText.Name(shelf));
+        SetTip(AddButton, "Add a book", ShortcutKeys.Titles.AddBook);
+        SetTip(SearchButton, "Search your shelves", ShortcutKeys.Titles.Search);
+        SetTip(SettingsButton, "Settings", ShortcutKeys.Titles.Settings);
+        ToolTipService.SetToolTip(BackButton, "Back (Alt+Left)");
+        AutomationProperties.SetAcceleratorKey(BackButton, "Alt+Left");
+    }
+
+    private static void SetTip(FrameworkElement element, string what, string title)
+    {
+        var keys = ShortcutKeys.Labels(title);
+        ToolTipService.SetToolTip(element, keys is null ? what : $"{what} ({keys})");
+        if (keys is not null) AutomationProperties.SetAcceleratorKey(element, keys);
+    }
+
+    private void OnTabsSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!_compactTabs && e.NewSize.Width > 0) _tabsFullWidth = e.NewSize.Width;
+        LayOutHeader();
+    }
+
+    /// <summary>
+    /// Keeps the window's own buttons clear, and the tabs (or the app's
+    /// name) in the middle of the window when there's room: else in the
+    /// middle of the room there is, and without the shelves' names when
+    /// even that's too narrow.
+    /// </summary>
+    private void LayOutHeader()
+    {
+        if (_canClose || Root.XamlRoot is not { } xamlRoot) return;
+        var scale = xamlRoot.RasterizationScale;
+        var left = AppWindow.TitleBar.LeftInset / scale;
+        var right = AppWindow.TitleBar.RightInset / scale;
+        if (LeftInsetColumn.Width.Value != left) LeftInsetColumn.Width = new GridLength(left);
+        if (RightInsetColumn.Width.Value != right) RightInsetColumn.Width = new GridLength(right);
+
+        var leftSide = left + LeftButtons.Margin.Left + LeftButtons.ActualWidth;
+        var rightSide = right + (RightButtons.Visibility == Visibility.Visible ? RightButtons.Margin.Right + RightButtons.ActualWidth : 0);
+        var room = Header.ActualWidth - leftSide - rightSide;
+        if (Tabs.Visibility == Visibility.Visible && _tabsFullWidth > 0) SetCompactTabs(room < _tabsFullWidth + 24);
+
+        foreach (var middle in new FrameworkElement[] { Tabs, AppTitle })
+        {
+            var spare = Math.Max(0, room - middle.ActualWidth);
+            var shift = Math.Clamp(rightSide - leftSide, -spare, spare);
+            var margin = shift >= 0 ? new Thickness(shift, 0, 0, 0) : new Thickness(0, 0, -shift, 0);
+            if (!middle.Margin.Equals(margin)) middle.Margin = margin;
+        }
+    }
+
+    private void SetCompactTabs(bool compact)
+    {
+        if (compact == _compactTabs) return;
+        _compactTabs = compact;
+        var names = compact ? Visibility.Collapsed : Visibility.Visible;
+        ReadingLabel.Visibility = names;
+        FinishedLabel.Visibility = names;
+        EventuallyLabel.Visibility = names;
+        Tabs.Spacing = compact ? 4 : 6;
+        foreach (var (tab, _) in TabShelves()) tab.Padding = compact ? new Thickness(9, 0, 9, 1) : new Thickness(15, 0, 16, 1);
+    }
+
+    /// <summary>
+    /// The pointer left the header through the part that drags the window,
+    /// where its buttons don't hear it go: they stop looking pointed at.
+    /// </summary>
+    private void OnBodyPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        foreach (var control in new Control[] { BackButton, AddButton, SettingsButton, ReadingTab, FinishedTab, EventuallyTab })
+        {
+            VisualStateManager.GoToState(control, control.IsEnabled ? "Normal" : "Disabled", true);
+        }
+        VisualStateManager.GoToState(SearchButton, SearchButton.IsChecked == true ? "Checked" : "Normal", true);
+    }
+
+    /// <summary>
+    /// The header is the title bar, which drags the window; its buttons
+    /// take clicks instead. Checked after each layout, and only passed on
+    /// to Windows when something moved.
+    /// </summary>
+    private void UpdatePassthrough()
+    {
+        if (_canClose || Root.XamlRoot is not { } xamlRoot || Header.Visibility != Visibility.Visible) return;
+        var scale = xamlRoot.RasterizationScale;
+        var rects = new List<RectInt32>(3);
+        foreach (var element in new FrameworkElement[] { LeftButtons, Tabs, RightButtons })
+        {
+            if (element.Visibility != Visibility.Visible || element.ActualWidth <= 0) continue;
+            var box = element.TransformToVisual(Root).TransformBounds(new Rect(0, 0, element.ActualWidth, element.ActualHeight));
+            rects.Add(new RectInt32(
+                (int)Math.Floor(box.X * scale),
+                (int)Math.Floor(box.Y * scale),
+                (int)Math.Ceiling(box.Width * scale),
+                (int)Math.Ceiling(box.Height * scale)));
+        }
+        if (rects.SequenceEqual(_passthrough)) return;
+        _passthrough = [.. rects];
+        InputNonClientPointerSource.GetForWindowId(AppWindow.Id).SetRegionRects(NonClientRegionKind.Passthrough, _passthrough);
+    }
 
     // ---- full screen ------------------------------------------------------------
 
@@ -261,9 +398,7 @@ public sealed partial class MainWindow : Window
         if (on) AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
         else if (_windowed is not null) AppWindow.SetPresenter(_windowed);
         else AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
-        // Nothing but the page in full screen.
-        AppTitleBar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
-        Nav.IsPaneVisible = !on && _session?.Profile is not null;
+        UpdateChrome(); // nothing but the page in full screen
         // Every key out, from the core's table: F11 does something else on many laptops.
         var keys = ShortcutKeys.Labels(ShortcutKeys.Titles.LeaveFullScreen, ShortcutKeys.Titles.FullScreen);
         if (on) ShowNotice($"Press {keys} to leave full screen", InfoBarSeverity.Informational, seconds: 4);
@@ -278,35 +413,31 @@ public sealed partial class MainWindow : Window
     {
         await Session.OpenAsync(profile);
         ApplyLook();
-        SearchBox.Text = "";
-        Session.SetSearch("");
-        SetShellVisible(true);
+        CloseSearch();
         ShowShelf(Session.CurrentShelf);
     }
 
-    /// <summary>The first-run page, or New profile.</summary>
-    internal void ShowWelcome(bool firstRun)
+    /// <summary>
+    /// Who's reading? The profiles page, in the neutral look: where Back
+    /// from a shelf goes, and the welcome on the first run.
+    /// </summary>
+    internal void ShowProfiles()
     {
-        if (firstRun)
-        {
-            SetShellVisible(false);
-            ApplyLook();
-        }
-        ContentFrame.Navigate(typeof(WelcomePage), firstRun, new EntranceNavigationTransitionInfo());
-        if (firstRun) ContentFrame.BackStack.Clear();
-        UpdateBackButton();
+        ContentFrame.Navigate(typeof(ProfilesPage), null, new EntranceNavigationTransitionInfo());
+        ContentFrame.BackStack.Clear();
+        ApplyLook();
+        UpdateChrome();
     }
 
-    /// <summary>Deletes a profile (already confirmed twice) and opens another, or the welcome page.</summary>
+    /// <summary>Deletes a profile (already confirmed twice), then shows the profiles.</summary>
     internal async Task DeleteProfileAsync(Profile profile)
     {
         try
         {
             await Session.Journal.DeleteProfileAsync(profile.Id);
             Session.Close();
-            var others = await Session.LoadProfilesAsync();
-            if (others.FirstOrDefault() is { } next) await OpenProfileAsync(next);
-            else ShowWelcome(firstRun: true);
+            CloseSearch();
+            ShowProfiles();
             ShowNotice($"Deleted {profile.Name}", InfoBarSeverity.Success);
         }
         catch (CoreException e)
@@ -315,52 +446,29 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void UpdateProfileItem()
-    {
-        var profile = _session?.Profile;
-        ProfilePicture.DisplayName = profile?.Name ?? "";
-        ProfileName.Text = profile?.Name ?? "";
-        var label = profile is null ? "Profiles" : $"{profile.Name}: switch profile";
-        AutomationProperties.SetName(ProfileItem, label);
-        ToolTipService.SetToolTip(ProfileItem, "Switch profile");
-    }
-
-    private void ShowProfileMenu()
-    {
-        ProfileMenu.Items.Clear();
-        foreach (var profile in Session.Profiles)
-        {
-            var item = new RadioMenuFlyoutItem
-            {
-                Text = profile.Name,
-                GroupName = "profiles",
-                IsChecked = profile.Id == Session.Profile?.Id,
-            };
-            item.Click += async (_, _) =>
-            {
-                if (profile.Id != Session.Profile?.Id) await OpenProfileAsync(profile);
-            };
-            ProfileMenu.Items.Add(item);
-        }
-        ProfileMenu.Items.Add(new MenuFlyoutSeparator());
-        var add = new MenuFlyoutItem { Text = "New profile…", Icon = new FontIcon { Glyph = "\uE8FA" } };
-        add.Click += (_, _) => ShowWelcome(firstRun: false);
-        ProfileMenu.Items.Add(add);
-        FlyoutBase.ShowAttachedFlyout(ProfileItem);
-    }
-
     // ---- navigation -------------------------------------------------------------
 
-    /// <summary>Shows a shelf. Shelves are the top of the app, so Back starts again from here.</summary>
+    /// <summary>
+    /// Shows a shelf. Shelves are the top of a profile, so Back goes from
+    /// here to the profiles, as in the GTK app.
+    /// </summary>
     internal void ShowShelf(Shelf shelf)
     {
         if (_session?.Profile is null) return;
         Session.CurrentShelf = shelf;
-        if (ContentFrame.Content is ShelfPage page) page.Show();
-        else ContentFrame.Navigate(typeof(ShelfPage), null, new EntranceNavigationTransitionInfo());
+        if (ContentFrame.Content is ShelfPage page)
+        {
+            page.Show();
+            // A focused card of the last shelf has gone with it.
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SettleFocus(page));
+        }
+        else
+        {
+            ContentFrame.Navigate(typeof(ShelfPage), null, new EntranceNavigationTransitionInfo());
+        }
         ContentFrame.BackStack.Clear();
-        UpdateBackButton();
-        SelectNavItem();
+        ContentFrame.BackStack.Add(new PageStackEntry(typeof(ProfilesPage), null, new EntranceNavigationTransitionInfo()));
+        UpdateChrome();
     }
 
     /// <summary>Opens an entry's page from its shelf.</summary>
@@ -391,31 +499,58 @@ public sealed partial class MainWindow : Window
         if (ContentFrame.CanGoBack) ContentFrame.GoBack();
     }
 
-    private void OnBackRequested(TitleBar sender, object args) => GoBack();
+    private void OnBack(object sender, RoutedEventArgs e) => GoBack();
 
-    private void OnPaneToggleRequested(TitleBar sender, object args) => Nav.IsPaneOpen = !Nav.IsPaneOpen;
+    private void OnAddBook(object sender, RoutedEventArgs e) => _ = AddBookAsync();
 
-    private void OnNavItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    private void OnSettings(object sender, RoutedEventArgs e) => OpenSettings();
+
+    /// <summary>A tab clicked (or Space, or Enter): its shelf, even from a book of that shelf.</summary>
+    private void OnTabClick(object sender, RoutedEventArgs e) => ShowTabShelf(sender);
+
+    /// <summary>A tab selected some other way (Narrator).</summary>
+    private void OnTabChecked(object sender, RoutedEventArgs e)
     {
-        if (args.IsSettingsInvoked)
-        {
-            OpenSettings();
-        }
-        else if (args.InvokedItemContainer == ProfileItem)
-        {
-            ShowProfileMenu();
-        }
-        else if (args.InvokedItemContainer?.Tag is string tag && Enum.TryParse<Shelf>(tag, out var shelf))
-        {
-            ShowShelf(shelf);
-        }
+        if (!_syncingTabs) ShowTabShelf(sender);
+    }
+
+    private void ShowTabShelf(object sender)
+    {
+        if (sender is not ShelfTab { Tag: string tag } || !Enum.TryParse<Shelf>(tag, out var shelf) || _session?.Profile is null) return;
+        if (ContentFrame.Content is ShelfPage && Session.CurrentShelf == shelf) return;
+        ShowShelf(shelf);
     }
 
     private void OnNavigated(object sender, NavigationEventArgs e)
     {
-        UpdateBackButton();
-        SelectNavItem();
+        if (e.Content is ProfilesPage && _session?.Profile is not null)
+        {
+            // Back to Who's reading?: nobody's shelves are open, and the look is neutral.
+            _session.Close();
+            CloseSearch();
+            ApplyLook();
+        }
         if (e.Content is not (ReaderPage or WriterPage)) SetFullScreen(false);
+        UpdateChrome();
+        // The writing and reading pages, Settings and the profiles focus what they need themselves.
+        if (e.Content is ShelfPage or BookPage or ManualPage)
+        {
+            var page = (Page)e.Content;
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SettleFocus(page));
+        }
+    }
+
+    /// <summary>
+    /// A page that's just opened takes the focus (its first card or button),
+    /// which would otherwise be lost with the last page, or fall back to the
+    /// header's Back button. Typing on a shelf then searches it.
+    /// </summary>
+    private void SettleFocus(Page page)
+    {
+        if (ContentFrame.Content != page || Root.XamlRoot is not { } root) return;
+        var focused = FocusManager.GetFocusedElement(root);
+        if (focused is not null && !ReferenceEquals(focused, BackButton)) return;
+        if (FocusManager.FindFirstFocusableElement(page) is Control first) first.Focus(FocusState.Programmatic);
     }
 
     private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
@@ -424,97 +559,82 @@ public sealed partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void UpdateBackButton() => AppTitleBar.IsBackButtonEnabled = ContentFrame.CanGoBack;
-
-    /// <summary>Highlights where the page belongs: its shelf, Settings, or nothing.</summary>
-    private void SelectNavItem()
-    {
-        var item = ContentFrame.Content switch
-        {
-            SettingsPage => Nav.SettingsItem,
-            ShelfPage or BookPage or ReaderPage or WriterPage when _session?.Profile is not null => ItemFor(Session.CurrentShelf),
-            _ => null,
-        };
-        Nav.SelectedItem = item;
-        // A null selection leaves the Settings item highlighted, so unselect it by hand.
-        if (item is null && Nav.SettingsItem is NavigationViewItem settings) settings.IsSelected = false;
-    }
-
-    private NavigationViewItem ItemFor(Shelf shelf) => shelf switch
-    {
-        Shelf.Finished => FinishedItem,
-        Shelf.Eventually => EventuallyItem,
-        _ => ReadingItem,
-    };
-
-    private InfoBadge BadgeFor(Shelf shelf) => shelf switch
-    {
-        Shelf.Finished => FinishedBadge,
-        Shelf.Eventually => EventuallyBadge,
-        _ => ReadingBadge,
-    };
-
-    /// <summary>Books per shelf beside its name; while searching, the matches on each.</summary>
-    private void UpdateBadges()
-    {
-        foreach (var shelf in ShelfText.All)
-        {
-            var badge = BadgeFor(shelf);
-            var view = _session?.ViewOf(shelf);
-            if (view is null)
-            {
-                badge.Visibility = Visibility.Collapsed;
-                continue;
-            }
-            var count = Session.IsSearching ? Session.MatchCount(shelf) : (int)view.Total;
-            badge.Value = count;
-            badge.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            var what = Session.IsSearching ? (count == 1 ? "1 match" : $"{count} matches") : (count == 1 ? "1 book" : $"{count} books");
-            AutomationProperties.SetName(ItemFor(shelf), $"{ShelfText.Name(shelf)}, {what}");
-        }
-    }
-
     // ---- search -----------------------------------------------------------------
 
-    private void OnSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    private void OnSearchToggled(object sender, RoutedEventArgs e)
     {
-        if (_session?.Profile is null) return;
-        Session.SetSearch(sender.Text);
-        if (Session.IsSearching && ContentFrame.Content is not ShelfPage) ShowShelf(Session.CurrentShelf);
+        var open = SearchButton.IsChecked == true;
+        // Closing the search shows everything again.
+        if (!open && SearchBox.Text.Length > 0) SearchBox.Text = "";
+        UpdateChrome();
+        if (open) FocusSearchBox(FocusState.Programmatic);
     }
 
-    private void OnSearchSubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    private void CloseSearch()
     {
-        if (_session?.Profile is null || !Session.IsSearching) return;
-        // Nothing here but something on another shelf: go there.
-        if (Session.MatchCount(Session.CurrentShelf) == 0
-            && ShelfText.All.FirstOrDefault(s => Session.MatchCount(s) > 0) is var other
-            && Session.MatchCount(other) > 0)
-        {
-            ShowShelf(other);
-        }
+        SearchButton.IsChecked = false;
+        SearchBox.Text = "";
+        _session?.SetSearch("");
+    }
+
+    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_session?.Profile is null) return;
+        Session.SetSearch(SearchBox.Text);
+        if (Session.IsSearching && ContentFrame.Content is not ShelfPage) ShowShelf(Session.CurrentShelf);
     }
 
     private void OnSearchKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != VirtualKey.Escape) return;
-        e.Handled = true;
-        if (SearchBox.Text.Length > 0) SearchBox.Text = "";
-        else ContentFrame.Focus(FocusState.Programmatic);
+        switch (e.Key)
+        {
+            case VirtualKey.Escape:
+                // Esc clears the search, then closes it.
+                e.Handled = true;
+                if (SearchBox.Text.Length > 0)
+                {
+                    SearchBox.Text = "";
+                }
+                else
+                {
+                    SearchButton.IsChecked = false;
+                    ContentFrame.Focus(FocusState.Programmatic);
+                }
+                break;
+            case VirtualKey.Enter when _session?.Profile is not null && Session.IsSearching:
+                // Nothing here but something on another shelf: go there.
+                e.Handled = true;
+                if (Session.MatchCount(Session.CurrentShelf) == 0
+                    && ShelfText.All.FirstOrDefault(s => Session.MatchCount(s) > 0) is var other
+                    && Session.MatchCount(other) > 0)
+                {
+                    ShowShelf(other);
+                }
+                break;
+        }
     }
 
     private void FocusSearch()
     {
         if (_session?.Profile is null || IsFullScreen) return;
-        SearchBox.Focus(FocusState.Keyboard);
+        SearchButton.IsChecked = true;
+        FocusSearchBox(FocusState.Keyboard);
+    }
+
+    /// <summary>Focuses the search field, once it's laid out if it was only just opened.</summary>
+    private void FocusSearchBox(FocusState how)
+    {
+        if (!SearchBox.Focus(how)) DispatcherQueue.TryEnqueue(() => SearchBox.Focus(how));
     }
 
     /// <summary>Starts a search with a character typed on the shelf page.</summary>
     internal void StartSearch(char c)
     {
+        if (_session?.Profile is null) return;
+        SearchButton.IsChecked = true;
         SearchBox.Text += c;
-        SearchBox.Focus(FocusState.Keyboard);
-        if (FindChild<TextBox>(SearchBox) is { } box) box.SelectionStart = box.Text.Length;
+        SearchBox.SelectionStart = SearchBox.Text.Length;
+        FocusSearchBox(FocusState.Keyboard);
     }
 
     /// <summary>
@@ -581,7 +701,7 @@ public sealed partial class MainWindow : Window
         Notice.Severity = severity;
         if (actionLabel is not null && action is not null)
         {
-            var button = new Button { Content = actionLabel };
+            var button = new Button { Content = actionLabel, Style = (Style)Application.Current.Resources["PillButtonStyle"] };
             button.Click += async (_, _) =>
             {
                 // Started before the notice closes: closing it forgets a removal's Undo.

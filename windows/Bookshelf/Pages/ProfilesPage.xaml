@@ -1,0 +1,160 @@
+<pages:BookshelfPage
+    x:Class="Bookshelf.Pages.ProfilesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:pages="using:Bookshelf.Pages"
+    Foreground="{ThemeResource JournalInkBrush}">
+
+    <pages:BookshelfPage.Resources>
+        <ResourceDictionary>
+            <!-- Text fields' edges: medium ink, ink when focused (kept to the
+                 fields here, away from the writing page's editor). -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#858A91" />
+                    <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#17233C" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#92969C" />
+                    <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#F0F2F4" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast" />
+            </ResourceDictionary.ThemeDictionaries>
+            <!-- A profile: its initials, its name and a chevron; a rule above
+                 all but the first. -->
+            <DataTemplate x:Key="ProfileTemplate" x:DataType="pages:ProfileRow">
+                <Grid>
+                    <Border
+                        Height="1"
+                        Margin="12,0,12,0"
+                        VerticalAlignment="Top"
+                        Background="{ThemeResource JournalRuleBrush}"
+                        Visibility="{x:Bind RuleVisibility}" />
+                    <Button
+                        Margin="0,3,0,2"
+                        AutomationProperties.Name="{x:Bind Name}"
+                        Click="OnProfileClick"
+                        Style="{StaticResource RowButtonStyle}"
+                        Tag="{x:Bind Id}">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PersonPicture
+                                Width="40"
+                                Height="40"
+                                AutomationProperties.AccessibilityView="Raw"
+                                DisplayName="{x:Bind Name}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis" />
+                            <FontIcon
+                                Grid.Column="2"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontSize="14"
+                                Foreground="{ThemeResource JournalMutedBrush}"
+                                Glyph="&#xE76C;" />
+                        </Grid>
+                    </Button>
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </pages:BookshelfPage.Resources>
+
+    <!-- Who's reading? The profiles, and a new one: Back from a shelf comes
+         here, and on the first run it's the welcome. As in the GTK app. -->
+    <ScrollViewer>
+        <StackPanel
+            MaxWidth="528"
+            Padding="24,32,24,48"
+            HorizontalAlignment="Stretch"
+            Spacing="18">
+            <StackPanel Spacing="4">
+                <TextBlock
+                    x:Name="Heading"
+                    AutomationProperties.AutomationId="WelcomeHeading"
+                    AutomationProperties.HeadingLevel="Level1"
+                    Style="{StaticResource JournalTitleStyle}"
+                    Text="Who's reading?" />
+                <TextBlock
+                    x:Name="Lede"
+                    Margin="0,0,0,12"
+                    FontSize="15"
+                    Style="{StaticResource SecondaryTextStyle}"
+                    Text="Pick up where you left off."
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border x:Name="ProfilesPanel" Padding="4" Style="{StaticResource PanelStyle}" Visibility="Collapsed">
+                <ItemsRepeater
+                    x:Name="ProfilesList"
+                    AutomationProperties.AccessibilityView="Control"
+                    AutomationProperties.AutomationId="ProfilesList"
+                    AutomationProperties.Name="Profiles"
+                    ItemTemplate="{StaticResource ProfileTemplate}" />
+            </Border>
+
+            <StackPanel Spacing="10">
+                <TextBlock
+                    x:Name="NewHeading"
+                    Margin="2,8,0,0"
+                    AutomationProperties.HeadingLevel="Level2"
+                    Style="{StaticResource SectionTitleStyle}"
+                    Text="New profile" />
+                <Border Padding="20" Style="{StaticResource PanelStyle}">
+                    <StackPanel Spacing="16">
+                        <TextBox
+                            x:Name="NameBox"
+                            AutomationProperties.AutomationId="NewProfileName"
+                            Header="Name"
+                            KeyDown="OnKeyDown"
+                            Style="{StaticResource FieldTextBoxStyle}"
+                            TextChanged="OnNameChanged" />
+                        <StackPanel Spacing="8">
+                            <TextBox
+                                x:Name="EmailBox"
+                                AutomationProperties.AutomationId="NewProfileEmail"
+                                Header="Email (optional)"
+                                InputScope="EmailSmtpAddress"
+                                KeyDown="OnKeyDown"
+                                PlaceholderText="you@example.com"
+                                Style="{StaticResource FieldTextBoxStyle}"
+                                TextChanged="OnEmailChanged" />
+                            <TextBlock
+                                x:Name="EmailWhy"
+                                Style="{StaticResource CaptionSecondaryStyle}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <TextBlock
+                x:Name="Error"
+                AutomationProperties.LiveSetting="Assertive"
+                Foreground="{ThemeResource JournalErrorBrush}"
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+
+            <Button
+                x:Name="CreateButton"
+                HorizontalAlignment="Center"
+                AutomationProperties.AutomationId="CreateProfileButton"
+                AutomationProperties.Name="Create profile"
+                Click="OnCreate"
+                IsEnabled="False"
+                Style="{StaticResource PrimaryButtonStyle}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Create profile" />
+                    <FontIcon FontSize="14" Glyph="&#xE72A;" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </ScrollViewer>
+</pages:BookshelfPage>

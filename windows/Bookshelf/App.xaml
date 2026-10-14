@@ -8,39 +8,650 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Shared layout. Colors only ever come from theme resources, so
-                 light, dark and High Contrast all work. -->
-            <Thickness x:Key="PagePadding">40,28,40,40</Thickness>
-            <x:Double x:Key="ReadableWidth">860</x:Double>
+            <!-- The journal's look, as in the GTK app (bookshelf-app/src/style.css
+                 and its palette-*.css): paper behind, white cards with a light
+                 rule, ink text, calm pills. Colors only come from these theme
+                 brushes, so light, dark and High Contrast all work; High
+                 Contrast uses Windows' own colors throughout. The accent
+                 brushes are set from the profile's accent (Look.cs), with the
+                 core's accent_colors. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="JournalPaperBrush" Color="#F1F2F3" />
+                    <SolidColorBrush x:Key="JournalCardBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalInkBrush" Color="#17233C" />
+                    <SolidColorBrush x:Key="JournalMutedBrush" Color="#70757D" />
+                    <SolidColorBrush x:Key="JournalRuleBrush" Color="#E3E5E6" />
+                    <!-- Light ink (button edges): mix(rule, muted, 0.35). -->
+                    <SolidColorBrush x:Key="JournalEdgeBrush" Color="#BBBEC1" />
+                    <!-- Medium ink (fields, switches): mix(muted, card, 0.15). -->
+                    <SolidColorBrush x:Key="JournalFieldBrush" Color="#858A91" />
+                    <SolidColorBrush x:Key="JournalFieldHoverBrush" Color="#6F7580" />
+                    <SolidColorBrush x:Key="JournalExcerptBrush" Color="#D117233C" />
+                    <SolidColorBrush x:Key="JournalCoverStandInBrush" Color="#2E70757D" />
+                    <SolidColorBrush x:Key="JournalTintBrush" Color="#0D17233C" />
+                    <SolidColorBrush x:Key="JournalTintPressedBrush" Color="#1A17233C" />
+                    <SolidColorBrush x:Key="JournalButtonFillBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalButtonTextBrush" Color="#17233C" />
+                    <SolidColorBrush x:Key="JournalSelectedFillBrush" Color="#17233C" />
+                    <SolidColorBrush x:Key="JournalSelectedTextBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalHoverRingBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="JournalAccentTextBrush" Color="#2660C3" />
+                    <SolidColorBrush x:Key="JournalAccentFillBrush" Color="#2660C3" />
+                    <SolidColorBrush x:Key="JournalOnAccentBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalDestructiveFillBrush" Color="#C03E06" />
+                    <SolidColorBrush x:Key="JournalOnDestructiveBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalErrorBrush" Color="#D54507" />
+                    <StaticResource x:Key="JournalFocusBrush" ResourceKey="JournalAccentTextBrush" />
 
-            <Style x:Key="PageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleTextBlockStyle}">
+                    <!-- Fields: a medium-ink edge on nothing, ink when focused. -->
+                    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="JournalInkBrush" />
+                    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+                    <!-- Choices: the value in a pill (the corners are set where they're used). -->
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="Transparent" />
+                    <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="JournalTintBrush" />
+                    <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="JournalTintPressedBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrushPressed" ResourceKey="JournalFieldBrush" />
+                    <SolidColorBrush x:Key="CalendarDatePickerBackground" Color="Transparent" />
+                    <StaticResource x:Key="CalendarDatePickerBackgroundPointerOver" ResourceKey="JournalTintBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBackgroundPressed" ResourceKey="JournalTintPressedBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrushPointerOver" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrushPressed" ResourceKey="JournalFieldBrush" />
+                    <!-- Switches: a medium-ink track, the accent when on, a round knob. -->
+                    <StaticResource x:Key="ToggleSwitchFillOff" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOffPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOffPressed" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOff" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOffPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOffPressed" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOff" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOffPointerOver" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOffPressed" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOnPointerOver" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOnPressed" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOn" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOnPointerOver" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOnPressed" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOn" ResourceKey="JournalOnAccentBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOnPointerOver" ResourceKey="JournalOnAccentBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOnPressed" ResourceKey="JournalOnAccentBrush" />
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="JournalPaperBrush" Color="#0D181D" />
+                    <SolidColorBrush x:Key="JournalCardBrush" Color="#1C222C" />
+                    <SolidColorBrush x:Key="JournalInkBrush" Color="#F0F2F4" />
+                    <SolidColorBrush x:Key="JournalMutedBrush" Color="#A7ABB0" />
+                    <SolidColorBrush x:Key="JournalRuleBrush" Color="#292E37" />
+                    <SolidColorBrush x:Key="JournalEdgeBrush" Color="#555A61" />
+                    <SolidColorBrush x:Key="JournalFieldBrush" Color="#92969C" />
+                    <SolidColorBrush x:Key="JournalFieldHoverBrush" Color="#A5A8AE" />
+                    <SolidColorBrush x:Key="JournalExcerptBrush" Color="#D1F0F2F4" />
+                    <SolidColorBrush x:Key="JournalCoverStandInBrush" Color="#2EA7ABB0" />
+                    <SolidColorBrush x:Key="JournalTintBrush" Color="#0DF0F2F4" />
+                    <SolidColorBrush x:Key="JournalTintPressedBrush" Color="#1AF0F2F4" />
+                    <SolidColorBrush x:Key="JournalButtonFillBrush" Color="#1C222C" />
+                    <SolidColorBrush x:Key="JournalButtonTextBrush" Color="#F0F2F4" />
+                    <SolidColorBrush x:Key="JournalSelectedFillBrush" Color="#F0F2F4" />
+                    <SolidColorBrush x:Key="JournalSelectedTextBrush" Color="#1C222C" />
+                    <SolidColorBrush x:Key="JournalHoverRingBrush" Color="Transparent" />
+                    <SolidColorBrush x:Key="JournalAccentTextBrush" Color="#77A3EE" />
+                    <SolidColorBrush x:Key="JournalAccentFillBrush" Color="#2660C3" />
+                    <SolidColorBrush x:Key="JournalOnAccentBrush" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="JournalDestructiveFillBrush" Color="#DB7D57" />
+                    <SolidColorBrush x:Key="JournalOnDestructiveBrush" Color="#0D181D" />
+                    <SolidColorBrush x:Key="JournalErrorBrush" Color="#F38B61" />
+                    <StaticResource x:Key="JournalFocusBrush" ResourceKey="JournalAccentTextBrush" />
+
+                    <StaticResource x:Key="TextControlBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="JournalInkBrush" />
+                    <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+                    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="Transparent" />
+                    <StaticResource x:Key="ComboBoxBackgroundPointerOver" ResourceKey="JournalTintBrush" />
+                    <StaticResource x:Key="ComboBoxBackgroundPressed" ResourceKey="JournalTintPressedBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrushPointerOver" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ComboBoxBorderBrushPressed" ResourceKey="JournalFieldBrush" />
+                    <SolidColorBrush x:Key="CalendarDatePickerBackground" Color="Transparent" />
+                    <StaticResource x:Key="CalendarDatePickerBackgroundPointerOver" ResourceKey="JournalTintBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBackgroundPressed" ResourceKey="JournalTintPressedBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrush" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrushPointerOver" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="CalendarDatePickerBorderBrushPressed" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOff" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOffPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOffPressed" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOff" ResourceKey="JournalFieldBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOffPointerOver" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOffPressed" ResourceKey="JournalFieldHoverBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOff" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOffPointerOver" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOffPressed" ResourceKey="JournalCardBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOnPointerOver" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchFillOnPressed" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOn" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOnPointerOver" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchStrokeOnPressed" ResourceKey="JournalAccentFillBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOn" ResourceKey="JournalOnAccentBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOnPointerOver" ResourceKey="JournalOnAccentBrush" />
+                    <StaticResource x:Key="ToggleSwitchKnobFillOnPressed" ResourceKey="JournalOnAccentBrush" />
+                </ResourceDictionary>
+
+                <!-- High Contrast: Windows' own colors, and the controls' own
+                     High Contrast looks (nothing above is overridden here). -->
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="JournalPaperBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="JournalCardBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="JournalInkBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalMutedBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalRuleBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalEdgeBrush" Color="{ThemeResource SystemColorButtonTextColor}" />
+                    <SolidColorBrush x:Key="JournalFieldBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalFieldHoverBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="JournalExcerptBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalCoverStandInBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="JournalTintBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="JournalTintPressedBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="JournalButtonFillBrush" Color="{ThemeResource SystemColorButtonFaceColor}" />
+                    <SolidColorBrush x:Key="JournalButtonTextBrush" Color="{ThemeResource SystemColorButtonTextColor}" />
+                    <SolidColorBrush x:Key="JournalSelectedFillBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="JournalSelectedTextBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
+                    <SolidColorBrush x:Key="JournalHoverRingBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="JournalAccentTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalAccentFillBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="JournalOnAccentBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
+                    <SolidColorBrush x:Key="JournalDestructiveFillBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="JournalOnDestructiveBrush" Color="{ThemeResource SystemColorHighlightTextColor}" />
+                    <SolidColorBrush x:Key="JournalErrorBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="JournalFocusBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Titles and headings: Source Serif or the system's sans-serif,
+                 as the profile chooses (Look.cs replaces it). -->
+            <FontFamily x:Key="JournalHeadingFont">Georgia</FontFamily>
+
+            <!-- Shared layout. -->
+            <Thickness x:Key="PagePadding">16,20,16,40</Thickness>
+            <!-- The readable column, as the GTK app clamps it: 688 wide, plus the page's padding. -->
+            <x:Double x:Key="ReadableWidth">720</x:Double>
+
+            <Style x:Key="JournalTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleTextBlockStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource JournalHeadingFont}" />
+                <Setter Property="FontSize" Value="32" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalInkBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
-                <Setter Property="FontSize" Value="30" />
+            </Style>
+            <Style x:Key="PageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleTextBlockStyle}">
+                <Setter Property="FontFamily" Value="{ThemeResource JournalHeadingFont}" />
+                <Setter Property="FontSize" Value="26" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalInkBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
             <Style x:Key="SectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
-                <Setter Property="Margin" Value="1,24,0,8" />
+                <Setter Property="FontFamily" Value="{ThemeResource JournalHeadingFont}" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalInkBrush}" />
+                <Setter Property="Margin" Value="2,28,0,10" />
             </Style>
             <Style x:Key="SecondaryTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalMutedBrush}" />
             </Style>
             <Style x:Key="CaptionSecondaryStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
-                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalMutedBrush}" />
             </Style>
-            <Style x:Key="CardStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            <!-- A panel: settings groups, the book page's sections. -->
+            <Style x:Key="PanelStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource JournalCardBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalRuleBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
+                <Setter Property="CornerRadius" Value="16" />
                 <Setter Property="Padding" Value="20" />
+            </Style>
+            <Style x:Key="CardStyle" TargetType="Border" BasedOn="{StaticResource PanelStyle}" />
+            <!-- A field: a medium-ink edge, nothing behind, 16 px text. -->
+            <Style x:Key="FieldTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource DefaultTextBoxStyle}">
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="FontSize" Value="16" />
+                <Setter Property="MinHeight" Value="38" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-4" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource JournalFocusBrush}" />
+                <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+                <Setter Property="FocusVisualSecondaryThickness" Value="0" />
             </Style>
             <!-- A key on the keyboard, in the shortcuts list. -->
             <Style x:Key="KeyCapStyle" TargetType="Border">
-                <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
-                <Setter Property="BorderBrush" Value="{ThemeResource ControlElevationBorderBrush}" />
+                <Setter Property="Background" Value="{ThemeResource JournalButtonFillBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+                <Setter Property="CornerRadius" Value="6" />
                 <Setter Property="Padding" Value="8,2" />
                 <Setter Property="MinWidth" Value="28" />
+            </Style>
+
+            <!-- ==== Buttons: calm pills, led by their words ====
+                 One template: the fill, the edge and the words come from the
+                 style; pointing tints it toward the words' color (in High
+                 Contrast, a highlight ring instead); disabled is 30%. -->
+            <ControlTemplate x:Key="JournalButtonTemplate" TargetType="Button">
+                <Grid
+                    x:Name="Root"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="Shade.Opacity" Value="0.07" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="Shade.Opacity" Value="0.14" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Opacity" Value="0.3" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <Border
+                        x:Name="Shade"
+                        Margin="-1"
+                        Background="{TemplateBinding Foreground}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                    <Border
+                        x:Name="Ring"
+                        Margin="-1"
+                        BorderBrush="{ThemeResource JournalHoverRingBrush}"
+                        BorderThickness="2"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                    <ContentPresenter
+                        x:Name="Presenter"
+                        Padding="{TemplateBinding Padding}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        ContentTransitions="{TemplateBinding ContentTransitions}"
+                        Foreground="{TemplateBinding Foreground}" />
+                </Grid>
+            </ControlTemplate>
+
+            <Style x:Key="PillButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource JournalButtonFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalButtonTextBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="Padding" Value="15,6,15,7" />
+                <Setter Property="MinHeight" Value="34" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-4" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource JournalFocusBrush}" />
+                <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+                <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+                <Setter Property="Template" Value="{StaticResource JournalButtonTemplate}" />
+            </Style>
+            <!-- The main thing to do on a page: the accent, a shade deeper, so
+                 its words keep 4.5:1 with every accent. -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PillButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource JournalAccentFillBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalAccentFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalOnAccentBrush}" />
+            </Style>
+            <Style x:Key="DestructiveButtonStyle" TargetType="Button" BasedOn="{StaticResource PillButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource JournalDestructiveFillBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalDestructiveFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalOnDestructiveBrush}" />
+            </Style>
+            <!-- An icon on its own (the header's, More, Clear): an outlined circle. -->
+            <Style x:Key="CircleButtonStyle" TargetType="Button" BasedOn="{StaticResource PillButtonStyle}">
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="FontWeight" Value="Normal" />
+            </Style>
+            <!-- Back: plain and muted. -->
+            <Style x:Key="BackButtonStyle" TargetType="Button" BasedOn="{StaticResource CircleButtonStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalMutedBrush}" />
+            </Style>
+            <!-- A row in a panel (a profile): no fill or edge until pointed at. -->
+            <Style x:Key="RowButtonStyle" TargetType="Button" BasedOn="{StaticResource PillButtonStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalInkBrush}" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Padding" Value="12,8,12,8" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FocusVisualMargin" Value="-2" />
+            </Style>
+
+            <!-- Switched on (the search button): ink, its words in the card's color. -->
+            <ControlTemplate x:Key="JournalToggleTemplate" TargetType="ToggleButton">
+                <Grid
+                    x:Name="Root"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="Shade.Opacity" Value="0.07" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="Shade.Opacity" Value="0.14" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Opacity" Value="0.3" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Checked">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Presenter.Foreground" Value="{ThemeResource JournalSelectedTextBrush}" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="CheckedPointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Presenter.Foreground" Value="{ThemeResource JournalSelectedTextBrush}" />
+                                    <Setter Target="Shade.Opacity" Value="0.15" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="CheckedPressed">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Presenter.Foreground" Value="{ThemeResource JournalSelectedTextBrush}" />
+                                    <Setter Target="Shade.Opacity" Value="0.25" />
+                                    <Setter Target="Ring.Opacity" Value="1" />
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="CheckedDisabled">
+                                <VisualState.Setters>
+                                    <Setter Target="Root.Background" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                    <Setter Target="Presenter.Foreground" Value="{ThemeResource JournalSelectedTextBrush}" />
+                                    <Setter Target="Root.Opacity" Value="0.3" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <Border
+                        x:Name="Shade"
+                        Margin="-1"
+                        Background="{Binding Foreground, ElementName=Presenter}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                    <Border
+                        x:Name="Ring"
+                        Margin="-1"
+                        BorderBrush="{ThemeResource JournalHoverRingBrush}"
+                        BorderThickness="2"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        IsHitTestVisible="False"
+                        Opacity="0" />
+                    <ContentPresenter
+                        x:Name="Presenter"
+                        Padding="{TemplateBinding Padding}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        AutomationProperties.AccessibilityView="Raw"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        Foreground="{TemplateBinding Foreground}" />
+                </Grid>
+            </ControlTemplate>
+            <Style x:Key="CircleToggleButtonStyle" TargetType="ToggleButton">
+                <Setter Property="Background" Value="{ThemeResource JournalButtonFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalButtonTextBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="FontSize" Value="{ThemeResource ControlContentThemeFontSize}" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-4" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource JournalFocusBrush}" />
+                <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+                <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+                <Setter Property="Template" Value="{StaticResource JournalToggleTemplate}" />
+            </Style>
+
+            <!-- A shelf tab: a pill with an icon and a name; the open shelf in ink. -->
+            <Style x:Key="ShelfTabStyle" TargetType="RadioButton">
+                <Setter Property="Background" Value="{ThemeResource JournalButtonFillBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalButtonTextBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="17" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Padding" Value="15,0,16,1" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+                <Setter Property="FontSize" Value="{ThemeResource ControlContentThemeFontSize}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-4" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource JournalFocusBrush}" />
+                <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+                <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Grid
+                                x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Shade.Opacity" Value="0.1" />
+                                                <Setter Target="Ring.Opacity" Value="1" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Shade.Opacity" Value="0.18" />
+                                                <Setter Target="Ring.Opacity" Value="1" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.3" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                    <VisualStateGroup x:Name="CheckStates">
+                                        <VisualState x:Name="Checked">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                                <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalSelectedFillBrush}" />
+                                                <Setter Target="Presenter.Foreground" Value="{ThemeResource JournalSelectedTextBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Unchecked" />
+                                        <VisualState x:Name="Indeterminate" />
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Border
+                                    x:Name="Shade"
+                                    Margin="-1"
+                                    Background="{Binding Foreground, ElementName=Presenter}"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+                                <Border
+                                    x:Name="Ring"
+                                    Margin="-1"
+                                    BorderBrush="{ThemeResource JournalHoverRingBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+                                <ContentPresenter
+                                    x:Name="Presenter"
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    Foreground="{TemplateBinding Foreground}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- A book on a shelf: a card that tints slightly toward ink when
+                 pointed at; the whole card is one button. -->
+            <Style x:Key="BookCardStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="{ThemeResource JournalCardBrush}" />
+                <Setter Property="Foreground" Value="{ThemeResource JournalInkBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource JournalRuleBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalContentAlignment" Value="Top" />
+                <Setter Property="UseSystemFocusVisuals" Value="True" />
+                <Setter Property="FocusVisualMargin" Value="-4" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource JournalFocusBrush}" />
+                <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+                <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid
+                                x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
+                                                <Setter Target="Shade.Opacity" Value="0.025" />
+                                                <Setter Target="Ring.Opacity" Value="1" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.BorderBrush" Value="{ThemeResource JournalEdgeBrush}" />
+                                                <Setter Target="Shade.Opacity" Value="0.06" />
+                                                <Setter Target="Ring.Opacity" Value="1" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.3" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                                <Border
+                                    x:Name="Shade"
+                                    Margin="-1"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+                                <Border
+                                    x:Name="Ring"
+                                    Margin="-1"
+                                    BorderBrush="{ThemeResource JournalHoverRingBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="{TemplateBinding CornerRadius}"
+                                    IsHitTestVisible="False"
+                                    Opacity="0" />
+                                <ContentPresenter
+                                    x:Name="Presenter"
+                                    Padding="{TemplateBinding Padding}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                    VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    AutomationProperties.AccessibilityView="Raw"
+                                    Content="{TemplateBinding Content}"
+                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                    Foreground="{TemplateBinding Foreground}" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

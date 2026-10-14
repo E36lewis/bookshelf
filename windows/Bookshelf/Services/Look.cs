@@ -132,14 +132,26 @@ internal static class Look
         };
 
         var accentChanged = SetAccent(settings?.Accent ?? BookshelfFfiMethods.Accents()[0].Hex);
-        if (accentChanged && root.RequestedTheme == theme)
+        var headingChanged = SetHeadingFont(Heading);
+        if ((accentChanged || headingChanged) && root.RequestedTheme == theme)
         {
             // Theme resources are looked up again when the theme changes, so
-            // flip it and back to repaint everything in the new accent.
+            // flip it and back to repaint everything in the new accent and font.
             root.RequestedTheme = root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark;
         }
         root.RequestedTheme = theme;
     }
+
+    /// <summary>The headings' font for the styles in App.xaml (JournalHeadingFont). True if it changed.</summary>
+    private static bool SetHeadingFont(FontFamily font)
+    {
+        var resources = Application.Current.Resources;
+        if (resources.TryGetValue(HeadingFontKey, out var current) && ReferenceEquals(current, font)) return false;
+        resources[HeadingFontKey] = font;
+        return true;
+    }
+
+    private const string HeadingFontKey = "JournalHeadingFont";
 
     private static string? _accent;
 
@@ -162,8 +174,32 @@ internal static class Look
         {
             if (ParseColor(colors[i]) is { } color) Application.Current.Resources[AccentKeys[i]] = color;
         }
+        // The journal's own, as the GTK app makes them: filled buttons and
+        // switches in the accent a shade deeper (its light-mode text color,
+        // which keeps 4.5:1 with their words), and the accent as text
+        // (dates on the cards, the focus ring) lighter in dark mode.
+        var dark = BookshelfFfiMethods.AccentColors(hex, true);
+        foreach (var (theme, text) in new[] { ("Light", p.Text), ("Default", dark.Text) })
+        {
+            SetBrush(theme, "JournalAccentTextBrush", text);
+            SetBrush(theme, "JournalAccentFillBrush", p.Text);
+            SetBrush(theme, "JournalOnAccentBrush", p.Fg);
+        }
         _accent = hex;
         return true;
+    }
+
+    /// <summary>Recolors one of App.xaml's theme brushes (everything using it follows).</summary>
+    private static void SetBrush(string theme, string key, string hex)
+    {
+        if (Application.Current.Resources.ThemeDictionaries.TryGetValue(theme, out var found)
+            && found is ResourceDictionary dictionary
+            && dictionary.TryGetValue(key, out var brush)
+            && brush is SolidColorBrush solid
+            && ParseColor(hex) is { } color)
+        {
+            solid.Color = color;
+        }
     }
 
     private static readonly string[] AccentKeys =

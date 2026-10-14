@@ -2,7 +2,8 @@
     x:Class="Bookshelf.Pages.ProblemPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:pages="using:Bookshelf.Pages">
+    xmlns:pages="using:Bookshelf.Pages"
+    Foreground="{ThemeResource JournalInkBrush}">
 
     <!-- Shown instead of the app when the journal can't be opened, so the
          window explains itself rather than closing. -->

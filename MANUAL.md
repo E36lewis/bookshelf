@@ -66,7 +66,7 @@ After that, Bookshelf opens with the last profile you used. To switch, press the
 
 You can also add an email address. It's optional: see *Your privacy* below for what it's used for.
 
-After that, Bookshelf opens with the last profile you used. To switch, select your name at the bottom of the left pane and pick another. Anyone else who reads in your home can make their own profile there too, with **New profile…**
+After that, Bookshelf opens with the last profile you used. To switch, press the back arrow at the top left of a shelf (or **Alt+←**): it goes back to **Who's reading?**, where you pick a name. Anyone else who reads in your home can make their own profile there too, under **New profile**.
 <!-- /platform -->
 
 ### Add your first book
@@ -78,7 +78,7 @@ After that, Bookshelf opens with the last profile you used. To switch, select yo
 1. Press the **+** button at the top left, or **⌘N** (**File › Add a Book…**).
 <!-- /platform -->
 <!-- platform: windows -->
-1. Press **Add a book** at the top of the shelf, or **Ctrl+N**.
+1. Press the **+** button at the top left, or **Ctrl+N**.
 <!-- /platform -->
 2. Type a title, an author, or an ISBN. Results appear as you type, with their covers.
 3. Click the book you mean. For a book in a series, type its subtitle too (say, *Halo New Blood*) to find that very edition.
@@ -103,7 +103,7 @@ Your books live on three shelves. Switch between them with the tabs at the top, 
 Your books live on three shelves. Switch between them with the tabs at the top of the window, or with **⌘1**, **⌘2** and **⌘3**:
 <!-- /platform -->
 <!-- platform: windows -->
-Your books live on three shelves. Switch between them in the left pane, or with **Ctrl+1**, **Ctrl+2** and **Ctrl+3**:
+Your books live on three shelves. Switch between them with the tabs at the top of the window, or with **Ctrl+1**, **Ctrl+2** and **Ctrl+3**:
 <!-- /platform -->
 
 - **Reading**: books you've started but not finished. Each one shows when you started and which day of reading you're on.
@@ -133,7 +133,7 @@ The number keys switch shelves, so to search for something that starts with a nu
 Press the magnifying glass at the top right, or **⌘F** (**Edit › Search Your Shelves**), and type in the field that opens under it. Bookshelf searches titles, authors and everything you've written, across all three shelves at once: each tab shows its shelf's matches. Press **Esc**, or the magnifying glass again, to see everything.
 <!-- /platform -->
 <!-- platform: windows -->
-Type in the **Search your shelves** box at the top of the window: click it, press **Ctrl+F**, or simply start typing on a shelf. Bookshelf searches titles, authors and everything you've written, across all three shelves at once, and each shelf in the left pane shows how many matches it has. Press **Esc** to clear the search and see everything again.
+Press the magnifying glass at the top right, or **Ctrl+F**, or simply start typing on a shelf. Bookshelf searches titles, authors and everything you've written, across all three shelves at once. If nothing on the shelf you're on matches, press **Enter** to go to a shelf where something does. Press **Esc** to clear the search, and **Esc** again (or the magnifying glass) to close it and see everything again.
 <!-- /platform -->
 
 ## A book's page
@@ -347,7 +347,7 @@ Open Settings with the gear button on the home screen, or **Ctrl+,** (Ctrl and c
 Open Settings with the gear button at the top right of your shelves, **Bookshelf › Settings…**, or **⌘,** (Command and comma). Every change is saved and applied immediately, and each profile has its own settings. There's a tab for each part below: **Profile**, **Appearance**, **Writing**, **Reading Log** and **Data**.
 <!-- /platform -->
 <!-- platform: windows -->
-Open Settings with **Settings** at the bottom of the left pane, or **Ctrl+,** (Ctrl and comma). Every change is saved and applied immediately, and each profile has its own settings.
+Open Settings with the gear button at the top right, or **Ctrl+,** (Ctrl and comma). Every change is saved and applied immediately, and each profile has its own settings.
 <!-- /platform -->
 
 ### Profile

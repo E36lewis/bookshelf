@@ -22,6 +22,11 @@ internal static class DialogHost
         // Dialogs open in a layer of their own, outside the window's theme.
         dialog.RequestedTheme = root.ActualTheme;
         dialog.Style ??= (Style)Application.Current.Resources["DefaultContentDialogStyle"];
+        // The app's pills: the main choice in the accent, the others plain.
+        var primary = dialog.DefaultButton == ContentDialogButton.Primary ? "PrimaryButtonStyle" : "PillButtonStyle";
+        dialog.PrimaryButtonStyle ??= (Style)Application.Current.Resources[primary];
+        dialog.SecondaryButtonStyle ??= (Style)Application.Current.Resources["PillButtonStyle"];
+        dialog.CloseButtonStyle ??= (Style)Application.Current.Resources["PillButtonStyle"];
         IsOpen = true;
         try
         {

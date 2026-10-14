@@ -1,25 +1,34 @@
+using Bookshelf.Controls;
 using Bookshelf.Core;
 using Bookshelf.Ffi;
 using Bookshelf.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.System;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 
 namespace Bookshelf.Pages;
 
 /// <summary>
-/// One shelf: the open profile's books on it, newest first (finished books
-/// grouped by year), filtered by the search. One instance serves all three
-/// shelves and is kept while a book is open, so coming back keeps the place.
+/// One shelf: the open profile's books on it as a grid of cards, newest
+/// first (finished books grouped by year), filtered by the search. One
+/// instance serves all three shelves and is kept while a book is open, so
+/// coming back keeps the place.
 /// </summary>
 public sealed partial class ShelfPage : BookshelfPage
 {
     private bool _listening;
     private (ShelfView? View, string Query, Shelf Shelf, Microsoft.UI.Xaml.Media.FontFamily Font)? _shown;
+
+    // What's shown, by year (or one group with no year), so a change in the
+    // number of columns only regroups the rows.
+    private List<(YearRow? Year, List<EntryItem> Items)> _sections = [];
+    private int _columns = 3;
+    private double _gridWidth;
+    private string? _opened; // the book last opened from here, whose card gets the focus back
 
     public ShelfPage()
     {
@@ -30,7 +39,7 @@ public sealed partial class ShelfPage : BookshelfPage
         CharacterReceived += OnCharacterReceived;
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
         if (!_listening)
@@ -40,7 +49,20 @@ public sealed partial class ShelfPage : BookshelfPage
             _listening = true;
         }
         Show();
-        _ = Session.RefreshShelvesAsync();
+        // Back from a book: the focus goes to its card (again, if the shelf
+        // is laid out afresh because something changed meanwhile).
+        var back = e.NavigationMode == NavigationMode.Back ? _opened : null;
+        // After layout: focus asked for during navigation can be lost.
+        if (back is { } returning) DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusCard(returning));
+        try
+        {
+            await Session.RefreshShelvesAsync();
+        }
+        catch (CoreException)
+        {
+            return; // the shelf stays as it was
+        }
+        if (back is { } again && Frame?.Content == this) DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusCard(again));
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -61,71 +83,127 @@ public sealed partial class ShelfPage : BookshelfPage
 
         Heading.Text = ShelfText.Heading(shelf);
         Heading.FontFamily = Look.Heading;
+        EmptyTitle.FontFamily = Look.Heading;
         if (view is null)
         {
             CountLine.Text = "";
+            _sections = [];
             Entries.ItemsSource = null;
             EmptyState.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var items = new List<EntryItem>();
-        var groups = new List<YearGroup>();
-        YearGroup? year = null;
+        // Year headings step aside while searching, as in the GTK app.
+        var sections = new List<(YearRow? Year, List<EntryItem> Items)>();
+        var all = new List<EntryItem>();
         foreach (var row in view.Rows)
         {
             switch (row)
             {
-                case ShelfRow.YearHeading heading:
-                    year = new YearGroup(heading.Year, heading.Label);
-                    groups.Add(year);
+                case ShelfRow.YearHeading heading when !Session.IsSearching:
+                    sections.Add((new YearRow(heading.Year, heading.Label), new List<EntryItem>()));
                     break;
                 case ShelfRow.Entry entry when Session.Matches(entry.Item):
                     var item = new EntryItem(entry.Item);
-                    items.Add(item);
-                    year?.Add(item);
+                    if (sections.Count == 0) sections.Add((null, new List<EntryItem>()));
+                    sections[^1].Items.Add(item);
+                    all.Add(item);
                     break;
             }
         }
+        for (var i = 0; i < all.Count; i++)
+        {
+            all[i].Position = i + 1;
+            all[i].SetSize = all.Count;
+        }
+        _sections = sections.Where(s => s.Items.Count > 0).ToList();
 
-        var count = Session.IsSearching ? ShelfText.Matches(items.Count) : view.CountLine;
+        var count = Session.IsSearching ? ShelfText.Matches(all.Count) : view.CountLine;
         if (count != CountLine.Text)
         {
             CountLine.Text = count;
             ScreenReader.LiveRegionChanged(CountLine); // "3 matches" as you search
         }
-        // Year headings step aside while searching, as in the GTK app.
-        Entries.ItemsSource = groups.Count > 0 && !Session.IsSearching
-            ? new CollectionViewSource { IsSourceGrouped = true, Source = groups }.View
-            : items;
-        foreach (var item in items) item.LoadCover();
+        LayOutRows();
 
-        var empty = items.Count == 0;
+        var empty = all.Count == 0;
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
-        // An empty shelf has its own Add a book button, in the middle.
-        AddButton.Visibility = empty && !Session.IsSearching ? Visibility.Collapsed : Visibility.Visible;
         Entries.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
         if (empty && Session.IsSearching)
         {
-            EmptyGlyph.Glyph = "\uE721"; // search
+            EmptyGlyph.Glyph = ""; // search
             EmptyTitle.Text = "No matches";
             EmptyText.Text = ShelfText.NoMatches(Session.Query);
             EmptyAddButton.Visibility = Visibility.Collapsed;
         }
         else if (empty)
         {
-            EmptyGlyph.Glyph = "\uE8F1"; // library
+            EmptyGlyph.Glyph = ""; // library
             EmptyTitle.Text = "Nothing here yet";
             EmptyText.Text = ShelfText.Empty(shelf);
             EmptyAddButton.Visibility = Visibility.Visible;
         }
     }
 
-    private void OnEntryClick(object sender, ItemClickEventArgs e)
+    /// <summary>The year headings and rows of cards, as many to a row as fit.</summary>
+    private void LayOutRows()
     {
-        if (e.ClickedItem is EntryItem item)
+        var rows = new List<object>();
+        foreach (var (year, items) in _sections)
         {
-            Frame.Navigate(typeof(BookPage), item.SummaryId, new DrillInNavigationTransitionInfo());
+            if (year is not null) rows.Add(year);
+            for (var i = 0; i < items.Count; i += _columns)
+            {
+                rows.Add(new CardRow(items.GetRange(i, Math.Min(_columns, items.Count - i))));
+            }
+        }
+        Heights.Reset();
+        Entries.ItemsSource = rows;
+    }
+
+    /// <summary>The shelf's tallest card, which every card's height follows.</summary>
+    private CardHeights Heights => (CardHeights)Resources["Heights"];
+
+    private void OnEntriesSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var columns = CardRowLayout.Columns(e.NewSize.Width);
+        var widthChanged = Math.Abs(e.NewSize.Width - _gridWidth) > 0.5;
+        _gridWidth = e.NewSize.Width;
+        if (columns != _columns)
+        {
+            _columns = columns;
+            if (_sections.Count > 0) LayOutRows();
+        }
+        else if (widthChanged)
+        {
+            Heights.Reset(); // the cards wrap differently: measure them again
+        }
+    }
+
+    /// <summary>Focuses a book's card, if it's on the shelf.</summary>
+    private void FocusCard(string id)
+    {
+        if (Entries.ItemsSource is not List<object> rows) return;
+        for (var r = 0; r < rows.Count; r++)
+        {
+            if (rows[r] is not CardRow row) continue;
+            var i = row.Cards.FindIndex(c => c.SummaryId == id);
+            if (i < 0) continue;
+            if (Entries.GetOrCreateElement(r) is ItemsRepeater cards && cards.GetOrCreateElement(i) is Control card)
+            {
+                card.StartBringIntoView();
+                card.Focus(FocusState.Programmatic);
+            }
+            return;
+        }
+    }
+
+    private void OnCardClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string id })
+        {
+            _opened = id;
+            Frame.Navigate(typeof(BookPage), id, new DrillInNavigationTransitionInfo());
         }
     }
 

@@ -14,7 +14,7 @@ using Windows.System;
 namespace Bookshelf.Pages;
 
 /// <summary>
-/// The open profile's settings, in Windows Settings style. Every change is
+/// The open profile's settings, in panels as in the GTK app. Every change is
 /// saved and applied at once.
 /// </summary>
 public sealed partial class SettingsPage : BookshelfPage
@@ -212,6 +212,7 @@ public sealed partial class SettingsPage : BookshelfPage
                 TextWrapping = TextWrapping.Wrap,
             },
             PrimaryButtonText = "Delete",
+            PrimaryButtonStyle = (Style)Application.Current.Resources["DestructiveButtonStyle"],
             SecondaryButtonText = "Export first…",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,
@@ -224,7 +225,7 @@ public sealed partial class SettingsPage : BookshelfPage
         }
         if (answer != ContentDialogResult.Primary) return;
 
-        var typed = new TextBox { PlaceholderText = name };
+        var typed = new TextBox { PlaceholderText = name, Style = (Style)Application.Current.Resources["FieldTextBoxStyle"] };
         AutomationProperties.SetName(typed, "Profile name");
         var second = new ContentDialog
         {
@@ -243,6 +244,7 @@ public sealed partial class SettingsPage : BookshelfPage
                 },
             },
             PrimaryButtonText = "Delete Forever",
+            PrimaryButtonStyle = (Style)Application.Current.Resources["DestructiveButtonStyle"],
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Close,
             IsPrimaryButtonEnabled = false,
