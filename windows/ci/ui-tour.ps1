@@ -561,6 +561,16 @@ Step 'Ctrl+N: add a book' {
     Find-Id 'BookSearch' | Out-Null
     Snap '14-add-book'
     Check-Names 'Add a book'
+    # A demo journal finds made-up books with made-up covers, offline.
+    Keys 'le guin'
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((List-Items 'SearchResults').Count -lt 4) {
+        if ((Get-Date) -gt $deadline) { throw 'no search results' }
+        Start-Sleep -Milliseconds 250
+    }
+    Start-Sleep -Seconds 1 # the covers
+    Snap '14b-add-book-results'
+    Check-Names 'Add a book, with results'
     Keys '{ESC}'
 }
 Step 'Delete, then Undo' {

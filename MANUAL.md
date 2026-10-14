@@ -79,8 +79,8 @@ After that, Bookshelf opens with the last profile you used. To switch, select yo
 <!-- platform: windows -->
 1. Press **Add a book** at the top of the shelf, or **Ctrl+N**.
 <!-- /platform -->
-2. Type a title, an author, or an ISBN. Results appear as you type.
-3. Click the book you mean.
+2. Type a title, an author, or an ISBN. Results appear as you type, with their covers.
+3. Click the book you mean. For a book in a series, type its subtitle too (say, *Halo New Blood*) to find that very edition.
 <!-- platform: linux -->
 4. Choose a shelf: **Someday**, **Reading now** or **Finished**.
 <!-- /platform -->

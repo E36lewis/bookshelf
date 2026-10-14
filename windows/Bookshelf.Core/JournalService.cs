@@ -139,6 +139,14 @@ public sealed class JournalService : IDisposable
     public Task<SearchResult[]> SearchBooksAsync(string userId, string query) =>
         Beside(() => _journal.SearchBooks(userId, query));
 
+    /// <summary>
+    /// A search result's cover (its <c>CoverId</c>) as a small image file, or
+    /// null if Open Library has none. The core keeps a few downloading at
+    /// once, and keeps them for the session.
+    /// </summary>
+    public Task<byte[]?> SearchCoverThumbnailAsync(string userId, long coverId) =>
+        Beside(() => _journal.SearchCoverThumbnail(userId, coverId));
+
     /// <summary>Saves a picked result as a book, with its description and cover.</summary>
     public Task<BookInfo> SaveSearchResultAsync(string userId, SearchResult result) =>
         Beside(() => _journal.SaveSearchResult(userId, result));

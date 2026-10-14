@@ -37,19 +37,26 @@ fn check_book_id(book_id: &str) -> Result<()> {
     Ok(())
 }
 
-/// Saves downloaded bytes, once their header shows an image of a sane
-/// size. They're written to `<name>.part` and renamed into place, so a
-/// crash or full disk midway never leaves half a cover where the app looks.
-fn store(paths: &AppPaths, book_id: &str, bytes: &[u8], content_type: &str) -> Result<String> {
-    check_book_id(book_id)?;
+/// Refuses bytes whose header isn't an image's, or shows one of more than
+/// `max_pixels`.
+pub(crate) fn check_size(bytes: &[u8], max_pixels: u64) -> Result<()> {
     let size = imagesize::blob_size(bytes)
         .map_err(|_| Error::Invalid("the cover isn't an image we can read".into()))?;
-    if (size.width as u64).saturating_mul(size.height as u64) > MAX_COVER_PIXELS {
+    if (size.width as u64).saturating_mul(size.height as u64) > max_pixels {
         return Err(Error::Invalid(format!(
             "the cover is too large ({}×{})",
             size.width, size.height
         )));
     }
+    Ok(())
+}
+
+/// Saves downloaded bytes, once their header shows an image of a sane
+/// size. They're written to `<name>.part` and renamed into place, so a
+/// crash or full disk midway never leaves half a cover where the app looks.
+fn store(paths: &AppPaths, book_id: &str, bytes: &[u8], content_type: &str) -> Result<String> {
+    check_book_id(book_id)?;
+    check_size(bytes, MAX_COVER_PIXELS)?;
     let ext = match content_type.split(';').next().unwrap_or("").trim() {
         "image/png" => "png",
         "image/gif" => "gif",

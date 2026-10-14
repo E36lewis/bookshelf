@@ -379,6 +379,11 @@ RustBuffer uniffi_bookshelf_ffi_fn_method_journal_save_search_result(uint64_t pt
 RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_books(uint64_t ptr, RustBuffer user_id, RustBuffer query, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SEARCH_COVER_THUMBNAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SEARCH_COVER_THUMBNAIL
+RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_cover_thumbnail(uint64_t ptr, RustBuffer user_id, int64_t cover_id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_BACKUP_FOLDER
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_FN_METHOD_JOURNAL_SET_BACKUP_FOLDER
 void uniffi_bookshelf_ffi_fn_method_journal_set_backup_folder(uint64_t ptr, RustBuffer folder, RustCallStatus *_Nonnull out_status
@@ -1024,6 +1029,12 @@ uint16_t uniffi_bookshelf_ffi_checksum_method_journal_save_search_result(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_BOOKS
 #define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_BOOKS
 uint16_t uniffi_bookshelf_ffi_checksum_method_journal_search_books(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_COVER_THUMBNAIL
+#define UNIFFI_FFIDEF_UNIFFI_BOOKSHELF_FFI_CHECKSUM_METHOD_JOURNAL_SEARCH_COVER_THUMBNAIL
+uint16_t uniffi_bookshelf_ffi_checksum_method_journal_search_cover_thumbnail(void
     
 );
 #endif

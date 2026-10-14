@@ -1,0 +1,104 @@
+{
+ "links": {
+  "self": "/works/OL21163022W/editions.json?limit=50",
+  "work": "/works/OL21163022W"
+ },
+ "size": 7,
+ "entries": [
+  {
+   "key": "/books/OL48159580M",
+   "title": "Halo",
+   "subtitle": "New Blood",
+   "publishers": [
+    "Titan Books Limited"
+   ],
+   "isbn_13": [
+    "9781785650635"
+   ]
+  },
+  {
+   "key": "/books/OL34059944M",
+   "title": "Halo",
+   "subtitle": "Bad Blood",
+   "number_of_pages": 352,
+   "publishers": [
+    "Gallery Books"
+   ],
+   "isbn_13": [
+    "9781501128264"
+   ]
+  },
+  {
+   "key": "/books/OL33532221M",
+   "title": "Halo",
+   "subtitle": "New Blood",
+   "number_of_pages": 200,
+   "publishers": [
+    "Simon & Schuster, Limited"
+   ],
+   "isbn_13": [
+    "9781476796703"
+   ]
+  },
+  {
+   "key": "/books/OL32049972M",
+   "title": "Halo",
+   "subtitle": "New Blood",
+   "covers": [
+    10716003
+   ],
+   "number_of_pages": 208,
+   "publishers": [
+    "Gallery Books"
+   ],
+   "isbn_13": [
+    "9781501128080"
+   ],
+   "isbn_10": [
+    "1501128086"
+   ]
+  },
+  {
+   "key": "/books/OL29746684M",
+   "title": "Halo",
+   "subtitle": "Legacy of Onyx",
+   "number_of_pages": 416,
+   "publishers": [
+    "Gallery Books"
+   ],
+   "isbn_13": [
+    "9781501132629"
+   ]
+  },
+  {
+   "key": "/books/OL29741231M",
+   "title": "Halo",
+   "subtitle": "Legacy of Onyx",
+   "number_of_pages": 416,
+   "publishers": [
+    "Gallery Books"
+   ],
+   "isbn_13": [
+    "9781501132612"
+   ]
+  },
+  {
+   "key": "/books/OL28650849M",
+   "title": "Halo",
+   "subtitle": "Bad Blood",
+   "covers": [
+    10329162
+   ],
+   "number_of_pages": 352,
+   "publishers": [
+    "Gallery Books"
+   ],
+   "isbn_13": [
+    "9781501128257"
+   ],
+   "isbn_10": [
+    "1501128256"
+   ]
+  }
+ ]
+}

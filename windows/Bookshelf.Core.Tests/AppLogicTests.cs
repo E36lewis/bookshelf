@@ -80,6 +80,24 @@ public sealed class AppLogicTests : IDisposable
     }
 
     [Fact]
+    public async Task DemoSearchResultsHaveMadeUpCoversAndSaveOffline()
+    {
+        var withCovers = DemoJournal.SearchResults.Where(r => r.CoverId is not null).ToList();
+        Assert.Equal(DemoJournal.SearchResults.Count - 1, withCovers.Count); // one shows the stand-in
+        foreach (var result in withCovers)
+        {
+            var png = DemoJournal.SearchCover(result.CoverId!.Value);
+            Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, png[..4]);
+        }
+
+        using var journal = await JournalService.OpenAsync(Path.Combine(_dir, "demo-search"));
+        var avery = await journal.CreateProfileAsync("Avery");
+        var book = await journal.SaveSearchResultAsync(avery.Id, DemoJournal.SearchResults[2]);
+        Assert.Equal("An Ambiguous Utopia", book.Subtitle);
+        Assert.Null(book.CoverPath);
+    }
+
+    [Fact]
     public void ShelfWords()
     {
         Assert.Equal(new[] { "Reading", "Finished", "Eventually" }, ShelfText.All.Select(ShelfText.Name));
@@ -119,7 +137,7 @@ public sealed class AppLogicTests : IDisposable
     [Fact]
     public void SearchResultLines()
     {
-        var full = new SearchResult("/works/OL1W", "Dune", null, "Frank Herbert", null, null, null, "1965", null, null);
+        var full = new SearchResult("/works/OL1W", "Dune", null, "Frank Herbert", null, null, null, "1965", null, null, null, null);
         Assert.Equal("Frank Herbert · 1965", SearchText.Byline(full));
         Assert.Equal("1965", SearchText.Byline(full with { Author = null }));
         Assert.Equal("", SearchText.Byline(full with { Author = " ", PublishedDate = null }));

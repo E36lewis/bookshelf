@@ -88,12 +88,18 @@ final class ScreenshotTests: XCTestCase {
         app.typeKey(XCUIKeyboardKey.delete.rawValue, modifierFlags: [])
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
 
-        // Add a Book (⌘N): empty, since CI has no network for it.
+        // Add a Book (⌘N): empty, then the demo journal's made-up results
+        // and covers (it never goes online).
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(leftHand.waitForExistence(timeout: 5))
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(app.textFields["addBook.query"].waitForExistence(timeout: 5))
         keep(app, "11-add-book", look)
+        app.typeText("le guin")
+        let lastResult = app.descendants(matching: .any)["addBook.result.The Lathe of Heaven"].firstMatch
+        XCTAssertTrue(lastResult.waitForExistence(timeout: 5))
+        sleep(1)  // the covers
+        keep(app, "11b-add-book-results", look)
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         XCTAssertTrue(app.textFields["addBook.query"].waitForNonExistence(timeout: 5))
 

@@ -34,6 +34,23 @@ internal static class Covers
 
         var bytes = await Task.Run(() => Read(path));
         if (bytes is null) return null;
+        var image = await DecodeAsync(bytes, width);
+        if (image is null) return null;
+        if (Cache.Count >= MaxCached) Cache.Clear();
+        Cache[(path, width)] = image;
+        return image;
+    }
+
+    /// <summary>
+    /// A search result's cover from the image file's bytes (the core has
+    /// checked it's a picture of a sensible size), decoded
+    /// <paramref name="width"/> logical pixels wide; null if it can't be
+    /// read. Not kept: the core keeps the bytes. Call on the UI thread.
+    /// </summary>
+    public static Task<ImageSource?> FromBytesAsync(byte[] bytes, int width) => DecodeAsync(bytes, width);
+
+    private static async Task<ImageSource?> DecodeAsync(byte[] bytes, int width)
+    {
         try
         {
             using var stream = new InMemoryRandomAccessStream();
@@ -41,8 +58,6 @@ internal static class Covers
             stream.Seek(0);
             var image = new BitmapImage { DecodePixelWidth = width, DecodePixelType = DecodePixelType.Logical };
             await image.SetSourceAsync(stream);
-            if (Cache.Count >= MaxCached) Cache.Clear();
-            Cache[(path, width)] = image;
             return image;
         }
         catch (Exception e)

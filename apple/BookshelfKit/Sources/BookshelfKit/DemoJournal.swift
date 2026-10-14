@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import ImageIO
 import BookshelfFFI
 
 /// A made-up journal for screenshots and UI tests: a few profiles, books on
@@ -49,13 +51,51 @@ public enum DemoJournal {
         return avery
     }
 
+    /// What Add a Book finds in a demo journal, whatever was typed, so it
+    /// can be shown with covers without going online. The covers are made
+    /// up (`searchCover`), and the last result has none. Saving one asks
+    /// for nothing: each has its description, and no cover URL.
+    public static let searchResults: [SearchResult] = {
+        let found: [(key: String, title: String, subtitle: String?, year: String, cover: Int64?)] = [
+            ("/works/DEMO21W", "A Wizard of Earthsea", nil, "1968", 1),
+            ("/works/DEMO22W", "The Left Hand of Darkness", nil, "1969", 2),
+            ("/works/DEMO23W", "The Dispossessed", "An Ambiguous Utopia", "1974", 3),
+            ("/works/DEMO24W", "The Lathe of Heaven", nil, "1971", nil),
+        ]
+        return found.map { book in
+            SearchResult(
+                externalId: book.key, title: book.title, subtitle: book.subtitle, author: "Ursula K. Le Guin",
+                isbn: nil, publisher: nil, description: "A demo book.", publishedDate: book.year, pageCount: nil,
+                coverUrl: nil, coverId: book.cover, editionKey: nil)
+        }
+    }()
+
+    /// A made-up cover for `searchResults`: a plain PNG in one of three
+    /// muted colours, the size of an Open Library thumbnail.
+    public static func searchCover(_ coverId: Int64) -> Data? {
+        let colours: [(CGFloat, CGFloat, CGFloat)] = [(0.42, 0.51, 0.45), (0.62, 0.42, 0.35), (0.36, 0.43, 0.56)]
+        let (red, green, blue) = colours[Int(coverId.magnitude % 3)]
+        guard let context = CGContext(
+            data: nil, width: 180, height: 270, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else { return nil }
+        context.setFillColor(red: red, green: green, blue: blue, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 180, height: 270))
+        let data = NSMutableData()
+        guard let image = context.makeImage(),
+            let file = CGImageDestinationCreateWithData(data as CFMutableData, "public.png" as CFString, 1, nil)
+        else { return nil }
+        CGImageDestinationAddImage(file, image, nil)
+        return CGImageDestinationFinalize(file) ? data as Data : nil
+    }
+
     private static func add(
         _ book: Book, for profile: Profile, worker: JournalWorker, today: Date, calendar: Calendar
     ) async throws {
         let result = SearchResult(
             externalId: book.key, title: book.title, subtitle: book.subtitle, author: book.author, isbn: nil,
             publisher: book.publisher, description: book.about, publishedDate: book.year, pageCount: book.pages,
-            coverUrl: nil)
+            coverUrl: nil, coverId: nil, editionKey: nil)
         let saved = try await worker.saveSearchResult(result, for: profile.id)
         let id = try await worker.addToShelf(.eventually, for: profile.id, book: saved.id)
 

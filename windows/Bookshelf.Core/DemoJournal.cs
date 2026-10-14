@@ -40,6 +40,37 @@ public static class DemoJournal
         "A family's summers by the sea, and the trip to the lighthouse that takes ten years.");
 
     /// <summary>
+    /// What Add a book finds in a demo journal, whatever was typed, so it can
+    /// be shown with covers without going online. The covers are made up
+    /// (<see cref="SearchCover"/>), and the last result has none. Saving one
+    /// asks for nothing: each has its description, and no cover link.
+    /// </summary>
+    public static readonly IReadOnlyList<SearchResult> SearchResults =
+    [
+        DemoResult("/works/DEMO21W", "A Wizard of Earthsea", null, "1968", 1),
+        DemoResult("/works/DEMO22W", "The Left Hand of Darkness", null, "1969", 2),
+        DemoResult("/works/DEMO23W", "The Dispossessed", "An Ambiguous Utopia", "1974", 3),
+        DemoResult("/works/DEMO24W", "The Lathe of Heaven", null, "1971", null),
+    ];
+
+    /// <summary>Plain PNGs in three muted colours, for <see cref="SearchCover"/>.</summary>
+    private static readonly string[] DemoCovers =
+    [
+        "iVBORw0KGgoAAAANSUhEUgAAABIAAAAbCAIAAAD+o0jIAAAAHElEQVR42mPIbiomAzGMahvVNqptVNuotkGkDQCXy5xfKrJS6wAAAABJRU5ErkJggg==",
+        "iVBORw0KGgoAAAANSUhEUgAAABIAAAAbCAIAAAD+o0jIAAAAHElEQVR42mOYlx1JBmIY1TaqbVTbqLZRbYNIGwAt26ArfFy+xQAAAABJRU5ErkJggg==",
+        "iVBORw0KGgoAAAANSUhEUgAAABIAAAAbCAIAAAD+o0jIAAAAHElEQVR42mOIyesnAzGMahvVNqptVNuotkGkDQC4v48VzaLGyQAAAABJRU5ErkJggg==",
+    ];
+
+    /// <summary>A made-up cover for one of <see cref="SearchResults"/>: a small plain PNG.</summary>
+    public static byte[] SearchCover(long coverId) =>
+        Convert.FromBase64String(DemoCovers[(int)(((coverId % DemoCovers.Length) + DemoCovers.Length) % DemoCovers.Length)]);
+
+    private static SearchResult DemoResult(string key, string title, string? subtitle, string year, long? cover) =>
+        new(ExternalId: key, Title: title, Subtitle: subtitle, Author: "Ursula K. Le Guin", Isbn: null,
+            Publisher: null, Description: "A demo book.", PublishedDate: year, PageCount: null, CoverUrl: null,
+            CoverId: cover, EditionKey: null);
+
+    /// <summary>
     /// The file that marks a folder as holding a demo journal, so the app
     /// can reopen one (<c>--demo-journal-in</c>) but never mistakes a real
     /// journal for one.
@@ -117,7 +148,8 @@ public static class DemoJournal
     {
         var saved = await journal.SaveSearchResultAsync(who.Id, new SearchResult(
             ExternalId: b.Key, Title: b.Title, Subtitle: null, Author: b.Author, Isbn: null, Publisher: null,
-            Description: b.About, PublishedDate: b.Year, PageCount: b.Pages, CoverUrl: null));
+            Description: b.About, PublishedDate: b.Year, PageCount: b.Pages, CoverUrl: null, CoverId: null,
+            EditionKey: null));
         var shelf = finished is not null ? Shelf.Finished : started is not null ? Shelf.Reading : Shelf.Eventually;
         var id = await journal.AddToShelfAsync(who.Id, saved.Id, shelf);
         if (shelf != Shelf.Eventually) await journal.SetDatesAsync(id, started, finished);

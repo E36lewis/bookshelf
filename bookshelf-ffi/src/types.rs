@@ -351,9 +351,16 @@ pub struct SearchResult {
     pub published_date: Option<String>,
     /// The typical page count.
     pub page_count: Option<i64>,
-    /// An https link to the cover image, for showing in the results. The
-    /// cover is downloaded when the book is saved.
+    /// An https link to the cover image. The cover is downloaded when the
+    /// book is saved, and one is sometimes found then for a result without.
     pub cover_url: Option<String>,
+    /// Open Library's id for that cover: pass it to
+    /// `Journal::search_cover_thumbnail` to show it in the results.
+    pub cover_id: Option<i64>,
+    /// The edition that matched the search, like `/books/OL7353617M`, if
+    /// Open Library named one. The title, subtitle, ISBN, publisher and
+    /// cover are that edition's where it has them.
+    pub edition_key: Option<String>,
 }
 
 /// Longest title or key accepted back from an app. Open Library's own
@@ -369,6 +376,12 @@ impl SearchResult {
         }
         if blank_or_long(&self.title) {
             return Err(invalid("that book has no title"));
+        }
+        if self.cover_id.is_some_and(|id| id <= 0) {
+            return Err(invalid("that isn't a cover"));
+        }
+        if self.edition_key.as_deref().is_some_and(blank_or_long) {
+            return Err(invalid("that book's edition has no Open Library key"));
         }
         Ok(())
     }
@@ -387,6 +400,8 @@ impl From<models::NewBook> for SearchResult {
             published_date: b.published_date,
             page_count: b.page_count,
             cover_url: b.cover_url,
+            cover_id: b.cover_id,
+            edition_key: b.edition_key,
         }
     }
 }
@@ -404,6 +419,8 @@ impl From<SearchResult> for models::NewBook {
             published_date: b.published_date,
             page_count: b.page_count,
             cover_url: b.cover_url,
+            cover_id: b.cover_id,
+            edition_key: b.edition_key,
         }
     }
 }

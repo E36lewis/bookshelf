@@ -109,6 +109,7 @@ struct AddBookSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(saving != nil)
+                .accessibilityIdentifier("addBook.result.\(result.title)")
             }
             .listStyle(.inset)
         }
@@ -156,18 +157,15 @@ struct AddBookSheet: View {
     }
 }
 
-/// A search result: title, then author and year.
+/// A search result: its cover, title, then author and year.
 struct ResultRow: View {
     let result: SearchResult
     let saving: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "book.closed")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-                .frame(width: 28)
-                .accessibilityHidden(true)
+            // Hidden from VoiceOver: the row names the book.
+            SearchCoverView(coverId: result.coverId, title: result.title, width: 32)
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.title)
                     .font(.headline)

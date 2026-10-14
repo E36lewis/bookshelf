@@ -857,6 +857,8 @@ static class _UniFFILib {
     
     
     
+    
+    
 
     static _UniFFILib() {
         _UniFFILib.uniffiCheckContractApiVersion();
@@ -1127,6 +1129,17 @@ static class _UniFFILib {
     public static extern
 #endif
      RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_books(ulong @ptr,RustBuffer @userId,RustBuffer @query,ref UniffiRustCallStatus _uniffi_out_err
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
+     RustBuffer uniffi_bookshelf_ffi_fn_method_journal_search_cover_thumbnail(ulong @ptr,RustBuffer @userId,long @coverId,ref UniffiRustCallStatus _uniffi_out_err
     );
 
     #if NET8_0_OR_GREATER
@@ -2468,6 +2481,17 @@ static class _UniFFILib {
     [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
     public static extern
 #endif
+     ushort uniffi_bookshelf_ffi_checksum_method_journal_search_cover_thumbnail(
+    );
+
+    #if NET8_0_OR_GREATER
+    [LibraryImport("bookshelf_ffi")]
+    [UnmanagedCallConv(CallConvs = new[] { typeof(CallConvCdecl) })]
+    public static partial
+#else
+    [DllImport("bookshelf_ffi", CallingConvention = CallingConvention.Cdecl)]
+    public static extern
+#endif
      ushort uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder(
     );
 
@@ -2836,6 +2860,12 @@ static class _UniFFILib {
             }
         }
         {
+            var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_search_cover_thumbnail();
+            if (checksum != 44198) {
+                throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_search_cover_thumbnail` checksum `44198`, library returned `{checksum}`");
+            }
+        }
+        {
             var checksum = _UniFFILib.uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder();
             if (checksum != 1091) {
                 throw new UniffiContractChecksumException($"Bookshelf.Ffi: uniffi bindings expected function `uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder` checksum `1091`, library returned `{checksum}`");
@@ -3140,6 +3170,27 @@ class FfiConverterString: FfiConverter<string, RustBuffer> {
 
 
 
+
+class FfiConverterByteArray: FfiConverterRustBuffer<byte[]> {
+    public static FfiConverterByteArray INSTANCE = new FfiConverterByteArray();
+
+    public override byte[] Read(BigEndianStream stream) {
+        var length = stream.ReadInt();
+        return stream.ReadBytes(length);
+    }
+
+    public override int AllocationSize(byte[] value) {
+        return 4 + value.Length;
+    }
+
+    public override void Write(byte[] value, BigEndianStream stream) {
+        stream.WriteInt(value.Length);
+        stream.WriteBytes(value);
+    }
+}
+
+
+
 /// <summary>
 /// One open journal: the database, its folder and the Open Library client.
 /// </summary>
@@ -3271,6 +3322,16 @@ public interface IJournal {
     /// </summary>
     /// <exception cref="CoreException"></exception>
     SearchResult[] SearchBooks(string @userId, string @query);
+    /// <summary>
+    /// A search result's cover (its `cover_id`), small, for the result
+    /// list: the image file's bytes (a JPEG about 180 pixels wide, checked
+    /// to be a picture of a sensible size), or `None` if Open Library has
+    /// no cover. A network call, made without the journal's lock: call it
+    /// off the UI thread, a few at a time (more wait their turn). Answers
+    /// are kept in memory while the journal is open.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    byte[]? SearchCoverThumbnail(string @userId, long @coverId);
     /// <summary>
     /// Keeps backups in `folder` (an absolute path to an existing folder)
     /// from now on, or in the default folder again with `None`. Follow it
@@ -3670,6 +3731,23 @@ public class Journal : IJournal, IDisposable {
         return CallWithPointer(thisPtr => FfiConverterSequenceTypeSearchResult.INSTANCE.Lift(
     _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
     _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_search_books(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterString.INSTANCE.Lower(@query), ref _status)
+)));
+    }
+    
+    
+    /// <summary>
+    /// A search result's cover (its `cover_id`), small, for the result
+    /// list: the image file's bytes (a JPEG about 180 pixels wide, checked
+    /// to be a picture of a sensible size), or `None` if Open Library has
+    /// no cover. A network call, made without the journal's lock: call it
+    /// off the UI thread, a few at a time (more wait their turn). Answers
+    /// are kept in memory while the journal is open.
+    /// </summary>
+    /// <exception cref="CoreException"></exception>
+    public byte[]? SearchCoverThumbnail(string @userId, long @coverId) {
+        return CallWithPointer(thisPtr => FfiConverterOptionalByteArray.INSTANCE.Lift(
+    _UniffiHelpers.RustCallWithError(FfiConverterTypeCoreError.INSTANCE, (ref UniffiRustCallStatus _status) =>
+    _UniFFILib.uniffi_bookshelf_ffi_fn_method_journal_search_cover_thumbnail(thisPtr, FfiConverterString.INSTANCE.Lower(@userId), FfiConverterInt64.INSTANCE.Lower(@coverId), ref _status)
 )));
     }
     
@@ -5117,8 +5195,17 @@ class FfiConverterTypeSaveResult: FfiConverterRustBuffer<SaveResult> {
 /// The typical page count.
 /// </param>
 /// <param name="CoverUrl">
-/// An https link to the cover image, for showing in the results. The
-/// cover is downloaded when the book is saved.
+/// An https link to the cover image. The cover is downloaded when the
+/// book is saved, and one is sometimes found then for a result without.
+/// </param>
+/// <param name="CoverId">
+/// Open Library's id for that cover: pass it to
+/// `Journal::search_cover_thumbnail` to show it in the results.
+/// </param>
+/// <param name="EditionKey">
+/// The edition that matched the search, like `/books/OL7353617M`, if
+/// Open Library named one. The title, subtitle, ISBN, publisher and
+/// cover are that edition's where it has them.
 /// </param>
 public record SearchResult (
     /// <summary>
@@ -5159,10 +5246,21 @@ public record SearchResult (
     /// </summary>
     long? PageCount, 
     /// <summary>
-    /// An https link to the cover image, for showing in the results. The
-    /// cover is downloaded when the book is saved.
+    /// An https link to the cover image. The cover is downloaded when the
+    /// book is saved, and one is sometimes found then for a result without.
     /// </summary>
-    string? CoverUrl
+    string? CoverUrl, 
+    /// <summary>
+    /// Open Library's id for that cover: pass it to
+    /// `Journal::search_cover_thumbnail` to show it in the results.
+    /// </summary>
+    long? CoverId, 
+    /// <summary>
+    /// The edition that matched the search, like `/books/OL7353617M`, if
+    /// Open Library named one. The title, subtitle, ISBN, publisher and
+    /// cover are that edition's where it has them.
+    /// </summary>
+    string? EditionKey
 ) {
 }
 
@@ -5180,7 +5278,9 @@ class FfiConverterTypeSearchResult: FfiConverterRustBuffer<SearchResult> {
             Description: FfiConverterOptionalString.INSTANCE.Read(stream),
             PublishedDate: FfiConverterOptionalString.INSTANCE.Read(stream),
             PageCount: FfiConverterOptionalInt64.INSTANCE.Read(stream),
-            CoverUrl: FfiConverterOptionalString.INSTANCE.Read(stream)
+            CoverUrl: FfiConverterOptionalString.INSTANCE.Read(stream),
+            CoverId: FfiConverterOptionalInt64.INSTANCE.Read(stream),
+            EditionKey: FfiConverterOptionalString.INSTANCE.Read(stream)
         );
     }
 
@@ -5195,7 +5295,9 @@ class FfiConverterTypeSearchResult: FfiConverterRustBuffer<SearchResult> {
             + FfiConverterOptionalString.INSTANCE.AllocationSize(value.Description)
             + FfiConverterOptionalString.INSTANCE.AllocationSize(value.PublishedDate)
             + FfiConverterOptionalInt64.INSTANCE.AllocationSize(value.PageCount)
-            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.CoverUrl);
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.CoverUrl)
+            + FfiConverterOptionalInt64.INSTANCE.AllocationSize(value.CoverId)
+            + FfiConverterOptionalString.INSTANCE.AllocationSize(value.EditionKey);
     }
 
     public override void Write(SearchResult value, BigEndianStream stream) {
@@ -5209,6 +5311,8 @@ class FfiConverterTypeSearchResult: FfiConverterRustBuffer<SearchResult> {
             FfiConverterOptionalString.INSTANCE.Write(value.PublishedDate, stream);
             FfiConverterOptionalInt64.INSTANCE.Write(value.PageCount, stream);
             FfiConverterOptionalString.INSTANCE.Write(value.CoverUrl, stream);
+            FfiConverterOptionalInt64.INSTANCE.Write(value.CoverId, stream);
+            FfiConverterOptionalString.INSTANCE.Write(value.EditionKey, stream);
     }
 }
 
@@ -7479,6 +7583,37 @@ class FfiConverterOptionalString: FfiConverterRustBuffer<string?> {
         } else {
             stream.WriteByte(1);
             FfiConverterString.INSTANCE.Write((string)value, stream);
+        }
+    }
+}
+
+
+
+
+class FfiConverterOptionalByteArray: FfiConverterRustBuffer<byte[]?> {
+    public static FfiConverterOptionalByteArray INSTANCE = new FfiConverterOptionalByteArray();
+
+    public override byte[]? Read(BigEndianStream stream) {
+        if (stream.ReadByte() == 0) {
+            return null;
+        }
+        return FfiConverterByteArray.INSTANCE.Read(stream);
+    }
+
+    public override int AllocationSize(byte[]? value) {
+        if (value == null) {
+            return 1;
+        } else {
+            return 1 + FfiConverterByteArray.INSTANCE.AllocationSize((byte[])value);
+        }
+    }
+
+    public override void Write(byte[]? value, BigEndianStream stream) {
+        if (value == null) {
+            stream.WriteByte(0);
+        } else {
+            stream.WriteByte(1);
+            FfiConverterByteArray.INSTANCE.Write((byte[])value, stream);
         }
     }
 }

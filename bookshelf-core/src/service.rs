@@ -19,18 +19,36 @@
 use rusqlite::Connection;
 
 use crate::models::{self, Book, NewBook};
-use crate::openlibrary::OpenLibrary;
+use crate::openlibrary::{self, OpenLibrary};
 use crate::paths::AppPaths;
 use crate::{covers, Result};
 
-/// Network step: fills in the long description of a picked search result.
-/// A failure is logged and the book is saved without one.
+/// Network step: fills in the long description of a picked search result,
+/// and a cover when the edition it matched has none (from another edition
+/// of the same title and subtitle). A failure is logged and the book is
+/// saved without.
 pub fn fetch_book_details(ol: &OpenLibrary, mut picked: NewBook) -> NewBook {
     if picked.description.is_none() {
         picked.description = ol.description_for(&picked.external_id).unwrap_or_else(|e| {
             log::warn!("description fetch failed: {e}");
             None
         });
+    }
+    if picked.cover_url.is_none() && picked.edition_key.is_some() {
+        let found = ol
+            .edition_cover(
+                &picked.external_id,
+                &picked.title,
+                picked.subtitle.as_deref(),
+            )
+            .unwrap_or_else(|e| {
+                log::warn!("edition cover lookup failed: {e}");
+                None
+            });
+        if let Some(id) = found {
+            picked.cover_id = Some(id);
+            picked.cover_url = Some(openlibrary::cover_url(id));
+        }
     }
     picked
 }
@@ -80,9 +98,10 @@ pub fn refresh_book(
     paths: &AppPaths,
     book_id: &str,
 ) -> Result<Book> {
-    let book = models::get_book(conn, book_id)?;
-    if let Some(update) = ol.refresh_work(&book.external_id)? {
+    let mut book = models::get_book(conn, book_id)?;
+    if let Some(update) = ol.refresh_work(&book)? {
         models::update_book_details(conn, book_id, &update)?;
+        book = models::get_book(conn, book_id)?; // it may have a cover to get now
     }
     attach_cover_if_missing(conn, ol, paths, &book)?;
     models::get_book(conn, book_id)
@@ -175,6 +194,23 @@ mod tests {
         let ol = OpenLibrary::new().unwrap();
         let picked = fetch_book_details(&ol, new_book("/works/OL1W", None));
         assert_eq!(picked.description.as_deref(), Some("Sand."));
+    }
+
+    #[test]
+    fn only_an_edition_without_a_cover_looks_for_one() {
+        let ol = OpenLibrary::new().unwrap();
+        // Has a cover: nothing to look for.
+        let mut picked = new_book("/works/OL1W", Some("https://c/1.jpg"));
+        picked.edition_key = Some("/books/OL1M".into());
+        let picked = fetch_book_details(&ol, picked);
+        assert_eq!(picked.cover_url.as_deref(), Some("https://c/1.jpg"));
+        // No matched edition: the work had no cover, so there's none.
+        let picked = fetch_book_details(&ol, new_book("/works/OL1W", None));
+        assert_eq!((picked.cover_url, picked.cover_id), (None, None));
+        // Not a work key: refused before any request.
+        let mut picked = new_book("x", None);
+        picked.edition_key = Some("/books/OL1M".into());
+        assert_eq!(fetch_book_details(&ol, picked).cover_url, None);
     }
 
     #[test]

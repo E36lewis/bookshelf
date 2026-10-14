@@ -1,14 +1,51 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::collections::VecDeque;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use adw::prelude::*;
 use bookshelf_core::db;
 use bookshelf_core::models::*;
 use bookshelf_core::openlibrary::OpenLibrary;
 use bookshelf_core::service;
-use gtk::{gio, glib};
+use gtk::{gdk, gio, glib};
 
 use crate::{editor, friendly, plain_toast, Ctx};
+
+/// Size of the covers beside the results.
+const THUMBNAIL: (i32, i32) = (40, 60);
+/// How many result covers load at once (the core keeps to a few as well).
+const THUMBNAIL_LOADS: usize = 3;
+
+/// A search: the results, or why there are none.
+type Search = dyn Fn(&str) -> Result<Vec<NewBook>, String> + Send + Sync;
+
+/// Where results and their covers come from: Open Library, or made-up
+/// ones for screenshots. Both are called on worker threads.
+#[derive(Clone)]
+pub(crate) struct Source {
+    pub(crate) search: Arc<Search>,
+    /// A cover's image file, by its Open Library id; None if there's none.
+    pub(crate) thumbnail: Arc<dyn Fn(i64) -> Option<Vec<u8>> + Send + Sync>,
+}
+
+impl Source {
+    fn open_library(ol: &OpenLibrary) -> Self {
+        let (searcher, thumbnailer) = (ol.clone(), ol.clone());
+        Self {
+            search: Arc::new(move |query| searcher.search(query).map_err(|e| e.to_string())),
+            // A cover that can't be had is just left out: it's decoration.
+            thumbnail: Arc::new(move |id| thumbnailer.search_thumbnail(id).ok().flatten()),
+        }
+    }
+}
+
+/// Result covers waiting to load, for the latest results only.
+#[derive(Default)]
+struct Thumbnails {
+    waiting: RefCell<VecDeque<(i64, glib::WeakRef<gtk::Picture>)>>,
+    loading: Cell<usize>,
+}
 
 /// Everything the result rows need, cloned cheaply into callbacks.
 #[derive(Clone)]
@@ -16,12 +53,28 @@ struct Ui {
     ctx: Rc<Ctx>,
     user: User,
     ol: OpenLibrary,
+    source: Source,
+    thumbnails: Rc<Thumbnails>,
     list: gtk::ListBox,
     spinner: gtk::Spinner,
     overlay: adw::ToastOverlay,
 }
 
 pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
+    // Read fresh: the email may have been changed in settings since `user` was loaded.
+    let contact = get_user(&ctx.conn, &user.id).ok().and_then(|u| u.email);
+    let ol = ctx.ol.with_contact(contact.as_deref());
+    let source = Source::open_library(&ol);
+    search_page_from(ctx, user, ol, source).0
+}
+
+/// The page, searching `source`, and its search field.
+pub(crate) fn search_page_from(
+    ctx: &Rc<Ctx>,
+    user: &User,
+    ol: OpenLibrary,
+    source: Source,
+) -> (adw::NavigationPage, gtk::SearchEntry) {
     let entry = gtk::SearchEntry::builder()
         .placeholder_text("Search by title, author or ISBN")
         .hexpand(true)
@@ -68,12 +121,12 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         .child(&toolbar)
         .build();
 
-    // Read fresh: the email may have been changed in settings since `user` was loaded.
-    let contact = get_user(&ctx.conn, &user.id).ok().and_then(|u| u.email);
     let ui = Ui {
         ctx: ctx.clone(),
         user: user.clone(),
-        ol: ctx.ol.with_contact(contact.as_deref()),
+        ol,
+        source,
+        thumbnails: Rc::default(),
         list,
         spinner,
         overlay,
@@ -83,17 +136,18 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     // Result rows hold on to the list through their click handlers; clearing
     // them when the page goes lets it all be freed.
     {
-        let list = ui.list.clone();
-        page.connect_hidden(move |_| list.remove_all());
+        let ui = ui.clone();
+        page.connect_hidden(move |_| clear(&ui));
     }
 
+    let field = entry.clone();
     entry.connect_search_changed(move |entry| {
         let query = entry.text().trim().to_string();
         let gen = generation.get() + 1;
         generation.set(gen);
 
         if query.is_empty() {
-            ui.list.remove_all();
+            clear(&ui);
             ui.spinner.set_spinning(false);
             return;
         }
@@ -103,15 +157,14 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         let generation = generation.clone();
         glib::spawn_future_local(async move {
             // Network work happens on a worker thread, never the UI thread.
-            let ol = ui.ol.clone();
-            let result =
-                gio::spawn_blocking(move || ol.search(&query).map_err(|e| e.to_string())).await;
+            let search = ui.source.search.clone();
+            let result = gio::spawn_blocking(move || search(&query)).await;
 
             if generation.get() != gen {
                 return; // a newer search superseded this one
             }
             ui.spinner.set_spinning(false);
-            ui.list.remove_all();
+            clear(&ui);
             match result {
                 Ok(Ok(books)) => {
                     for book in books {
@@ -126,7 +179,13 @@ pub fn search_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
         });
     });
 
-    page
+    (page, field)
+}
+
+/// Empties the list, and drops the covers still waiting to load for it.
+fn clear(ui: &Ui) {
+    ui.thumbnails.waiting.borrow_mut().clear();
+    ui.list.remove_all();
 }
 
 fn result_row(ui: &Ui, book: NewBook) -> adw::ActionRow {
@@ -135,17 +194,82 @@ fn result_row(ui: &Ui, book: NewBook) -> adw::ActionRow {
         .flatten()
         .collect::<Vec<_>>()
         .join(" · ");
+    let title = match &book.subtitle {
+        Some(sub) => format!("{}: {sub}", book.title),
+        None => book.title.clone(),
+    };
     let row = adw::ActionRow::builder()
-        .title(&book.title)
+        .title(&title)
         .subtitle(&subtitle)
         .use_markup(false)
         .activatable(true)
         .build();
+    // The cover, or the empty tinted box of a book without one. Screen
+    // readers skip it: the row says which book it is.
+    let cover = gtk::Picture::builder()
+        .accessible_role(gtk::AccessibleRole::Presentation)
+        .width_request(THUMBNAIL.0)
+        .height_request(THUMBNAIL.1)
+        .can_shrink(true)
+        .content_fit(gtk::ContentFit::Cover)
+        .overflow(gtk::Overflow::Hidden)
+        .valign(gtk::Align::Center)
+        .margin_top(6)
+        .margin_bottom(6)
+        .css_classes(["cover"])
+        .build();
+    row.add_prefix(&cover);
     row.add_suffix(&gtk::Image::from_icon_name("list-add-symbolic"));
+    if let Some(id) = book.cover_id {
+        load_thumbnail(ui, id, &cover);
+    }
 
     let ui = ui.clone();
     row.connect_activated(move |_| pick(&ui, book.clone()));
     row
+}
+
+/// Queues a result's cover. A few load at a time, on worker threads, so
+/// the list is never held up; covers for results that are gone by their
+/// turn are skipped.
+fn load_thumbnail(ui: &Ui, cover_id: i64, picture: &gtk::Picture) {
+    let thumbs = ui.thumbnails.clone();
+    thumbs
+        .waiting
+        .borrow_mut()
+        .push_back((cover_id, picture.downgrade()));
+    if thumbs.loading.get() >= THUMBNAIL_LOADS {
+        return; // one of the running loaders will get to it
+    }
+    thumbs.loading.set(thumbs.loading.get() + 1);
+    let fetch = ui.source.thumbnail.clone();
+    glib::spawn_future_local(async move {
+        loop {
+            let next = thumbs.waiting.borrow_mut().pop_front();
+            let Some((id, target)) = next else { break };
+            if target.upgrade().is_none() {
+                continue;
+            }
+            let fetch = fetch.clone();
+            let loaded = gio::spawn_blocking(move || decode_thumbnail(fetch(id)?)).await;
+            if let (Ok(Some(texture)), Some(picture)) = (loaded, target.upgrade()) {
+                picture.set_paintable(Some(&texture));
+            }
+        }
+        thumbs.loading.set(thumbs.loading.get() - 1);
+    });
+}
+
+/// Decodes a cover at twice its size on screen, for high-density
+/// displays. Runs on a worker thread. The core has already checked that
+/// it's an image of a sensible size.
+fn decode_thumbnail(bytes: Vec<u8>) -> Option<gdk::Texture> {
+    let stream = gio::MemoryInputStream::from_bytes(&glib::Bytes::from_owned(bytes));
+    let (w, h) = (THUMBNAIL.0 * 2, THUMBNAIL.1 * 2);
+    let pixbuf =
+        gtk::gdk_pixbuf::Pixbuf::from_stream_at_scale(&stream, w, h, true, gio::Cancellable::NONE)
+            .ok()?;
+    Some(gdk::Texture::for_pixbuf(&pixbuf))
 }
 
 /// User picked a result: save it (description + cover) on a worker thread,

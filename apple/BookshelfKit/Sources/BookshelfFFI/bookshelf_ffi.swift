@@ -583,6 +583,24 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
+    }
+}
+
 
 
 
@@ -718,6 +736,16 @@ public protocol JournalProtocol: AnyObject, Sendable {
      * carry the profile's contact email, if it set one.
      */
     func searchBooks(userId: String, query: String) throws  -> [SearchResult]
+    
+    /**
+     * A search result's cover (its `cover_id`), small, for the result
+     * list: the image file's bytes (a JPEG about 180 pixels wide, checked
+     * to be a picture of a sensible size), or `None` if Open Library has
+     * no cover. A network call, made without the journal's lock: call it
+     * off the UI thread, a few at a time (more wait their turn). Answers
+     * are kept in memory while the journal is open.
+     */
+    func searchCoverThumbnail(userId: String, coverId: Int64) throws  -> Data?
     
     /**
      * Keeps backups in `folder` (an absolute path to an existing folder)
@@ -1105,6 +1133,24 @@ open func searchBooks(userId: String, query: String)throws  -> [SearchResult]  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(userId),
         FfiConverterString.lower(query),$0
+    )
+})
+}
+    
+    /**
+     * A search result's cover (its `cover_id`), small, for the result
+     * list: the image file's bytes (a JPEG about 180 pixels wide, checked
+     * to be a picture of a sensible size), or `None` if Open Library has
+     * no cover. A network call, made without the journal's lock: call it
+     * off the UI thread, a few at a time (more wait their turn). Answers
+     * are kept in memory while the journal is open.
+     */
+open func searchCoverThumbnail(userId: String, coverId: Int64)throws  -> Data?  {
+    return try  FfiConverterOptionData.lift(try rustCallWithError(FfiConverterTypeCoreError_lift) {
+    uniffi_bookshelf_ffi_fn_method_journal_search_cover_thumbnail(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(userId),
+        FfiConverterInt64.lower(coverId),$0
     )
 })
 }
@@ -2904,10 +2950,21 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var pageCount: Int64?
     /**
-     * An https link to the cover image, for showing in the results. The
-     * cover is downloaded when the book is saved.
+     * An https link to the cover image. The cover is downloaded when the
+     * book is saved, and one is sometimes found then for a result without.
      */
     public var coverUrl: String?
+    /**
+     * Open Library's id for that cover: pass it to
+     * `Journal::search_cover_thumbnail` to show it in the results.
+     */
+    public var coverId: Int64?
+    /**
+     * The edition that matched the search, like `/books/OL7353617M`, if
+     * Open Library named one. The title, subtitle, ISBN, publisher and
+     * cover are that edition's where it has them.
+     */
+    public var editionKey: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -2941,9 +2998,18 @@ public struct SearchResult: Equatable, Hashable {
          * The typical page count.
          */pageCount: Int64?, 
         /**
-         * An https link to the cover image, for showing in the results. The
-         * cover is downloaded when the book is saved.
-         */coverUrl: String?) {
+         * An https link to the cover image. The cover is downloaded when the
+         * book is saved, and one is sometimes found then for a result without.
+         */coverUrl: String?, 
+        /**
+         * Open Library's id for that cover: pass it to
+         * `Journal::search_cover_thumbnail` to show it in the results.
+         */coverId: Int64?, 
+        /**
+         * The edition that matched the search, like `/books/OL7353617M`, if
+         * Open Library named one. The title, subtitle, ISBN, publisher and
+         * cover are that edition's where it has them.
+         */editionKey: String?) {
         self.externalId = externalId
         self.title = title
         self.subtitle = subtitle
@@ -2954,6 +3020,8 @@ public struct SearchResult: Equatable, Hashable {
         self.publishedDate = publishedDate
         self.pageCount = pageCount
         self.coverUrl = coverUrl
+        self.coverId = coverId
+        self.editionKey = editionKey
     }
 
     
@@ -2981,7 +3049,9 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
                 description: FfiConverterOptionString.read(from: &buf), 
                 publishedDate: FfiConverterOptionString.read(from: &buf), 
                 pageCount: FfiConverterOptionInt64.read(from: &buf), 
-                coverUrl: FfiConverterOptionString.read(from: &buf)
+                coverUrl: FfiConverterOptionString.read(from: &buf), 
+                coverId: FfiConverterOptionInt64.read(from: &buf), 
+                editionKey: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -2996,6 +3066,8 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.publishedDate, into: &buf)
         FfiConverterOptionInt64.write(value.pageCount, into: &buf)
         FfiConverterOptionString.write(value.coverUrl, into: &buf)
+        FfiConverterOptionInt64.write(value.coverId, into: &buf)
+        FfiConverterOptionString.write(value.editionKey, into: &buf)
     }
 }
 
@@ -5833,6 +5905,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
+    typealias SwiftType = Data?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterData.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeTextEdit: FfiConverterRustBuffer {
     typealias SwiftType = TextEdit?
 
@@ -6543,6 +6639,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_bookshelf_ffi_checksum_method_journal_search_books() != 46885) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_bookshelf_ffi_checksum_method_journal_search_cover_thumbnail() != 44198) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_bookshelf_ffi_checksum_method_journal_set_backup_folder() != 1091) {

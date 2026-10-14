@@ -25,7 +25,7 @@ use gtk::glib;
 use crate::Ctx;
 
 /// What to show, in order, each in light and then dark.
-const STEPS: [&str; 4] = ["shelf", "book", "writer", "reader"];
+const STEPS: [&str; 5] = ["shelf", "book", "writer", "reader", "search"];
 
 pub(crate) fn run(ctx: &Rc<Ctx>, window: &adw::ApplicationWindow) {
     let Some(out) = std::env::var_os("BOOKSHELF_SCREENSHOTS").map(PathBuf::from) else {
@@ -57,7 +57,14 @@ pub(crate) fn run(ctx: &Rc<Ctx>, window: &adw::ApplicationWindow) {
                 "shelf" => ctx.nav.push(&crate::home_page(&ctx, &user)),
                 "book" => ctx.nav.push(&crate::editor::summary_page(&ctx, &piranesi)),
                 "writer" => ctx.nav.push(&crate::writer::writer_page(&ctx, &piranesi)),
-                _ => ctx.nav.push(&crate::reader::reader_page(&ctx, &piranesi)),
+                "reader" => ctx.nav.push(&crate::reader::reader_page(&ctx, &piranesi)),
+                _ => {
+                    let source = demo_search();
+                    let (page, field) =
+                        crate::search::search_page_from(&ctx, &user, ctx.ol.clone(), source);
+                    ctx.nav.push(&page);
+                    field.set_text("le guin");
+                }
             }
             for theme in ["light", "dark"] {
                 let mut s = get_settings(&ctx.conn, &user.id).expect("settings");
@@ -92,6 +99,43 @@ fn snap(window: &adw::ApplicationWindow, file: &std::path::Path) -> Result<(), S
         .render_texture(&node, Some(&area))
         .save_to_png(file)
         .map_err(|e| e.to_string())
+}
+
+/// Add a book, without the network: made-up results, and made-up covers
+/// (plain colours) for all but the last, which shows the stand-in.
+fn demo_search() -> crate::search::Source {
+    let result = |title: &str, author: &str, year: &str, cover_id: Option<i64>| NewBook {
+        external_id: format!("/works/DEMO{}W", cover_id.unwrap_or(9)),
+        title: title.into(),
+        author: Some(author.into()),
+        published_date: Some(year.into()),
+        cover_id,
+        ..Default::default()
+    };
+    let results = vec![
+        result("A Wizard of Earthsea", "Ursula K. Le Guin", "1968", Some(1)),
+        result(
+            "The Left Hand of Darkness",
+            "Ursula K. Le Guin",
+            "1969",
+            Some(2),
+        ),
+        NewBook {
+            subtitle: Some("An Ambiguous Utopia".into()),
+            ..result("The Dispossessed", "Ursula K. Le Guin", "1974", Some(3))
+        },
+        result("The Lathe of Heaven", "Ursula K. Le Guin", "1971", None),
+    ];
+    crate::search::Source {
+        search: std::sync::Arc::new(move |_| Ok(results.clone())),
+        thumbnail: std::sync::Arc::new(|id| {
+            let colour = [0x6b8273ff, 0x9e6b59ff, 0x5c6e8fff][(id as usize - 1) % 3];
+            let pixbuf =
+                gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, false, 8, 180, 270)?;
+            pixbuf.fill(colour);
+            pixbuf.save_to_bufferv("png", &[]).ok()
+        }),
+    }
 }
 
 /// Avery's shelves from the Mac demo journal; returns Avery and Piranesi's entry.
