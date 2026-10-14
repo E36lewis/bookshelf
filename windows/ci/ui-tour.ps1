@@ -840,6 +840,9 @@ Step 'Writer: lists carry on with Enter, nest with Tab, un-nest with Shift+Tab, 
     # Enter on an empty item ends the list: a blank line, then the caret.
     Keys '{ENTER}{ENTER}after'
     Wait-EditorEnd "Its letters`n`nafter" | Out-Null
+    # ...and what's typed next is in the writing font, at the end of the text too.
+    $font = (Editor-Pattern).DocumentRange.FindText('after', $true, $false).GetAttributeValue([Windows.Automation.TextPattern]::FontNameAttribute)
+    if ("$font" -notlike '*iA Writer Duo*') { throw "the text typed after the list is in '$font'" }
     Keys '^z'
     Keys '^z'
     Wait-EditorEnd "letters`n5." | Out-Null
@@ -863,11 +866,15 @@ Step 'Writer: the caret keeps a few lines clear of the bottom and the top' {
     Keys '^{END}{ENTER}{ENTER}'
     Keys (('x{ENTER}' * 30) + 'end')
     Wait-EditorEnd "x`nend" | Out-Null
+    $font = (Editor-Pattern).DocumentRange.FindText('end', $true, $false).GetAttributeValue([Windows.Automation.TextPattern]::FontNameAttribute)
+    if ("$font" -notlike '*iA Writer Duo*') { throw "the lines typed after the list are in '$font'" }
+    # (Measured on a character: the very end of the text has none.)
+    Keys '{LEFT}'
     $room = Caret-Room
     Write-Host ("      at the end: {0:F1} lines below the caret" -f $room.Below)
     if ($room.Below -lt 2) { throw ("only {0:F1} lines below the caret" -f $room.Below) }
     Snap '41b-writer-caret-room'
-    Keys '{UP 25}'
+    Keys '{UP 25}{HOME}'
     $room = Caret-Room
     Write-Host ("      25 lines up: {0:F1} lines above the caret" -f $room.Above)
     if ($room.Above -lt 2) { throw ("only {0:F1} lines above the caret" -f $room.Above) }
