@@ -53,4 +53,21 @@ final class DemoJournalTests: XCTestCase {
         let samsReading = try await worker.shelf(.reading, for: try XCTUnwrap(sam).id, on: today, calendar: calendar)
         XCTAssertEqual(samsReading.total, 1)
     }
+
+    func testDemoSearchResultsHaveMadeUpCoversAndSaveOffline() async throws {
+        let withCovers = DemoJournal.searchResults.compactMap(\.coverId)
+        XCTAssertEqual(withCovers.count, DemoJournal.searchResults.count - 1, "one shows the stand-in")
+        for id in withCovers {
+            let png = try XCTUnwrap(DemoJournal.searchCover(id))
+            XCTAssertEqual(Array(png.prefix(4)), [0x89, 0x50, 0x4E, 0x47])
+        }
+
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("bookshelf-demo-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let worker = try JournalWorker(directory: dir)
+        let avery = try await worker.createProfile(named: "Avery")
+        let book = try await worker.saveSearchResult(DemoJournal.searchResults[2], for: avery.id)
+        XCTAssertEqual(book.subtitle, "An Ambiguous Utopia")
+        XCTAssertNil(book.coverPath)
+    }
 }

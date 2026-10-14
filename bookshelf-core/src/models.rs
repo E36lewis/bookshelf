@@ -318,6 +318,14 @@ pub struct NewBook {
     pub published_date: Option<String>,
     pub page_count: Option<i64>,
     pub cover_url: Option<String>,
+    /// Open Library's id for the cover in `cover_url`, for the search
+    /// list's thumbnails. Not stored.
+    #[serde(default)]
+    pub cover_id: Option<i64>,
+    /// The edition the search matched (`/books/OL…M`), when it named one.
+    /// Not stored: the work (`external_id`) is what identifies a book.
+    #[serde(default)]
+    pub edition_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -416,6 +424,8 @@ pub struct BookUpdate {
     pub published_date: Option<String>,
     pub page_count: Option<i64>,
     pub publisher: Option<String>,
+    /// Only fills a missing cover URL; one the book has is kept.
+    pub cover_url: Option<String>,
 }
 
 pub fn update_book_details(conn: &Connection, id: &str, u: &BookUpdate) -> Result<()> {
@@ -427,7 +437,8 @@ pub fn update_book_details(conn: &Connection, id: &str, u: &BookUpdate) -> Resul
             published_date = COALESCE(?5, published_date),
             page_count = COALESCE(?6, page_count),
             publisher = COALESCE(?7, publisher),
-            updated_at = ?8
+            cover_url = COALESCE(cover_url, ?8),
+            updated_at = ?9
          WHERE id = ?1",
         params![
             id,
@@ -437,6 +448,7 @@ pub fn update_book_details(conn: &Connection, id: &str, u: &BookUpdate) -> Resul
             u.published_date,
             u.page_count,
             u.publisher,
+            u.cover_url,
             Utc::now()
         ],
     )?;
@@ -715,6 +727,30 @@ mod tests {
             title: "Dune".into(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn a_refresh_fills_in_but_never_blanks_out() {
+        let conn = db::open_in_memory().unwrap();
+        let b = find_or_create_book(&conn, &book("/works/OL1W")).unwrap();
+        let update = BookUpdate {
+            page_count: Some(412),
+            cover_url: Some("https://c/1.jpg".into()),
+            ..Default::default()
+        };
+        update_book_details(&conn, &b.id, &update).unwrap();
+        let b = get_book(&conn, &b.id).unwrap();
+        assert_eq!((b.title.as_str(), b.page_count), ("Dune", Some(412)));
+        assert_eq!(b.cover_url.as_deref(), Some("https://c/1.jpg"));
+        // A cover URL the book has is kept.
+        let update = BookUpdate {
+            cover_url: Some("https://c/2.jpg".into()),
+            ..Default::default()
+        };
+        update_book_details(&conn, &b.id, &update).unwrap();
+        let b = get_book(&conn, &b.id).unwrap();
+        assert_eq!(b.cover_url.as_deref(), Some("https://c/1.jpg"));
+        assert_eq!(b.page_count, Some(412));
     }
 
     #[test]

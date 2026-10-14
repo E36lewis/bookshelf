@@ -162,6 +162,14 @@ public actor JournalWorker {
         return try await Self.inBackground { try journal.searchBooks(userId: userId, query: query) }
     }
 
+    /// A search result's cover (its `coverId`) as a small image file, or
+    /// nil if Open Library has none. The core keeps a few downloading at
+    /// once, and keeps them for the session.
+    public nonisolated func searchCoverThumbnail(_ coverId: Int64, for userId: String) async throws -> Data? {
+        let journal = journal
+        return try await Self.inBackground { try journal.searchCoverThumbnail(userId: userId, coverId: coverId) }
+    }
+
     /// Saves a picked result as a book, with its description and cover.
     public nonisolated func saveSearchResult(_ result: SearchResult, for userId: String) async throws -> BookInfo {
         let journal = journal

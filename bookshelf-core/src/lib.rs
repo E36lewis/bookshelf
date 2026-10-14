@@ -22,6 +22,7 @@ pub mod service;
 pub mod shortcuts;
 pub mod text;
 pub mod theme;
+mod thumbnails;
 pub mod writer;
 
 #[cfg(windows)]

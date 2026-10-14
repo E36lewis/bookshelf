@@ -1,0 +1,126 @@
+{
+ "numFound": 7,
+ "start": 0,
+ "numFoundExact": true,
+ "docs": [
+  {
+   "author_name": [
+    "Matt Forbeck"
+   ],
+   "cover_edition_key": "OL28650849M",
+   "cover_i": 10329162,
+   "first_publish_year": 2015,
+   "isbn": [
+    "1501132628",
+    "9781501132612",
+    "150113261X",
+    "9781501128264",
+    "9781501128080",
+    "9781501132629",
+    "9781785650635",
+    "9781501128257",
+    "1785650637",
+    "147679670X",
+    "1501128256",
+    "1501128264",
+    "9781476796703",
+    "1501128086"
+   ],
+   "key": "/works/OL21163022W",
+   "number_of_pages_median": 352,
+   "publisher": [
+    "Simon & Schuster, Limited",
+    "Titan Books Limited",
+    "Gallery Books"
+   ],
+   "title": "Halo",
+   "editions": {
+    "numFound": 7,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL48159580M",
+      "title": "Halo",
+      "subtitle": "New Blood",
+      "publisher": [
+       "Titan Books Limited"
+      ],
+      "isbn": [
+       "9781785650635",
+       "1785650637"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "author_name": [
+    "Scott Bradlee"
+   ],
+   "first_publish_year": 2017,
+   "key": "/works/OL19731029W",
+   "title": "The new classics",
+   "editions": {
+    "numFound": 1,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL26944126M",
+      "title": "The new classics"
+     }
+    ]
+   }
+  },
+  {
+   "author_name": [
+    "Malcolm Frank"
+   ],
+   "cover_edition_key": "OL26931871M",
+   "cover_i": 14532481,
+   "first_publish_year": 2017,
+   "isbn": [
+    "9781119278689",
+    "8126566396",
+    "9781721357963",
+    "9781119278672",
+    "9781119278665",
+    "9788126566396",
+    "1119278686",
+    "1721357963",
+    "111927866X",
+    "1119278678"
+   ],
+   "key": "/works/OL19718740W",
+   "number_of_pages_median": 256,
+   "publisher": [
+    "WILEY INDIA",
+    "Wiley & Sons, Incorporated, John",
+    "Audible Studios on Brilliance Audio",
+    "John Wiley & Sons, Inc."
+   ],
+   "title": "What to do when machines do everything",
+   "editions": {
+    "numFound": 1,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL26931871M",
+      "title": "What to do when machines do everything",
+      "subtitle": "how to get ahead in a world of AI, algorithms, bots, and big data",
+      "cover_i": 14532481,
+      "publisher": [
+       "John Wiley & Sons, Inc."
+      ],
+      "isbn": [
+       "9781119278665",
+       "111927866X"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -10,18 +10,55 @@
 
     <ContentDialog.Resources>
         <x:Double x:Key="ContentDialogMaxWidth">720</x:Double>
+        <!-- A result: its cover (or a stand-in with its initial), title,
+             subtitle, author and year. -->
         <DataTemplate x:Key="ResultTemplate" x:DataType="dialogs:ResultItem">
-            <StackPanel Padding="0,8,0,8" Spacing="2" AutomationProperties.Name="{x:Bind AutomationName}">
-                <TextBlock
-                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                    Text="{x:Bind Title}"
-                    TextTrimming="CharacterEllipsis" />
-                <TextBlock
-                    Style="{StaticResource CaptionSecondaryStyle}"
-                    Text="{x:Bind Byline}"
-                    TextTrimming="CharacterEllipsis"
-                    Visibility="{x:Bind BylineVisibility}" />
-            </StackPanel>
+            <Grid Padding="0,6,0,6" ColumnSpacing="12" AutomationProperties.Name="{x:Bind AutomationName}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <!-- Decoration: the row's name says which book it is. -->
+                <Border
+                    Width="40"
+                    Height="60"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AccessibilityView="Raw"
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="3">
+                    <Grid>
+                        <Grid Visibility="{x:Bind PlaceholderVisibility, Mode=OneWay}">
+                            <Rectangle Width="3" HorizontalAlignment="Left" Fill="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.8" />
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontFamily="{x:Bind HeadingFont}"
+                                FontSize="18"
+                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                Text="{x:Bind Initial}" />
+                        </Grid>
+                        <Image Source="{x:Bind Cover, Mode=OneWay}" Stretch="UniformToFill" />
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                        Text="{x:Bind Title}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Style="{StaticResource CaptionSecondaryStyle}"
+                        Text="{x:Bind Subtitle}"
+                        TextTrimming="CharacterEllipsis"
+                        Visibility="{x:Bind SubtitleVisibility}" />
+                    <TextBlock
+                        Style="{StaticResource CaptionSecondaryStyle}"
+                        Text="{x:Bind Byline}"
+                        TextTrimming="CharacterEllipsis"
+                        Visibility="{x:Bind BylineVisibility}" />
+                </StackPanel>
+            </Grid>
         </DataTemplate>
     </ContentDialog.Resources>
 

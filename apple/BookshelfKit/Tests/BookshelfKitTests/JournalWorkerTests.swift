@@ -20,7 +20,7 @@ final class JournalWorkerTests: XCTestCase {
         SearchResult(
             externalId: key, title: title, subtitle: nil, author: "Frank Herbert", isbn: nil,
             publisher: nil, description: "Sand, and the people of it.", publishedDate: "1965",
-            pageCount: 412, coverUrl: nil)
+            pageCount: 412, coverUrl: nil, coverId: nil, editionKey: nil)
     }
 
     private func folder(_ name: String) throws -> URL {

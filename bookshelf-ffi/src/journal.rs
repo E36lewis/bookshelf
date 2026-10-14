@@ -364,6 +364,22 @@ impl Journal {
             .collect())
     }
 
+    /// A search result's cover (its `cover_id`), small, for the result
+    /// list: the image file's bytes (a JPEG about 180 pixels wide, checked
+    /// to be a picture of a sensible size), or `None` if Open Library has
+    /// no cover. A network call, made without the journal's lock: call it
+    /// off the UI thread, a few at a time (more wait their turn). Answers
+    /// are kept in memory while the journal is open.
+    pub fn search_cover_thumbnail(
+        &self,
+        user_id: String,
+        cover_id: i64,
+    ) -> Result<Option<Vec<u8>>> {
+        validate::id(&user_id)?;
+        let ol = self.client_for(&user_id)?;
+        Ok(ol.search_thumbnail(cover_id)?)
+    }
+
     /// Saves a picked search result as a book (the same book again if it
     /// was saved before), fetching its description and downloading its
     /// cover. Neither of those failing fails the save. Add it to a shelf

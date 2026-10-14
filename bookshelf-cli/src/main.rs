@@ -62,9 +62,13 @@ fn run() -> Res<()> {
         ["search", query @ ..] if !query.is_empty() => {
             for (i, b) in ol.search(&query.join(" "))?.iter().enumerate() {
                 println!(
-                    "{:>2}. {} — {} ({}) {}",
+                    "{:>2}. {}{} — {} ({}) {}",
                     i + 1,
                     b.title,
+                    b.subtitle
+                        .as_deref()
+                        .map(|s| format!(": {s}"))
+                        .unwrap_or_default(),
                     b.author.as_deref().unwrap_or("?"),
                     b.published_date.as_deref().unwrap_or("?"),
                     if b.cover_url.is_some() { "[cover]" } else { "" }

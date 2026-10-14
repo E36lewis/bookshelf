@@ -528,7 +528,17 @@ final class AppModel {
     /// Searches Open Library. Nothing is saved.
     func searchOpenLibrary(_ query: String) async throws -> [SearchResult] {
         guard let worker, let profile else { return [] }
+        // A demo journal never goes online.
+        if options.journal == .demo { return DemoJournal.searchResults }
         return try await worker.searchBooks(for: profile.id, query: query)
+    }
+
+    /// A search result's cover as an image file, or nil for none. Any
+    /// trouble is nil too: the cover is decoration.
+    func searchCover(_ coverId: Int64) async -> Data? {
+        if options.journal == .demo { return DemoJournal.searchCover(coverId) }
+        guard let worker, let profile else { return nil }
+        return try? await worker.searchCoverThumbnail(coverId, for: profile.id)
     }
 
     /// Saves a picked result as a book and says whether it's on a shelf already.

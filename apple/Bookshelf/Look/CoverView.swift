@@ -26,12 +26,27 @@ final class CoverCache: @unchecked Sendable {
         return image
     }
 
+    /// A search result's cover from its image file's bytes, at most
+    /// `pixels` on its longer side, decoded off the main thread. Not kept:
+    /// the core keeps the bytes.
+    func thumbnail(of data: Data, pixels: Int) async -> CGImage? {
+        await Task.detached(priority: .utility) { () -> CGImage? in
+            guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
+            else { return nil }
+            return Self.thumbnail(of: source, pixels: pixels)
+        }.value
+    }
+
     /// ImageIO makes a thumbnail straight from the file, without decoding
     /// the full-size image first.
     private static func decode(_ path: String, pixels: Int) -> CGImage? {
         let url = URL(fileURLWithPath: path)
         guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary)
         else { return nil }
+        return thumbnail(of: source, pixels: pixels)
+    }
+
+    private static func thumbnail(of source: CGImageSource, pixels: Int) -> CGImage? {
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
@@ -56,6 +71,77 @@ struct CoverView: View {
     private var height: CGFloat { (width * 1.5).rounded() }
 
     var body: some View {
+        CoverFrame(image: image, title: title, author: author, width: width)
+            .task(id: path) {
+                guard let path else {
+                    image = nil
+                    return
+                }
+                image = await CoverCache.shared.thumbnail(at: path, pixels: Int(height * scale))
+            }
+    }
+}
+
+/// A search result's cover, fetched through the core as the row appears,
+/// a few at a time; the made-up cover until then, and for good when Open
+/// Library has none. Decoration, like `CoverView`.
+struct SearchCoverView: View {
+    let coverId: Int64?
+    let title: String
+    let width: CGFloat
+
+    @Environment(AppModel.self) private var model
+    @Environment(\.displayScale) private var scale
+    @State private var image: CGImage?
+
+    var body: some View {
+        CoverFrame(image: image, title: title, author: nil, width: width)
+            .task(id: coverId) {
+                image = nil
+                guard let coverId else { return }
+                let pixels = Int((width * 1.5 * scale).rounded())
+                let model = model
+                guard let data = await SearchCoverLoads.shared.run({ await model.searchCover(coverId) }),
+                    !Task.isCancelled
+                else { return }
+                image = await CoverCache.shared.thumbnail(of: data, pixels: pixels)
+            }
+    }
+}
+
+/// Keeps search-result covers to a few loading at a time. A row that's
+/// gone by its turn (a newer search replaced it) loads nothing.
+actor SearchCoverLoads {
+    static let shared = SearchCoverLoads()
+    private let limit = 3
+    private var running = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func run<T: Sendable>(_ load: @Sendable () async -> T?) async -> T? {
+        if running < limit {
+            running += 1
+        } else {
+            await withCheckedContinuation { waiting.append($0) }  // handed a turn
+        }
+        defer {
+            if waiting.isEmpty { running -= 1 } else { waiting.removeFirst().resume() }
+        }
+        guard !Task.isCancelled else { return nil }
+        return await load()
+    }
+}
+
+/// A cover's look: the image (or a made-up cover), a hint of a spine,
+/// rounded corners and a shadow. Hidden from VoiceOver.
+private struct CoverFrame: View {
+    let image: CGImage?
+    let title: String
+    let author: String?
+    let width: CGFloat
+
+    private var height: CGFloat { (width * 1.5).rounded() }
+
+    var body: some View {
         ZStack(alignment: .leading) {
             if let image {
                 Image(decorative: image, scale: 1)
@@ -74,13 +160,6 @@ struct CoverView: View {
             bottomTrailingRadius: width * 0.08, topTrailingRadius: width * 0.08))
         .shadow(color: .black.opacity(0.22), radius: width * 0.06, y: width * 0.03)
         .accessibilityHidden(true)
-        .task(id: path) {
-            guard let path else {
-                image = nil
-                return
-            }
-            image = await CoverCache.shared.thumbnail(at: path, pixels: Int(height * scale))
-        }
     }
 }
 

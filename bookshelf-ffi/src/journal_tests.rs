@@ -46,6 +46,8 @@ fn offline_book(key: &str, title: &str) -> SearchResult {
         published_date: Some("1965".into()),
         page_count: Some(412),
         cover_url: None,
+        cover_id: None,
+        edition_key: None,
     }
 }
 
@@ -525,7 +527,35 @@ fn search_results_are_checked() {
             .save_search_result(user.clone(), offline_book("", "Dune"))
             .unwrap_err()
     ));
+    for (cover_id, edition_key) in [(Some(0), None), (None, Some(" ".to_string()))] {
+        let book = SearchResult {
+            cover_id,
+            edition_key,
+            ..offline_book("/works/OL1W", "Dune")
+        };
+        let err = f
+            .journal
+            .save_search_result(user.clone(), book)
+            .unwrap_err();
+        assert!(is_invalid(&err));
+    }
     let missing = "00000000-0000-0000-0000-000000000000".to_string();
+    // Thumbnails: a cover id is checked, and so is the profile, before
+    // any request.
+    assert!(is_invalid(
+        &f.journal
+            .search_cover_thumbnail(user.clone(), 0)
+            .unwrap_err()
+    ));
+    assert!(matches!(
+        f.journal.search_cover_thumbnail(missing.clone(), 1),
+        Err(CoreError::NotFound { .. })
+    ));
+    assert!(is_invalid(
+        &f.journal
+            .search_cover_thumbnail("../x".into(), 1)
+            .unwrap_err()
+    ));
     assert!(matches!(
         f.journal
             .save_search_result(missing.clone(), offline_book("/works/OL1W", "Dune")),
