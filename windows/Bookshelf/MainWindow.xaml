@@ -184,6 +184,23 @@
             Grid.Row="1"
             Padding="16,4,16,10"
             Visibility="Collapsed">
+            <Grid.Resources>
+                <ResourceDictionary>
+                    <!-- Text fields' edges: medium ink, ink when focused (kept to the
+                         fields here, away from the writing page's editor). -->
+                    <ResourceDictionary.ThemeDictionaries>
+                        <ResourceDictionary x:Key="Light">
+                            <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#858A91" />
+                            <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#17233C" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="Default">
+                            <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#92969C" />
+                            <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#F0F2F4" />
+                        </ResourceDictionary>
+                        <ResourceDictionary x:Key="HighContrast" />
+                    </ResourceDictionary.ThemeDictionaries>
+                </ResourceDictionary>
+            </Grid.Resources>
             <Grid MaxWidth="688" HorizontalAlignment="Stretch">
                 <TextBox
                     x:Name="SearchBox"

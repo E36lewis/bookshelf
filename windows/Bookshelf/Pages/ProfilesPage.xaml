@@ -6,50 +6,65 @@
     Foreground="{ThemeResource JournalInkBrush}">
 
     <pages:BookshelfPage.Resources>
-        <!-- A profile: its initials, its name and a chevron; a rule above
-             all but the first. -->
-        <DataTemplate x:Key="ProfileTemplate" x:DataType="pages:ProfileRow">
-            <Grid>
-                <Border
-                    Height="1"
-                    Margin="12,0,12,0"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource JournalRuleBrush}"
-                    Visibility="{x:Bind RuleVisibility}" />
-                <Button
-                    Margin="0,3,0,2"
-                    AutomationProperties.Name="{x:Bind Name}"
-                    Click="OnProfileClick"
-                    Style="{StaticResource RowButtonStyle}"
-                    Tag="{x:Bind Id}">
-                    <Grid ColumnSpacing="14">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <PersonPicture
-                            Width="40"
-                            Height="40"
-                            AutomationProperties.AccessibilityView="Raw"
-                            DisplayName="{x:Bind Name}" />
-                        <TextBlock
-                            Grid.Column="1"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="SemiBold"
-                            Text="{x:Bind Name}"
-                            TextTrimming="CharacterEllipsis" />
-                        <FontIcon
-                            Grid.Column="2"
-                            AutomationProperties.AccessibilityView="Raw"
-                            FontSize="14"
-                            Foreground="{ThemeResource JournalMutedBrush}"
-                            Glyph="&#xE76C;" />
-                    </Grid>
-                </Button>
-            </Grid>
-        </DataTemplate>
+        <ResourceDictionary>
+            <!-- Text fields' edges: medium ink, ink when focused (kept to the
+                 fields here, away from the writing page's editor). -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#858A91" />
+                    <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#17233C" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="TextControlElevationBorderBrush" Color="#92969C" />
+                    <SolidColorBrush x:Key="TextControlElevationBorderFocusedBrush" Color="#F0F2F4" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast" />
+            </ResourceDictionary.ThemeDictionaries>
+            <!-- A profile: its initials, its name and a chevron; a rule above
+                 all but the first. -->
+            <DataTemplate x:Key="ProfileTemplate" x:DataType="pages:ProfileRow">
+                <Grid>
+                    <Border
+                        Height="1"
+                        Margin="12,0,12,0"
+                        VerticalAlignment="Top"
+                        Background="{ThemeResource JournalRuleBrush}"
+                        Visibility="{x:Bind RuleVisibility}" />
+                    <Button
+                        Margin="0,3,0,2"
+                        AutomationProperties.Name="{x:Bind Name}"
+                        Click="OnProfileClick"
+                        Style="{StaticResource RowButtonStyle}"
+                        Tag="{x:Bind Id}">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <PersonPicture
+                                Width="40"
+                                Height="40"
+                                AutomationProperties.AccessibilityView="Raw"
+                                DisplayName="{x:Bind Name}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis" />
+                            <FontIcon
+                                Grid.Column="2"
+                                AutomationProperties.AccessibilityView="Raw"
+                                FontSize="14"
+                                Foreground="{ThemeResource JournalMutedBrush}"
+                                Glyph="&#xE76C;" />
+                        </Grid>
+                    </Button>
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
     </pages:BookshelfPage.Resources>
 
     <!-- Who's reading? The profiles, and a new one: Back from a shelf comes
@@ -79,6 +94,7 @@
             <Border x:Name="ProfilesPanel" Padding="4" Style="{StaticResource PanelStyle}" Visibility="Collapsed">
                 <ItemsRepeater
                     x:Name="ProfilesList"
+                    AutomationProperties.AccessibilityView="Control"
                     AutomationProperties.AutomationId="ProfilesList"
                     AutomationProperties.Name="Profiles"
                     ItemTemplate="{StaticResource ProfileTemplate}" />
