@@ -6,6 +6,7 @@ mod markdown;
 mod reader;
 mod search;
 mod settings;
+mod shelf_grid;
 #[cfg(debug_assertions)]
 mod shots;
 mod theme;
@@ -538,14 +539,56 @@ const TABS: [(&str, &str, &str, Milestone, &str, &str); 3] = [
 /// One tab of the home page.
 struct Tab {
     milestone: Milestone,
-    list: gtk::ListBox,
+    /// The book cards and year headings (see shelf_grid.rs).
+    grid: gtk::Box,
     count: gtk::Label,
     empty: adw::StatusPage,
     empty_text: &'static str,
     add_btn: gtk::Button,
+    /// The summary whose card was last opened (shared by the tabs).
+    opened: Rc<RefCell<Option<String>>>,
 }
 
 impl Tab {
+    /// Shows the cards that match the search (all of them when there's no
+    /// search), and the empty state when none do. Year headings have no
+    /// text to match, so they step aside while searching.
+    fn filter(&self, query: &str, terms: &[String], haystacks: &HashMap<String, String>) {
+        let mut any = false;
+        let mut child = self.grid.first_child();
+        while let Some(c) = child {
+            let show = if c.is::<gtk::Button>() {
+                let found = terms.is_empty()
+                    || haystacks
+                        .get(c.widget_name().as_str())
+                        .is_some_and(|text| present::matches(text, terms));
+                any |= found;
+                found
+            } else {
+                terms.is_empty()
+            };
+            c.set_visible(show);
+            child = c.next_sibling();
+        }
+        self.grid.set_visible(any);
+        self.empty.set_visible(!any);
+        if !any {
+            self.show_empty_state(query);
+        }
+    }
+
+    /// The card for summary `id`, if it's on this shelf.
+    fn card(&self, id: &str) -> Option<gtk::Widget> {
+        let mut child = self.grid.first_child();
+        while let Some(c) = child {
+            if c.is::<gtk::Button>() && c.widget_name() == id {
+                return Some(c);
+            }
+            child = c.next_sibling();
+        }
+        None
+    }
+
     /// The empty state: an invitation normally, "no matches" while searching.
     fn show_empty_state(&self, query: &str) {
         if query.is_empty() {
@@ -576,16 +619,13 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     let query: Rc<RefCell<String>> = Rc::default();
     let terms: Rc<RefCell<Vec<String>>> = Rc::default();
     let haystacks: Rc<RefCell<HashMap<String, String>>> = Rc::default();
+    let opened: Rc<RefCell<Option<String>>> = Rc::default();
 
     let stack = adw::ViewStack::new();
     let mut tabs: Vec<Tab> = vec![];
 
     for (name, title, icon, milestone, heading, empty_text) in TABS {
-        let list = gtk::ListBox::builder()
-            .selection_mode(gtk::SelectionMode::None)
-            .css_classes(["entries"])
-            .valign(gtk::Align::Start)
-            .build();
+        let grid = shelf_grid::shelf_grid();
 
         let add_btn = gtk::Button::builder()
             .child(
@@ -602,30 +642,6 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             add_btn.connect_clicked(move |_| open_search());
         }
         let empty = adw::StatusPage::builder().child(&add_btn).build();
-        list.set_placeholder(Some(&empty));
-
-        {
-            let terms = terms.clone();
-            let haystacks = haystacks.clone();
-            list.set_filter_func(move |row| {
-                let terms = terms.borrow();
-                if terms.is_empty() {
-                    return true;
-                }
-                // Year headings have no entry, so they step aside while searching.
-                haystacks
-                    .borrow()
-                    .get(row.widget_name().as_str())
-                    .is_some_and(|text| present::matches(text, &terms))
-            });
-        }
-        {
-            let ctx = ctx.clone();
-            list.connect_row_activated(move |_, row| {
-                let id = row.widget_name();
-                ctx.nav.push(&editor::summary_page(&ctx, id.as_str()));
-            });
-        }
 
         let title_label = gtk::Label::builder()
             .label(heading)
@@ -652,7 +668,8 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
             .margin_end(16)
             .build();
         column.append(&head);
-        column.append(&list);
+        column.append(&grid);
+        column.append(&empty);
 
         let clamp = adw::Clamp::builder()
             .maximum_size(720)
@@ -663,13 +680,14 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
 
         let tab = Tab {
             milestone,
-            list,
+            grid,
             count,
             empty,
             empty_text,
             add_btn,
+            opened: opened.clone(),
         };
-        tab.show_empty_state("");
+        tab.filter("", &[], &HashMap::new());
         tabs.push(tab);
     }
     let tabs = Rc::new(tabs);
@@ -736,13 +754,14 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     }
     {
         let query = query.clone();
+        let terms = terms.clone();
+        let haystacks = haystacks.clone();
         let tabs = tabs.clone();
         search_entry.connect_search_changed(move |entry| {
             *query.borrow_mut() = entry.text().trim().to_lowercase();
             *terms.borrow_mut() = present::query_terms(&query.borrow());
             for tab in tabs.iter() {
-                tab.list.invalidate_filter();
-                tab.show_empty_state(&query.borrow());
+                tab.filter(&query.borrow(), &terms.borrow(), &haystacks.borrow());
             }
         });
     }
@@ -809,8 +828,9 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
     let refresh: Rc<dyn Fn()> = {
         let ctx = Rc::downgrade(ctx);
         let user_id = user.id.clone();
+        let tabs = tabs.clone();
         // What the lists were last built from. Coming back from a book page
-        // you only looked at shouldn't rebuild every row.
+        // you only looked at shouldn't rebuild every card.
         let built_from: Cell<Option<(u64, i64, chrono::NaiveDate)>> = Cell::new(None);
         Rc::new(move || {
             let Some(ctx) = ctx.upgrade() else { return };
@@ -842,12 +862,32 @@ fn home_page(ctx: &Rc<Ctx>, user: &User) -> adw::NavigationPage {
                     &haystacks,
                 );
                 tab.count.set_label(&count);
-                tab.show_empty_state(&query.borrow());
+                tab.filter(&query.borrow(), &terms.borrow(), &haystacks.borrow());
             }
         })
     };
     *ctx.home_refresher.borrow_mut() = Some(refresh.clone());
     page.connect_showing(move |_| refresh());
+
+    // Back from a book, the focus returns to its card, even when the shelf
+    // was rebuilt meanwhile (after an edit) and the card is a new one.
+    page.connect_shown(move |page| {
+        let Some(id) = opened.borrow_mut().take() else {
+            return;
+        };
+        let focus = page.root().and_then(|r| r.focus());
+        if focus.is_some_and(|f| f.has_css_class("book-card") && f.widget_name() == id) {
+            return; // the same card, still there
+        }
+        let showing = stack.visible_child_name();
+        let tab = TABS
+            .iter()
+            .zip(tabs.iter())
+            .find(|((name, ..), _)| showing.as_deref() == Some(*name));
+        if let Some(card) = tab.and_then(|(_, tab)| tab.card(&id)) {
+            card.grab_focus();
+        }
+    });
     page
 }
 
@@ -922,36 +962,41 @@ fn populate_list(
                 "Couldn't read your shelf: {}",
                 friendly(&e)
             )));
-            return present::count_line(tab.list.observe_children().n_items() as usize, 0);
+            let mut cards = 0;
+            let mut child = tab.grid.first_child();
+            while let Some(c) = child {
+                cards += usize::from(c.is::<gtk::Button>());
+                child = c.next_sibling();
+            }
+            return present::count_line(cards, 0);
         }
     };
-    tab.list.remove_all();
+    while let Some(child) = tab.grid.first_child() {
+        tab.grid.remove(&child);
+    }
 
     let view = present::shelf_view(&rows, tab.milestone, date_format, today, &chrono::Local);
+    let mut haystacks = haystacks.borrow_mut();
     for row in view.rows {
         match row {
-            ShelfRow::Year(heading) => tab.list.append(&year_row(&heading)),
+            ShelfRow::Year(heading) => tab.grid.append(&year_heading(&heading)),
             ShelfRow::Entry(mut entry) => {
-                // Before appending: the list filters a row as it's added,
-                // so a search in progress needs the text already there.
                 let haystack = std::mem::take(&mut entry.haystack);
-                haystacks
-                    .borrow_mut()
-                    .insert(entry.item.summary.id.clone(), haystack);
-                tab.list.append(&summary_row(ctx, &entry));
+                haystacks.insert(entry.item.summary.id.clone(), haystack);
+                tab.grid.append(&book_card(ctx, &entry, &tab.opened));
             }
         }
     }
     view.count_line
 }
 
-/// "2026 · 12 books" between the finished entries.
-fn year_row(heading: &YearHeading) -> gtk::ListBoxRow {
+/// "2026 · 12 books" above the finished books of that year.
+fn year_heading(heading: &YearHeading) -> gtk::Box {
     let line = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
         .spacing(10)
-        .margin_top(18)
-        .margin_bottom(4)
+        .margin_top(22)
+        .margin_bottom(12)
         .build();
     line.append(
         &gtk::Label::builder()
@@ -968,18 +1013,14 @@ fn year_row(heading: &YearHeading) -> gtk::ListBoxRow {
             .css_classes(["page-count"])
             .build(),
     );
-    gtk::ListBoxRow::builder()
-        .activatable(false)
-        .selectable(false)
-        .focusable(false)
-        .child(&line)
-        .build()
+    line
 }
 
-fn wrapped_label(text: &str, class: &str, lines: i32) -> gtk::Label {
+/// A centred line of a card, cut short after `lines` lines.
+fn card_label(text: &str, class: &str, lines: i32) -> gtk::Label {
     gtk::Label::builder()
         .label(text)
-        .xalign(0.0)
+        .justify(gtk::Justification::Center)
         .wrap(true)
         .wrap_mode(gtk::pango::WrapMode::WordChar)
         .ellipsize(gtk::pango::EllipsizeMode::End)
@@ -988,49 +1029,76 @@ fn wrapped_label(text: &str, class: &str, lines: i32) -> gtk::Label {
         .build()
 }
 
-/// One journal entry: cover, title, author, a dated line, and a taste of
-/// what you wrote. The row's widget name carries the summary id.
-fn summary_row(ctx: &Rc<Ctx>, entry: &ShelfEntry) -> gtk::ListBoxRow {
+/// One journal entry as a card: the cover, then the title, author, a dated
+/// line and a taste of what you wrote. The card's widget name carries the
+/// summary id. To assistive technology it's one button named by all of
+/// that in a sentence; what's inside is left out (the cover is decoration).
+fn book_card(
+    ctx: &Rc<Ctx>,
+    entry: &ShelfEntry,
+    opened: &Rc<RefCell<Option<String>>>,
+) -> gtk::Button {
     let item = entry.item;
-    let cover = cover_picture(ctx, &item.book, 64, 96);
+    let (width, height) = LIST_COVER;
+    let picture = cover_picture(ctx, &item.book, width, height);
+    picture.set_halign(gtk::Align::Fill);
+    picture.set_valign(gtk::Align::Fill);
+    let cover = shelf_grid::fixed_size(&picture, width, height);
+    cover.set_halign(gtk::Align::Center);
+    cover.set_margin_bottom(14);
 
-    let text = gtk::Box::builder()
+    let content = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(2)
-        .hexpand(true)
-        .valign(gtk::Align::Center)
+        .valign(gtk::Align::Start)
         .build();
-    text.append(&wrapped_label(&item.book.title, "entry-title", 2));
+    content.append(&cover);
+
+    let mut sentence = item.book.title.clone();
+    let mut then = |text: &str| {
+        let ended = sentence.ends_with(['.', '!', '?', '…']);
+        sentence.push_str(if ended { " " } else { ". " });
+        sentence.push_str(text);
+    };
+    content.append(&card_label(&item.book.title, "entry-title", 2));
     if let Some(author) = &item.book.author {
-        text.append(&wrapped_label(author, "entry-byline", 1));
+        content.append(&card_label(author, "entry-byline", 1));
+        then(&format!("By {author}"));
     }
     if !entry.meta.is_empty() {
-        text.append(&wrapped_label(&entry.meta, "entry-meta", 1));
+        content.append(&card_label(&entry.meta, "entry-meta", 1));
+        then(&entry.meta);
     }
     if !entry.excerpt.is_empty() {
-        text.append(&wrapped_label(&entry.excerpt, "entry-excerpt", 3));
+        content.append(&card_label(&entry.excerpt, "entry-excerpt", 3));
+        then(&entry.excerpt);
     } else if let Some(note) = entry.empty_note {
-        text.append(&wrapped_label(note, "entry-excerpt-empty", 1));
+        content.append(&card_label(note, "entry-excerpt-empty", 1));
+        then(note);
     }
+    content.update_state(&[gtk::accessible::State::Hidden(true)]);
 
-    let card = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .spacing(14)
+    let card = gtk::Button::builder()
+        .child(&content)
+        .css_classes(["book-card"])
         .build();
-    card.append(&cover);
-    card.append(&text);
-
-    let row = gtk::ListBoxRow::builder()
-        .activatable(true)
-        .child(&card)
-        .css_classes(["entry"])
-        .build();
-    row.set_widget_name(&item.summary.id);
-    row
+    card.set_widget_name(&item.summary.id);
+    card.update_property(&[gtk::accessible::Property::Label(&sentence)]);
+    let ctx = Rc::downgrade(ctx);
+    let opened = Rc::downgrade(opened);
+    card.connect_clicked(move |card| {
+        let (Some(ctx), Some(opened)) = (ctx.upgrade(), opened.upgrade()) else {
+            return;
+        };
+        let id = card.widget_name();
+        *opened.borrow_mut() = Some(id.to_string());
+        ctx.nav.push(&editor::summary_page(&ctx, id.as_str()));
+    });
+    card
 }
 
-/// Size of the covers in the home lists; these are kept decoded in memory.
-const LIST_COVER: (i32, i32) = (64, 96);
+/// Size of the covers on the shelf; these are kept decoded in memory.
+const LIST_COVER: (i32, i32) = (104, 156);
 
 /// Cover image from the local covers folder, or an empty tinted box. The
 /// image is decoded on a worker thread and fills in when ready.
