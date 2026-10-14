@@ -158,6 +158,17 @@ function Shelf-Cards {
     return @($grid.FindAll($Scope::Descendants, $isCard))
 }
 
+# Waits until the grid shows this many cards (it's laid out again as the search changes).
+function Wait-Cards([int] $Count, [int] $Seconds = 5) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        $now = (Shelf-Cards).Count
+        if ($now -eq $Count) { return }
+        Start-Sleep -Milliseconds 250
+    } while ($clock.Elapsed.TotalSeconds -lt $Seconds)
+    throw "$now cards, not $Count"
+}
+
 # Where the cards are on screen, row by row.
 function Card-Boxes {
     return @(Shelf-Cards | ForEach-Object { $_.Current.BoundingRectangle } | Sort-Object { [int]$_.Y }, { [int]$_.X })
@@ -498,6 +509,7 @@ Step 'Three to a row, all the same width, a short row in the middle' {
     Keys '^f'
     Keys 'e'
     Wait-Name 'ShelfCount' '4 matches' | Out-Null
+    Wait-Cards 4
     $boxes = Card-Boxes
     $grid = (Find-Id 'ShelfList').Current.BoundingRectangle
     Write-Host ("      cards: " + (($boxes | ForEach-Object { "$([int]$_.X),$([int]$_.Y) $([int]$_.Width)x$([int]$_.Height)" }) -join ' | ') + "; grid $([int]$grid.X)..$([int]($grid.X + $grid.Width))")
@@ -675,7 +687,7 @@ Step 'Type to search' {
     Keys 'earthsea'
     Wait-Name 'ShelfCount' '1 match' | Out-Null
     # One book: a card on its own, in the middle.
-    if ((Shelf-Cards).Count -ne 1) { throw "$((Shelf-Cards).Count) cards for one match" }
+    Wait-Cards 1
     Snap '16-search'
     Keys '{ESC}'
     Keys '{ESC}'
@@ -698,6 +710,7 @@ Step 'Back from a shelf: the profiles' {
     $r = $avery.Current.BoundingRectangle
     [Win]::SetForegroundWindow($script:hwnd) | Out-Null
     [RealInput]::Click([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+    [RealInput]::MoveTo([int]($r.X + $r.Width / 2), [int]($r.Y + 300))
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
     if (-not (Is-Selected 'ReadingShelf')) { throw 'Reading is not selected' }
 }
@@ -1047,7 +1060,7 @@ Start-Bookshelf @('--demo-journal', '--demo-profile', 'Sam')
 Step 'Dark theme' {
     Wait-Name 'ShelfHeading' 'Reading now' | Out-Null
     # One book: a card on its own, in the middle.
-    if ((Shelf-Cards).Count -ne 1) { throw "$((Shelf-Cards).Count) cards on Sam's Reading" }
+    Wait-Cards 1
     Snap '20-dark-reading'
     Keys '^2'
     Wait-Name 'ShelfHeading' 'Finished' | Out-Null

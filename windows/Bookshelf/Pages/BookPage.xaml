@@ -44,6 +44,9 @@
                         <Setter Target="Actions.(Grid.Column)" Value="0" />
                         <Setter Target="Actions.(Grid.ColumnSpan)" Value="2" />
                         <Setter Target="CoverFrame.(Grid.RowSpan)" Value="1" />
+                        <Setter Target="DateLabels.MinWidth" Value="0" />
+                        <Setter Target="StartedPicker.MinWidth" Value="132" />
+                        <Setter Target="FinishedPicker.MinWidth" Value="132" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
@@ -215,7 +218,7 @@
                 <Border Padding="20,16,20,16" Style="{StaticResource PanelStyle}">
                     <Grid ColumnSpacing="10" RowSpacing="12">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" MinWidth="80" />
+                            <ColumnDefinition x:Name="DateLabels" Width="Auto" MinWidth="80" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />

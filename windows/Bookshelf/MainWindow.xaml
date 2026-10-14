@@ -183,6 +183,8 @@
             x:Name="SearchBar"
             Grid.Row="1"
             Padding="16,4,16,10"
+            Background="Transparent"
+            PointerEntered="OnBodyPointerEntered"
             Visibility="Collapsed">
             <Grid.Resources>
                 <ResourceDictionary>
@@ -225,7 +227,11 @@
             </Grid>
         </Grid>
 
-        <Grid Grid.Row="2">
+        <Grid
+            x:Name="Body"
+            Grid.Row="2"
+            Background="Transparent"
+            PointerEntered="OnBodyPointerEntered">
             <Frame x:Name="ContentFrame" Navigated="OnNavigated" NavigationFailed="OnNavigationFailed" />
             <!-- Floats over the page, so it gets a solid background of its own. -->
             <Border

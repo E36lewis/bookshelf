@@ -20,6 +20,7 @@ using Windows.Foundation;
 using Windows.Graphics;
 using Windows.System;
 using WinRT.Interop;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace Bookshelf;
@@ -312,7 +313,7 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void LayOutHeader()
     {
-        if (Root.XamlRoot is not { } xamlRoot) return;
+        if (_canClose || Root.XamlRoot is not { } xamlRoot) return;
         var scale = xamlRoot.RasterizationScale;
         var left = AppWindow.TitleBar.LeftInset / scale;
         var right = AppWindow.TitleBar.RightInset / scale;
@@ -341,7 +342,21 @@ public sealed partial class MainWindow : Window
         ReadingLabel.Visibility = names;
         FinishedLabel.Visibility = names;
         EventuallyLabel.Visibility = names;
-        foreach (var (tab, _) in TabShelves()) tab.Padding = compact ? new Thickness(10, 0, 10, 1) : new Thickness(15, 0, 16, 1);
+        Tabs.Spacing = compact ? 4 : 6;
+        foreach (var (tab, _) in TabShelves()) tab.Padding = compact ? new Thickness(9, 0, 9, 1) : new Thickness(15, 0, 16, 1);
+    }
+
+    /// <summary>
+    /// The pointer left the header through the part that drags the window,
+    /// where its buttons don't hear it go: they stop looking pointed at.
+    /// </summary>
+    private void OnBodyPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        foreach (var control in new Control[] { BackButton, AddButton, SettingsButton, ReadingTab, FinishedTab, EventuallyTab })
+        {
+            VisualStateManager.GoToState(control, control.IsEnabled ? "Normal" : "Disabled", true);
+        }
+        VisualStateManager.GoToState(SearchButton, SearchButton.IsChecked == true ? "Checked" : "Normal", true);
     }
 
     /// <summary>
@@ -351,7 +366,7 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void UpdatePassthrough()
     {
-        if (Root.XamlRoot is not { } xamlRoot || Header.Visibility != Visibility.Visible) return;
+        if (_canClose || Root.XamlRoot is not { } xamlRoot || Header.Visibility != Visibility.Visible) return;
         var scale = xamlRoot.RasterizationScale;
         var rects = new List<RectInt32>(3);
         foreach (var element in new FrameworkElement[] { LeftButtons, Tabs, RightButtons })
@@ -441,8 +456,16 @@ public sealed partial class MainWindow : Window
     {
         if (_session?.Profile is null) return;
         Session.CurrentShelf = shelf;
-        if (ContentFrame.Content is ShelfPage page) page.Show();
-        else ContentFrame.Navigate(typeof(ShelfPage), null, new EntranceNavigationTransitionInfo());
+        if (ContentFrame.Content is ShelfPage page)
+        {
+            page.Show();
+            // A focused card of the last shelf has gone with it.
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SettleFocus(page));
+        }
+        else
+        {
+            ContentFrame.Navigate(typeof(ShelfPage), null, new EntranceNavigationTransitionInfo());
+        }
         ContentFrame.BackStack.Clear();
         ContentFrame.BackStack.Add(new PageStackEntry(typeof(ProfilesPage), null, new EntranceNavigationTransitionInfo()));
         UpdateChrome();
@@ -509,6 +532,25 @@ public sealed partial class MainWindow : Window
         }
         if (e.Content is not (ReaderPage or WriterPage)) SetFullScreen(false);
         UpdateChrome();
+        // The writing and reading pages, Settings and the profiles focus what they need themselves.
+        if (e.Content is ShelfPage or BookPage or ManualPage)
+        {
+            var page = (Page)e.Content;
+            DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => SettleFocus(page));
+        }
+    }
+
+    /// <summary>
+    /// A page that's just opened takes the focus (its first card or button),
+    /// which would otherwise be lost with the last page, or fall back to the
+    /// header's Back button. Typing on a shelf then searches it.
+    /// </summary>
+    private void SettleFocus(Page page)
+    {
+        if (ContentFrame.Content != page || Root.XamlRoot is not { } root) return;
+        var focused = FocusManager.GetFocusedElement(root);
+        if (focused is not null && !ReferenceEquals(focused, BackButton)) return;
+        if (FocusManager.FindFirstFocusableElement(page) is Control first) first.Focus(FocusState.Programmatic);
     }
 
     private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)

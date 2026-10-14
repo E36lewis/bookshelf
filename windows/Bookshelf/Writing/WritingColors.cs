@@ -20,12 +20,12 @@ namespace Bookshelf.Writing;
 /// </remarks>
 internal sealed record WritingColors(Color Ink, Color Syntax, Color Quote, Color CodeBackground, Color Dim, Color Background)
 {
-    // The journal's ink on its page (JournalInkBrush over JournalCardBrush,
-    // App.xaml), the GTK app's palette.
-    private static readonly Color LightInk = Color.FromArgb(0xFF, 0x17, 0x23, 0x3C);
-    private static readonly Color LightPage = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
-    private static readonly Color DarkInk = Color.FromArgb(0xFF, 0xF0, 0xF2, 0xF4);
-    private static readonly Color DarkPage = Color.FromArgb(0xFF, 0x1C, 0x22, 0x2C);
+    // WinUI's own: TextFillColorPrimary over SolidBackgroundFillColorBase
+    // (which Mica tints only slightly).
+    private static readonly Color LightInk = Color.FromArgb(0xE4, 0, 0, 0);
+    private static readonly Color LightPage = Color.FromArgb(0xFF, 0xF3, 0xF3, 0xF3);
+    private static readonly Color DarkInk = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+    private static readonly Color DarkPage = Color.FromArgb(0xFF, 0x20, 0x20, 0x20);
 
     /// <summary>Whether Windows is in High Contrast right now.</summary>
     public static bool HighContrast => new AccessibilitySettings().HighContrast;

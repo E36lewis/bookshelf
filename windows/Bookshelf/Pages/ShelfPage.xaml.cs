@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.System;
+using DispatcherQueuePriority = Microsoft.UI.Dispatching.DispatcherQueuePriority;
 
 namespace Bookshelf.Pages;
 
@@ -51,7 +52,8 @@ public sealed partial class ShelfPage : BookshelfPage
         // Back from a book: the focus goes to its card (again, if the shelf
         // is laid out afresh because something changed meanwhile).
         var back = e.NavigationMode == NavigationMode.Back ? _opened : null;
-        if (back is not null) FocusCard(back);
+        // After layout: focus asked for during navigation can be lost.
+        if (back is { } returning) DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusCard(returning));
         try
         {
             await Session.RefreshShelvesAsync();
@@ -60,7 +62,7 @@ public sealed partial class ShelfPage : BookshelfPage
         {
             return; // the shelf stays as it was
         }
-        if (back is not null && Frame?.Content == this) FocusCard(back);
+        if (back is { } again && Frame?.Content == this) DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () => FocusCard(again));
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -190,7 +192,7 @@ public sealed partial class ShelfPage : BookshelfPage
             if (Entries.GetOrCreateElement(r) is ItemsRepeater cards && cards.GetOrCreateElement(i) is Control card)
             {
                 card.StartBringIntoView();
-                if (!card.Focus(FocusState.Programmatic)) DispatcherQueue.TryEnqueue(() => card.Focus(FocusState.Programmatic));
+                card.Focus(FocusState.Programmatic);
             }
             return;
         }
