@@ -111,7 +111,7 @@ jobs:
           (cd "$inside" && "$GITHUB_WORKSPACE/$file" --appimage-extract >/dev/null)
           test -x "$inside/squashfs-root/usr/bin/bookshelf-gtk"
           test "$(find "$inside/squashfs-root/usr/share/fonts/bookshelf" -name '*.ttf' | wc -l)" -eq 8
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Bookshelf-linux-appimage
           path: dist/Bookshelf-*-x86_64.AppImage
@@ -177,7 +177,7 @@ jobs:
 
       - name: Keep what the release would have had (dry run)
         if: env.DRY_RUN == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-dry-run
           path: |
